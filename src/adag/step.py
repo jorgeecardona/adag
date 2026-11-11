@@ -289,12 +289,14 @@ class Step(Generic[Out]):
         h = hashlib.sha256()
         kind = type(self).kind
         if kind:
-            h.update(b"KIND:" + kind.encode())
+            h.update(b"KIND:" + encode_value(kind))
         else:
-            h.update(b"STEP:" + type(self).__name__.encode())
-            code_bytes = class_source_hash(type(self))
-            if code_bytes:
-                h.update(b"CODE:" + code_bytes)
+            h.update(b"STEP:" + encode_value(type(self).__name__))
+        # Source is hashed for kind-tagged steps too: editing a step's code must
+        # invalidate its results whether or not it has a serialization kind.
+        code_bytes = class_source_hash(type(self))
+        if code_bytes:
+            h.update(b"CODE:" + code_bytes)
 
         for field in dataclasses.fields(self):
             if field.name == "node_label":

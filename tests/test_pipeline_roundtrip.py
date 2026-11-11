@@ -133,3 +133,34 @@ def test_reconstructed_pipeline_reads_cache_written_by_original(tmp_path: Path):
 
     assert CALLS == []
     assert second_result.text == first_result.text
+
+
+def test_kind_steps_with_different_code_get_different_keys():
+    """Two steps sharing a kind and fields but not code must not share a cache key."""
+
+    @dataclass(frozen=True)
+    class V1(SerializableStep[Greeting]):
+        kind = "test/same-kind/v1"
+        spec: GreetSpec
+
+        def run(self, name: str, **_: Any) -> Greeting:
+            return Greeting(text=f"{self.spec.salutation}, {name}")
+
+        @classmethod
+        def from_directory(cls, path: str) -> "V1":
+            return cls(spec=cls.load_spec(path, GreetSpec))
+
+    @dataclass(frozen=True)
+    class V2(SerializableStep[Greeting]):
+        kind = "test/same-kind/v1"
+        spec: GreetSpec
+
+        def run(self, name: str, **_: Any) -> Greeting:
+            return Greeting(text=f"{self.spec.salutation}!! {name}")
+
+        @classmethod
+        def from_directory(cls, path: str) -> "V2":
+            return cls(spec=cls.load_spec(path, GreetSpec))
+
+    spec = GreetSpec(salutation="Hi")
+    assert V1(spec=spec).content_hash() != V2(spec=spec).content_hash()

@@ -166,10 +166,12 @@ def _encode_container(value: Any, where: str) -> bytes:
 
 
 def class_source_hash(cls: type) -> bytes | None:
-    """SHA-256 of the run() method source code, for cache invalidation on implementation changes.
+    """Return a short hash of the class's own source code, or None if it has none.
 
-    Walks the MRO to find the first class with inspectable source.
-    Returns None for dynamically generated classes without source.
+    Only the source of the class body is hashed: the first class in the MRO whose
+    source ``inspect`` can read. Edits to a base class or to a helper function the
+    step calls do NOT change the hash. Bump a field or ``kind`` version when such an
+    edit changes results. Any edit inside the class body, comments included, does.
 
     Memoized per class: inspect.getsource() re-reads + re-tokenizes the source
     file on every call, and this is invoked once per step instance across the
