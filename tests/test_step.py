@@ -773,3 +773,17 @@ def test_input_param_values_hash_by_value_not_repr(tmp_path: Path):
     graph = AddStep(a=0, b=0)(a=InputParam[int]("a"), b=1)
     assert graph.content_hash(params={"a": 2}) == graph.content_hash(params={"a": 2})
     assert graph.content_hash(params={"a": 2}) != graph.content_hash(params={"a": "2"})
+
+
+def test_cached_step_is_a_deprecated_alias_of_step():
+    from adag import CachedStep
+
+    with pytest.warns(DeprecationWarning, match="subclass Step"):
+
+        @dataclass(frozen=True)
+        class Old(CachedStep[CountResult]):
+            def run(self) -> CountResult:
+                return CountResult(count=1)
+
+    assert Old.result_type is CountResult
+    assert Pipeline(Old()()).execute().count == 1

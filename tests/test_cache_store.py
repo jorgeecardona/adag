@@ -1,7 +1,7 @@
 """CacheStore backends — the pluggable key→text primitive behind the DAG cache.
 
 Every backend must satisfy the same tiny contract (get/set/exists/delete/iter_keys over
-str values), so ItemCache/CachedStep can be backed by the filesystem, Redis, a DB, etc.
+str values), so ItemCache can be backed by the filesystem, Redis, a DB, etc.
 These tests pin that contract against the filesystem, in-memory, SQLite, and SQLAlchemy
 backends (the SQL one over a file-based sqlite URL). Redis/valkey is exercised
 structurally with a fake client — it needs a live server.

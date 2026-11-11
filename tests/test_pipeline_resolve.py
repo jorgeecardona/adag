@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from adag import CachedStep, Pipeline
+from adag import Pipeline, Step
 
 
 class StageA(BaseModel):
@@ -29,7 +29,7 @@ class StageC(BaseModel):
 
 
 @dataclass(frozen=True)
-class A(CachedStep[StageA]):
+class A(Step[StageA]):
     seed: int = 7
 
     def run(self, seed: int) -> StageA:
@@ -37,16 +37,16 @@ class A(CachedStep[StageA]):
 
 
 @dataclass(frozen=True)
-class B(CachedStep[StageB]):
-    a: CachedStep[StageA]
+class B(Step[StageB]):
+    a: Step[StageA]
 
     def run(self, a: StageA) -> StageB:
         return StageB(doubled=a.n * 2)
 
 
 @dataclass(frozen=True)
-class C(CachedStep[StageC]):
-    b: CachedStep[StageB]
+class C(Step[StageC]):
+    b: Step[StageB]
 
     def run(self, b: StageB) -> StageC:
         return StageC(plus_one=b.doubled + 1)

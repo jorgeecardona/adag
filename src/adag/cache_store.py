@@ -1,6 +1,6 @@
 """CacheStore — the pluggable key→text backend behind the DAG cache.
 
-The DAG's caches (``ItemCache`` per-item results, ``CachedStep`` step results, the
+The DAG's caches (``ItemCache`` per-item results, the
 dispatch "cache-as-IPC" rejoin) all reduce to one tiny primitive: **put a piece of
 text somewhere under a key, and load it back later**. Today that primitive is
 hard-wired to the local filesystem, which is fine for offline/CLI/single-process
@@ -90,7 +90,7 @@ class CacheStore(Protocol):
 class FileSystemCacheStore:
     """Default backend: one text file per key under ``root``. Keys may contain ``/``
     to nest into sub-directories. Writes are atomic (temp file + rename), matching the
-    current ItemCache/CachedStep on-disk semantics so nothing changes for local runs.
+    current ItemCache on-disk semantics so nothing changes for local runs.
     """
 
     def __init__(self, root: str | Path) -> None:

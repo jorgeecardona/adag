@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - All caches recompute once: the cache key format changed to fix the bugs below.
+- `CachedStep` is deprecated: subclass `Step` instead. Its direct `save`, `load`,
+  `is_partial` and `output_path` methods are removed; the pipeline caches every `Step`.
 - A step field the cache key cannot hash now raises `UnhashableValueError`. Wrap
   execution-only values in `Config(...)`, or set `strict_content_hash = False`.
 

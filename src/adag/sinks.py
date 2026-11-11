@@ -1,6 +1,6 @@
 """Sink steps — terminal nodes that write a pipeline result to disk.
 
-These are plain ``Step``s (not ``CachedStep``s) because their value is the
+These steps return no ``BaseModel``, so they are not cached, because their value is the
 side-effect, not the return value. A regular Step re-runs on every
 ``pipeline.execute()`` call — including on upstream cache hits — which is
 exactly what you want for a "publish to disk" node: if someone deletes the

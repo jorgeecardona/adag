@@ -1,4 +1,4 @@
-"""BatchStep — a CachedStep that processes items one at a time with per-item caching.
+"""BatchStep — a Step that processes items one at a time with per-item caching.
 
 For expensive operations (LLM calls, API requests) where:
 - Each item costs money or time
@@ -18,7 +18,7 @@ HOW to compose keys::
 
     @dataclass(frozen=True)
     class GenerateNotes(BatchStep[NotesResult, NoteRecord]):
-        catalog: CachedStep[CatalogResult]
+        catalog: Step[CatalogResult]
         model: str = "my-model"
         concurrency: Config[int] = Config(20)
 
@@ -54,9 +54,9 @@ from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
 import structlog
 from pydantic import BaseModel
 
-from adag.base import CachedStep
 from adag.deferred import ResolveContext
 from adag.item_cache import ItemCache
+from adag.step import Step
 
 logger = structlog.get_logger()
 
@@ -76,7 +76,7 @@ class BatchItem:
     data: Any = None
 
 
-class BatchStep(CachedStep[T], Generic[T, R]):
+class BatchStep(Step[T], Generic[T, R]):
     """A step that processes items individually with per-item disk caching.
 
     Subclasses implement three methods:
@@ -368,7 +368,7 @@ class BatchStep(CachedStep[T], Generic[T, R]):
 
         Use this when another Step's ``run()`` body needs to invoke a
         BatchStep over derived data (e.g. running Stage-2 classification
-        from inside a larger CachedStep). This helper builds a minimal
+        from inside a larger Step). This helper builds a minimal
         ResolveContext rooted at ``cache_dir`` and dispatches through
         :meth:`execute`, which guarantees:
 

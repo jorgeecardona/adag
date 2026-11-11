@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from adag import CachedStep, Pipeline, Step, WriteJSONL
+from adag import Pipeline, Step, WriteJSONL
 
 
 class Record(BaseModel):
@@ -22,7 +22,7 @@ class Notes(BaseModel):
 
 
 @dataclass(frozen=True)
-class GenerateNotes(CachedStep[Notes]):
+class GenerateNotes(Step[Notes]):
     """Produces a fixed set of records — stand-in for the real LLM step."""
 
     n: int = 3

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from adag import BatchItem, BatchStep, CachedStep, FileSource, Pipeline
+from adag import BatchItem, BatchStep, FileSource, Pipeline, Step
 
 
 class ItemResult(BaseModel):
@@ -24,7 +24,7 @@ class SourceData(BaseModel):
 
 
 @dataclass(frozen=True)
-class SourceStep(CachedStep[SourceData]):
+class SourceStep(Step[SourceData]):
     """Reads names from a file."""
 
     data: FileSource
@@ -37,7 +37,7 @@ class SourceStep(CachedStep[SourceData]):
 class DoubleBatch(BatchStep[BatchResult, ItemResult]):
     """Doubles each name."""
 
-    source: CachedStep[SourceData]
+    source: Step[SourceData]
     prefix: str = ""
 
     def items(self, source: SourceData, prefix: str) -> list[BatchItem]:
@@ -153,7 +153,7 @@ class AutoKeyBatch(BatchStep[BatchResult, ItemResult]):
     # is the typical pattern: declare which kwarg is the items container.
     items_source_keys = ("source",)
 
-    source: CachedStep[SourceData]
+    source: Step[SourceData]
     prefix: str = ""
 
     def items_data(self, source: SourceData, prefix: str):  # type: ignore[override]
@@ -217,7 +217,7 @@ def test_auto_key_changes_with_item_data():
 class NoOverrideBatch(BatchStep[BatchResult, ItemResult]):
     """A subclass that defines neither items() nor items_data() — must raise."""
 
-    source: CachedStep[SourceData]
+    source: Step[SourceData]
 
     def process_item(self, item: BatchItem, source: SourceData) -> ItemResult:
         return ItemResult(value="x", doubled="xx")
@@ -257,7 +257,7 @@ def test_process_batch_leaves_inflight_marker_on_exception(tmp_path: Path, sourc
 
     @dataclass(frozen=True)
     class CrashBatch(BatchStep[BatchResult, ItemResult]):
-        source: CachedStep[SourceData]
+        source: Step[SourceData]
 
         def items_data(self, source: SourceData):
             return list(source.names)
