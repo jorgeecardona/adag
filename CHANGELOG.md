@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- From the top-level `adag` namespace: executors, dispatchers, `Deferred`, `ResolveContext`,
+  `Progress`, `BranchRef`, `current_observer`, `observing`, `walk`, `render_pipeline_svg`.
+  Import them from their submodules (for example `adag.dispatch`).
 - `Parameter`, `StepMode`, `StepOutput`, `BatchDispatcher`, and the `on_embedding` and
   `on_model_refused` observer hooks.
 
