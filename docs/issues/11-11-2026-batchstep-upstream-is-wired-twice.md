@@ -1,6 +1,6 @@
 ---
 title: "BatchStep examples wire the upstream step twice: as a field and as an input"
-status: open
+status: done
 area: core
 filed: 2026-11-11
 scope: S

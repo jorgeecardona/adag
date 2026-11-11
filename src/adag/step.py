@@ -205,7 +205,18 @@ class Step(Generic[Out]):
         return type(self).return_type
 
     def __call__(self, **kwargs: Any) -> StepResult[Out]:
-        """Wire this step into the DAG. Returns a StepResult that chains downstream."""
+        """Wire this step into the DAG. Returns a StepResult that chains downstream.
+
+        Raises:
+            TypeError: an input has the name of a field that holds a ``Step``. Wire the upstream
+                step once, as an input: the field copy is hashed but never run.
+        """
+        for f in dataclasses.fields(self):
+            if f.name in kwargs and isinstance(getattr(self, f.name), Step):
+                raise TypeError(
+                    f"{type(self).__name__}.{f.name} is both a Step field and an input. "
+                    f"Remove the field and pass the upstream result as {f.name}=... only."
+                )
         return StepResult(step=self, sources=kwargs)
 
     def run(self, **kwargs: Any) -> Out:

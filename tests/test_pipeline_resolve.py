@@ -38,23 +38,19 @@ class A(Step[StageA]):
 
 @dataclass(frozen=True)
 class B(Step[StageB]):
-    a: Step[StageA]
-
     def run(self, a: StageA) -> StageB:
         return StageB(doubled=a.n * 2)
 
 
 @dataclass(frozen=True)
 class C(Step[StageC]):
-    b: Step[StageB]
-
     def run(self, b: StageB) -> StageC:
         return StageC(plus_one=b.doubled + 1)
 
 
 def test_resolve_intermediate_target(tmp_path: Path):
     """Pipeline.resolve(b_def) returns the same StageB value the final step consumed."""
-    a, b, c = A(), B(a=A()), C(b=B(a=A()))
+    a, b, c = A(), B(), C()
     a_def = a()
     b_def = b(a=a_def)
     c_def = c(b=b_def)
@@ -72,14 +68,14 @@ def test_resolve_rejects_unrelated_target(tmp_path: Path):
     a_def = A()()
     pipeline = Pipeline(a_def, cache_dir=tmp_path / "cache")
     # Build a fresh, disconnected B graph.
-    stranger_b = B(a=A())(a=A()())
+    stranger_b = B()(a=A()())
     with pytest.raises(ValueError, match="not part of this pipeline"):
         pipeline.resolve(stranger_b)
 
 
 def test_from_targets_multi_sink(tmp_path: Path):
     """A pipeline with two ending points exposes both via .targets and resolves either one."""
-    a, b, c = A(), B(a=A()), C(b=B(a=A()))
+    a, b, c = A(), B(), C()
     a_def = a()
     b_def = b(a=a_def)
     c_def = c(b=b_def)
@@ -108,8 +104,8 @@ def test_resolve_returns_same_value_as_execute(tmp_path: Path):
     by calling step.run() directly (which can diverge if the step's code
     changed since the cache was written).
     """
-    a, _b, c = A(), B(a=A()), C(b=B(a=A()))
-    a_def, c_def = a(), c(b=B(a=A())(a=A()()))
+    a, _b, c = A(), B(), C()
+    a_def, c_def = a(), c(b=B()(a=A()()))
     pipeline = Pipeline(c_def, cache_dir=tmp_path / "cache")
     pipeline.execute()
     # The same A() resolved via pipeline matches the StageA the pipeline used.

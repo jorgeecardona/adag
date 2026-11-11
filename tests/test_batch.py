@@ -37,7 +37,6 @@ class SourceStep(Step[SourceData]):
 class DoubleBatch(BatchStep[BatchResult, ItemResult]):
     """Doubles each name."""
 
-    source: Step[SourceData]
     prefix: str = ""
 
     def items(self, source: SourceData, prefix: str) -> list[BatchItem]:
@@ -59,8 +58,8 @@ def source_file(tmp_path: Path) -> Path:
 
 def test_batch_step_processes_all_items(tmp_path: Path, source_file: Path):
     """All items are processed and assembled."""
+    batch = DoubleBatch()
     source = SourceStep(data=FileSource(str(source_file)))
-    batch = DoubleBatch(source=source)
     result_deferred = batch(source=source(data=FileSource(str(source_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
 
@@ -74,8 +73,8 @@ def test_batch_step_processes_all_items(tmp_path: Path, source_file: Path):
 
 def test_batch_step_caches_items(tmp_path: Path, source_file: Path):
     """Second run skips processing — all items cached."""
+    batch = DoubleBatch()
     source = SourceStep(data=FileSource(str(source_file)))
-    batch = DoubleBatch(source=source)
     result_deferred = batch(source=source(data=FileSource(str(source_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
 
@@ -88,8 +87,7 @@ def test_batch_step_caches_items(tmp_path: Path, source_file: Path):
 
 def test_batch_step_resumes_after_crash(tmp_path: Path, source_file: Path):
     """Simulate crash: pre-cache 2 of 3 items, then run — only 1 item reprocessed."""
-    source = SourceStep(data=FileSource(str(source_file)))
-    batch = DoubleBatch(source=source)
+    batch = DoubleBatch()
 
     from adag.item_cache import ItemCache
 
@@ -97,6 +95,7 @@ def test_batch_step_resumes_after_crash(tmp_path: Path, source_file: Path):
     cache.save("_alice", ItemResult(value="alice", doubled="alicealice"))
     cache.save("_bob", ItemResult(value="bob", doubled="bobbob"))
 
+    source = SourceStep(data=FileSource(str(source_file)))
     result_deferred = batch(source=source(data=FileSource(str(source_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
 
@@ -109,9 +108,8 @@ def test_batch_step_resumes_after_crash(tmp_path: Path, source_file: Path):
 
 def test_batch_step_different_prefix_different_cache(tmp_path: Path, source_file: Path):
     """Different prefix produces different cache keys."""
-    source_step = SourceStep(data=FileSource(str(source_file)))
-    batch_a = DoubleBatch(source=source_step, prefix="a")
-    batch_b = DoubleBatch(source=source_step, prefix="b")
+    batch_a = DoubleBatch(prefix="a")
+    batch_b = DoubleBatch(prefix="b")
 
     assert batch_a.content_hash() != batch_b.content_hash()
 
@@ -122,7 +120,7 @@ def test_batch_step_empty_items(tmp_path: Path):
     empty_file.write_text("")
 
     source = SourceStep(data=FileSource(str(empty_file)))
-    batch = DoubleBatch(source=source)
+    batch = DoubleBatch()
     result_deferred = batch(source=source(data=FileSource(str(empty_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
 
@@ -133,8 +131,7 @@ def test_batch_step_empty_items(tmp_path: Path):
 
 def test_batch_step_namespace_from_class_name():
     """Item cache namespace defaults to snake_case class name."""
-    source = SourceStep(data=FileSource("fake.txt"))
-    batch = DoubleBatch(source=source)
+    batch = DoubleBatch()
     assert batch.item_cache_namespace() == "double_batch"
 
 
@@ -153,7 +150,6 @@ class AutoKeyBatch(BatchStep[BatchResult, ItemResult]):
     # is the typical pattern: declare which kwarg is the items container.
     items_source_keys = ("source",)
 
-    source: Step[SourceData]
     prefix: str = ""
 
     def items_data(self, source: SourceData, prefix: str):  # type: ignore[override]
@@ -168,8 +164,8 @@ class AutoKeyBatch(BatchStep[BatchResult, ItemResult]):
 
 def test_auto_key_runs_end_to_end(tmp_path: Path, source_file: Path):
     """A BatchStep that only defines items_data() runs cleanly via the default items()."""
+    batch = AutoKeyBatch()
     source = SourceStep(data=FileSource(str(source_file)))
-    batch = AutoKeyBatch(source=source)
     result_deferred = batch(source=source(data=FileSource(str(source_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
     result = pipeline.execute()
@@ -178,8 +174,7 @@ def test_auto_key_runs_end_to_end(tmp_path: Path, source_file: Path):
 
 def test_auto_key_is_deterministic(source_file: Path):
     """Same scaffolding → same auto-generated keys across calls."""
-    source = SourceStep(data=FileSource(str(source_file)))
-    batch = AutoKeyBatch(source=source)
+    batch = AutoKeyBatch()
     src_data = SourceData(names=["alice", "bob"])
     items_a = batch.items(source=src_data, prefix="")
     items_b = batch.items(source=src_data, prefix="")
@@ -193,8 +188,8 @@ def test_auto_key_changes_with_step_params(source_file: Path):
     if the step's params change, the items' cache identities change too.
     """
     src_data = SourceData(names=["alice", "bob"])
-    a = AutoKeyBatch(source=SourceStep(data=FileSource(str(source_file))), prefix="x")
-    b = AutoKeyBatch(source=SourceStep(data=FileSource(str(source_file))), prefix="y")
+    a = AutoKeyBatch(prefix="x")
+    b = AutoKeyBatch(prefix="y")
     keys_a = [i.key for i in a.items(source=src_data, prefix="x")]
     keys_b = [i.key for i in b.items(source=src_data, prefix="y")]
     # Same item data, different step → entirely different keys.
@@ -203,7 +198,7 @@ def test_auto_key_changes_with_step_params(source_file: Path):
 
 def test_auto_key_changes_with_item_data():
     """Different item payloads produce different auto-keys."""
-    batch = AutoKeyBatch(source=SourceStep(data=FileSource("fake.txt")))
+    batch = AutoKeyBatch()
     src1 = SourceData(names=["a", "b"])
     src2 = SourceData(names=["a", "c"])
     k1 = [i.key for i in batch.items(source=src1, prefix="")]
@@ -217,8 +212,6 @@ def test_auto_key_changes_with_item_data():
 class NoOverrideBatch(BatchStep[BatchResult, ItemResult]):
     """A subclass that defines neither items() nor items_data() — must raise."""
 
-    source: Step[SourceData]
-
     def process_item(self, item: BatchItem, source: SourceData) -> ItemResult:
         return ItemResult(value="x", doubled="xx")
 
@@ -228,7 +221,7 @@ class NoOverrideBatch(BatchStep[BatchResult, ItemResult]):
 
 def test_no_override_raises_helpful_error():
     """If a subclass overrides neither items() nor items_data(), we raise a clear error."""
-    batch = NoOverrideBatch(source=SourceStep(data=FileSource("fake.txt")))
+    batch = NoOverrideBatch()
     with pytest.raises(NotImplementedError, match="items_data|items"):
         batch.items(source=SourceData(names=["a"]))
 
@@ -242,8 +235,8 @@ def test_process_batch_clears_inflight_on_success(tmp_path: Path, source_file: P
     """After a clean run no inflight markers should remain."""
     from adag.item_cache import ItemCache
 
+    batch = AutoKeyBatch()
     source = SourceStep(data=FileSource(str(source_file)))
-    batch = AutoKeyBatch(source=source)
     result_deferred = batch(source=source(data=FileSource(str(source_file))))
     pipeline = Pipeline(output=result_deferred, cache_dir=tmp_path / "cache")
     pipeline.execute()
@@ -257,8 +250,6 @@ def test_process_batch_leaves_inflight_marker_on_exception(tmp_path: Path, sourc
 
     @dataclass(frozen=True)
     class CrashBatch(BatchStep[BatchResult, ItemResult]):
-        source: Step[SourceData]
-
         def items_data(self, source: SourceData):
             return list(source.names)
 
@@ -269,7 +260,7 @@ def test_process_batch_leaves_inflight_marker_on_exception(tmp_path: Path, sourc
             return BatchResult(items=results, total=len(results))
 
     source = SourceStep(data=FileSource(str(source_file)))
-    batch = CrashBatch(source=source)
+    batch = CrashBatch()
     pipeline = Pipeline(
         output=batch(source=source(data=FileSource(str(source_file)))),
         cache_dir=tmp_path / "cache",
@@ -279,3 +270,24 @@ def test_process_batch_leaves_inflight_marker_on_exception(tmp_path: Path, sourc
     cache = ItemCache[ItemResult](tmp_path / "cache", batch.item_cache_namespace(), ItemResult)
     # At least one item was in-flight when the crash happened.
     assert len(cache.inflight_keys()) >= 1
+
+
+def test_step_field_wired_again_as_input_raises(source_file: Path):
+    """An upstream step held as a field and also passed as an input is rejected."""
+
+    @dataclass(frozen=True)
+    class TwiceBatch(BatchStep[BatchResult, ItemResult]):
+        source: Step[SourceData]
+
+        def items_data(self, source: SourceData):
+            return list(source.names)
+
+        def process_item(self, item: BatchItem, source: SourceData) -> ItemResult:
+            return ItemResult(value=item.data, doubled=item.data * 2)
+
+        def assemble(self, results: list[ItemResult], source: SourceData) -> BatchResult:
+            return BatchResult(items=results, total=len(results))
+
+    source = SourceStep(data=FileSource(str(source_file)))
+    with pytest.raises(TypeError, match="both a Step field and an input"):
+        TwiceBatch(source=source)(source=source(data=FileSource(str(source_file))))

@@ -34,6 +34,8 @@ value=17
 `Pipeline` checks the graph when you build it:
 
 - `UnboundInputError`: a `run()` argument is neither wired, a field, nor has a default.
+- `TypeError` when you call the step: a field holds a `Step` and the same name is also wired as
+  an input. Wire an upstream step once, as an input. Do not also keep it as a field.
 - `CyclicPipelineError`: the graph has a cycle.
 
 ## Reserved names

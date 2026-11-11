@@ -1,6 +1,7 @@
 ---
 title: "Step.produces and Step.accepts are declared but nothing uses them"
-status: open
+status: done
+fixed_in: fd066b0
 area: core
 filed: 2026-11-11
 scope: XS

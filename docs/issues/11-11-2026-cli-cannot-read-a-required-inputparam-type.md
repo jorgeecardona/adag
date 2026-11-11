@@ -1,6 +1,7 @@
 ---
 title: "The CLI shows a required InputParam's type as <any> and guesses the value type"
-status: open
+status: done
+fixed_in: fd066b0
 area: core
 filed: 2026-11-11
 scope: S
