@@ -3,7 +3,7 @@
 [![pipeline status](https://gitlab.com/cardona-oss/adag/badges/main/pipeline.svg)](https://gitlab.com/cardona-oss/adag/-/pipelines)
 [![PyPI version](https://img.shields.io/pypi/v/adag.svg)](https://pypi.org/project/adag/)
 [![Python versions](https://img.shields.io/pypi/pyversions/adag.svg)](https://pypi.org/project/adag/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.com/cardona-oss/adag/-/blob/main/LICENSE)
 
 Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 
@@ -86,14 +86,14 @@ and ML pipelines where steps are slow and you rerun the graph often.
 - **Source:** https://gitlab.com/cardona-oss/adag
 - **Issues:** https://gitlab.com/cardona-oss/adag/-/issues
 - **PyPI:** https://pypi.org/project/adag/
-- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+- **Changelog:** [CHANGELOG.md](https://gitlab.com/cardona-oss/adag/-/blob/main/CHANGELOG.md)
 
 ## Contributing
 
 Developer setup, the dev loop, and the release process live in
-[CONTRIBUTING.md](CONTRIBUTING.md). In short: `uv sync && make install-hooks`, then
+[CONTRIBUTING.md](https://gitlab.com/cardona-oss/adag/-/blob/main/CONTRIBUTING.md). In short: `uv sync && make install-hooks`, then
 `make check` runs the same gate CI runs.
 
 ## License
 
-MIT © 2026 Jorge Cardona (see [LICENSE](LICENSE)).
+MIT © 2026 Jorge Cardona (see [LICENSE](https://gitlab.com/cardona-oss/adag/-/blob/main/LICENSE)).
