@@ -56,7 +56,7 @@ needs:
       - "test:tests/test_pipeline_validation.py::test_validate_raises_on_unwired_required_input"
       - "test:tests/test_pipeline_validation.py::test_cycle_detection_raises_at_construction"
       - "test:tests/test_step.py::test_validate_still_rejects_unrelated_types"
-      - "test:tests/test_batch.py::test_step_field_wired_again_as_input_raises"
+      - "test:tests/test_batch.py::test_step_field_wired_again_as_input_warns_and_runs"
 
   - id: AD-6
     text: >

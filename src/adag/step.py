@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import time
+import warnings
 from abc import abstractmethod
 from datetime import UTC, datetime
 from enum import Enum
@@ -226,15 +227,19 @@ class Step(Generic[Out]):
     def __call__(self, **kwargs: Any) -> StepResult[Out]:
         """Wire this step into the DAG. Returns a StepResult that chains downstream.
 
-        Raises:
-            TypeError: an input has the name of a field that holds a ``Step``. Wire the upstream
-                step once, as an input: the field copy is hashed but never run.
+        Warns ``DeprecationWarning`` when an input has the name of a field that holds a ``Step``:
+        the field copy is hashed but never run, and the input value is what ``run()`` gets. The
+        first release documented this pattern, so it still works. It becomes a ``TypeError`` in
+        0.4. Wire the upstream step once, as an input.
         """
         for f in dataclasses.fields(self):
             if f.name in kwargs and isinstance(getattr(self, f.name), Step):
-                raise TypeError(
+                warnings.warn(
                     f"{type(self).__name__}.{f.name} is both a Step field and an input. "
-                    f"Remove the field and pass the upstream result as {f.name}=... only."
+                    f"Remove the field and pass the upstream result as {f.name}=... only. "
+                    "This becomes a TypeError in 0.4.",
+                    DeprecationWarning,
+                    stacklevel=2,
                 )
         return StepResult(step=self, sources=kwargs)
 

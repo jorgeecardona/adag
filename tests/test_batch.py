@@ -272,8 +272,8 @@ def test_process_batch_leaves_inflight_marker_on_exception(tmp_path: Path, sourc
     assert len(cache.inflight_keys()) >= 1
 
 
-def test_step_field_wired_again_as_input_raises(source_file: Path):
-    """An upstream step held as a field and also passed as an input is rejected."""
+def test_step_field_wired_again_as_input_warns_and_runs(tmp_path: Path, source_file: Path):
+    """The first-release pattern (upstream step as a field and as an input) warns and still runs."""
 
     @dataclass(frozen=True)
     class TwiceBatch(BatchStep[BatchResult, ItemResult]):
@@ -289,5 +289,7 @@ def test_step_field_wired_again_as_input_raises(source_file: Path):
             return BatchResult(items=results, total=len(results))
 
     source = SourceStep(data=FileSource(str(source_file)))
-    with pytest.raises(TypeError, match="both a Step field and an input"):
-        TwiceBatch(source=source)(source=source(data=FileSource(str(source_file))))
+    with pytest.warns(DeprecationWarning, match="both a Step field and an input"):
+        wired = TwiceBatch(source=source)(source=source(data=FileSource(str(source_file))))
+    result = Pipeline(wired, cache_dir=tmp_path / "cache").execute()
+    assert result.total == 3

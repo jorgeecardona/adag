@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Calling a step raises `TypeError` when an upstream step is both a field and an input. Wire it
-  once, as an input.
+- Calling a step warns (`DeprecationWarning`) when an upstream step is both a field and an
+  input. Wire it once, as an input. It becomes a `TypeError` in 0.4.
 - `SubprocessDispatcher` runs at most one process per CPU at a time (`max_concurrent=`), not
   one per branch. It waits `retry_delay_seconds`, not `poll_interval_seconds`, between attempts.
 - A custom dispatcher implements `dispatch_all(branches, context)` (all branches of one fan-out)
