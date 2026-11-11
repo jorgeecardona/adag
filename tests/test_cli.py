@@ -115,3 +115,42 @@ def test_main_help_with_target_lists_required_and_optional_params(
     out = capsys.readouterr().out
     assert code == 0
     assert "base" in out and "bump" in out
+
+
+STR_PARAM_SOURCE = """
+from dataclasses import dataclass
+
+from pydantic import BaseModel
+
+from adag import InputParam, Step
+
+
+class Text(BaseModel):
+    value: str
+
+
+@dataclass(frozen=True)
+class Echo(Step[Text]):
+    def run(self, code: str) -> Text:
+        return Text(value=code)
+
+
+out = Echo()(code=InputParam("code", value_type=str))
+"""
+
+
+def test_str_value_type_keeps_leading_zeros(tmp_path: Path) -> None:
+    """A required str param declared with ``value_type`` is not guessed as an int."""
+    path = tmp_path.joinpath("pipeline.py")
+    path.write_text(STR_PARAM_SOURCE)
+    results = cli.run_pipeline(path, ["out"], ["code=007"], cache_dir=None)
+    assert results["out"].value == "007"
+
+
+def test_help_shows_declared_value_type(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = tmp_path.joinpath("pipeline.py")
+    path.write_text(STR_PARAM_SOURCE)
+    assert cli.main(["run", str(path), "--target", "out", "-h"]) == 0
+    assert "<str>" in capsys.readouterr().out

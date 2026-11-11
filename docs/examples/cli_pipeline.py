@@ -23,6 +23,6 @@ class AddOne(Step[Number]):
         return Number(value=n.value + 1)
 
 
-x = InputParam[int]("x")
+x = InputParam[int]("x", value_type=int)
 squared = Square()(x=x)
 total = AddOne()(n=squared)

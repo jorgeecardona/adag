@@ -31,6 +31,7 @@ total: Number(value=17)
 
 Add `--cache-dir DIR` to cache, and `--tree` to print the run tree.
 
-A required `InputParam` shows as `<any>` because its type cannot be read at runtime; the value
-is parsed as an int, float or bool when it looks like one, else kept as a string. Give the
-param a default to fix its type.
+Give a required `InputParam` its type with `value_type=`, for example
+`InputParam[int]("x", value_type=int)`. The `[int]` alone is lost at runtime. Without
+`value_type` or a default, the param shows as `<any>` and the value is parsed as an int, float or
+bool when it looks like one, else kept as a string.

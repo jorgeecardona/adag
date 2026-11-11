@@ -175,12 +175,6 @@ class Step(Generic[Out]):
     strict_content_hash: ClassVar[bool] = True
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
-    # Optional typed ports for connection-validity introspection. `produces` is this step's output port-type;
-    # `accepts` is the set of upstream port-types it can consume. Both default to None (untyped → unconstrained),
-    # so existing steps declare no port and `accepts_from` never rejects them.
-    produces: ClassVar[str | None] = None
-    accepts: ClassVar[tuple[str, ...] | None] = None
-
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         for parent in getattr(cls, "__orig_bases__", []):
@@ -213,18 +207,6 @@ class Step(Generic[Out]):
     def __call__(self, **kwargs: Any) -> StepResult[Out]:
         """Wire this step into the DAG. Returns a StepResult that chains downstream."""
         return StepResult(step=self, sources=kwargs)
-
-    def accepts_from(self, producer: Step[Any] | str) -> bool:
-        """Typed-PORT connection validity: can THIS step consume ``producer``'s output? (`producer` may be a
-        Step — its ``produces`` is read — or a bare produces-string.) UNTYPED on either side (no port declared)
-        ⇒ True, so existing pipelines are unconstrained and unaffected; otherwise ``producer.produces`` must be
-        in this step's ``accepts`` set. The type-compatibility gate ("only type-compatible connections can be
-        made"); acyclicity is enforced separately by Pipeline. Additive — ports default untyped.
-        """
-        produces = producer if isinstance(producer, str) else producer.produces
-        if produces is None or self.accepts is None:
-            return True
-        return produces in self.accepts
 
     def run(self, **kwargs: Any) -> Out:
         """Execute the step's synchronous logic; receives resolved inputs as kwargs.

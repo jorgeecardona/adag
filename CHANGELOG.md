@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `InputParam(..., value_type=T)` tells `adag run` how to parse `--param`, so a required `str`
+  param keeps `007` as `"007"`.
+
+### Removed
+
+- `Step.produces`, `Step.accepts` and `Step.accepts_from`. Nothing checked them.
+
 ### Changed
 
 - `NullObserver` now silences a whole run. Progress logs (cache writes, batch progress,

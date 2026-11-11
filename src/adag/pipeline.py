@@ -567,9 +567,11 @@ class Pipeline(Generic[Out]):
 
         parameters: dict[str, dict[str, Any]] = {}
         for inp in self._inputs:
-            entry: dict[str, Any] = {
-                "type": type(inp.default).__name__ if inp.has_default else "str"
-            }
+            if inp.value_type is not None:
+                type_name = inp.value_type.__name__
+            else:
+                type_name = type(inp.default).__name__ if inp.has_default else "str"
+            entry: dict[str, Any] = {"type": type_name}
             if inp.has_default:
                 # Reuse the same typed-value coercion as step fields so a default
                 # that's a Path / UUID / Enum / BaseModel round-trips cleanly.

@@ -70,6 +70,8 @@ def discover_targets(module: ModuleType) -> dict[str, StepResult[Any]]:
 
 def _param_type(param: InputParam[Any]) -> type[Any] | None:
     """Best-effort concrete type for an InputParam, for coercion and help."""
+    if param.value_type is not None:
+        return param.value_type
     declared = getattr(param, "deferred_type", None)
     if isinstance(declared, type):
         return declared

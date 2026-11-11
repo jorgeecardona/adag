@@ -325,18 +325,26 @@ class Deferred(Generic[T]):
 class InputParam(Deferred[T]):
     """A named runtime parameter. Use with_default() for optional parameters.
 
-    text = InputParam("text")
+    text = InputParam("text", value_type=str)
     threshold = InputParam.with_default("threshold", 0.5)
+
+    ``value_type`` tells the CLI how to parse ``--param``. It is needed on a required parameter,
+    because ``InputParam[int]("x")`` loses the ``int`` at runtime. It is not part of the cache key.
     """
 
     name: str
     default: T | None = None
     has_default: bool = False
+    value_type: type[Any] | None = None
 
     @staticmethod
-    def with_default(name: str, default: _S) -> InputParam[_S]:
+    def with_default(
+        name: str, default: _S, value_type: type[Any] | None = None
+    ) -> InputParam[_S]:
         """Create a parameter with a default value (even if the default is None)."""
-        param: Any = InputParam(name=name, default=default, has_default=True)
+        param: Any = InputParam(
+            name=name, default=default, has_default=True, value_type=value_type
+        )
         return param
 
     def resolve(self, context: ResolveContext) -> T:
