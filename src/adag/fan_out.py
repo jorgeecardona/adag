@@ -160,10 +160,9 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     def _dispatch_branches(self, context: ResolveContext) -> dict[K, V]:
         """Distribute branches via ``context.dispatcher`` and rejoin by content hash.
 
-        Pass 1 re-derives each branch (runs the factory), validates it can cross
-        the wire, and builds a ``BranchRef``. Pass 2 dispatches all branches
-        concurrently — each ``dispatch`` blocks on its worker / cache, so a thread
-        pool runs N branches on N machines in parallel (the polling is I/O-bound).
+        Pass 1 re-derives each branch (runs the factory), validates it can cross the wire, and
+        builds a ``BranchRef``. Pass 2 hands all branches to ``dispatcher.dispatch_all`` in one
+        call, so the dispatcher controls concurrency and polls every job in one loop.
         """
         if not self.pipeline_module or not self.fan_out_var:
             raise ValueError(
@@ -205,24 +204,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         if not prepared:
             return {}
 
-        results: dict[K, V] = {}
-        failed: dict[str, str] = {}
-        with ThreadPoolExecutor(max_workers=len(prepared)) as pool:
-            futures = {
-                pool.submit(context.dispatcher.dispatch, ref, sub, context): key
-                for key, sub, ref in prepared
-            }
-            for future in as_completed(futures):
-                key = futures[future]
-                try:
-                    results[key] = future.result()
-                except Exception as exc:
-                    failed[str(key)] = str(exc)
-                    context.observer.on_fan_out_branch_failed(str(key), str(exc))
-
-        if failed:
-            raise FanOutBranchError(succeeded=sorted(str(key) for key in results), failed=failed)
-        return {key: results[key] for key, _, _ in prepared}  # keep the order of ``over``
+        by_key = context.dispatcher.dispatch_all([(ref, sub) for _, sub, ref in prepared], context)
+        return {key: by_key[ref.key] for key, _, ref in prepared}  # keep the order of ``over``
 
     def content_hash(self) -> str | None:
         """Identity = class + each branch's sub-DAG content_hash.

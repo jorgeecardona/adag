@@ -99,13 +99,13 @@ def test_subprocess_dispatcher_resolves_branches_in_workers(
     module = load_pipeline_module(path)
 
     spawns: list[int] = []
-    real_run: Any = dispatch_module.subprocess.run
+    real_popen: Any = dispatch_module.subprocess.Popen
 
-    def counting_run(*args: Any, **kwargs: Any) -> Any:
+    def counting_popen(*args: Any, **kwargs: Any) -> Any:
         spawns.append(1)
-        return real_run(*args, **kwargs)
+        return real_popen(*args, **kwargs)
 
-    monkeypatch.setattr(dispatch_module.subprocess, "run", counting_run)
+    monkeypatch.setattr(dispatch_module.subprocess, "Popen", counting_popen)
 
     pipeline: Pipeline[Any] = Pipeline(module.per_key, cache_dir=cache_dir)
     result = pipeline.execute(dispatcher=SubprocessDispatcher())
@@ -122,16 +122,15 @@ def test_subprocess_dispatcher_resolves_branches_in_workers(
     assert len(spawns) == 0
 
 
-def test_param_args_keep_value_types():
+def test_params_json_keeps_value_types():
     """A str "5" stays a str and an int 5 stays an int across the worker boundary."""
-    [flag, payload] = dispatch_module._param_args({"label": "5", "n": 5, "flag": True})
-    assert flag == "--params-json"
+    payload = dispatch_module.params_json({"label": "5", "n": 5, "flag": True})
     assert json.loads(payload) == {"label": "5", "n": 5, "flag": True}
 
 
 def test_param_args_reject_values_a_worker_cannot_receive():
     with pytest.raises(TypeError, match="JSON-serializable"):
-        dispatch_module._param_args({"p": object()})
+        dispatch_module.params_json({"p": object()})
 
 
 def test_worker_exits_2_on_hash_mismatch(tmp_path: Path, capsys: pytest.CaptureFixture[str]):

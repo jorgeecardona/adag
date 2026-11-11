@@ -5,7 +5,7 @@ dispatchers, ``ResolveContext``, ``walk``) live in their submodules, for example
 ``from adag.dispatch import SubprocessDispatcher``.
 """
 
-__version__ = "0.2.11"
+__version__ = "0.2.12"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep

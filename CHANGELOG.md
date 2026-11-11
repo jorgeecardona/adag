@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `InputParam(..., value_type=T)` tells `adag run` how to parse `--param`, so a required `str`
   param keeps `007` as `"007"`.
+- `RemoteDispatcher(backend)` runs fan-out branches as jobs on any scheduler. A backend
+  (`JobBackend`) has three methods: `submit`, `status`, `cancel`. `LocalJobBackend` runs local
+  processes.
+- `BranchPolicy` gains `queue_timeout_seconds`, `retry_delay_seconds` and
+  `result_grace_seconds`. `timeout_seconds` now counts from when the job starts running.
 - `adag resolve-branch` takes a module name (`pkg.pipeline`) as well as a file path, and
   `--expect-hash`. A worker whose branch hash differs exits 2 and is not retried.
 
@@ -18,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Calling a step raises `TypeError` when an upstream step is both a field and an input. Wire it
   once, as an input.
+- `SubprocessDispatcher` runs at most one process per CPU at a time (`max_concurrent=`), not
+  one per branch. It waits `retry_delay_seconds`, not `poll_interval_seconds`, between attempts.
+- A custom dispatcher implements `dispatch_all(branches, context)` (all branches of one fan-out)
+  instead of `dispatch(branch, sub, context)`.
 - Dispatching a fan-out whose keys have the same text (`1` and `"1"`) raises `ValueError`.
 - `NullObserver` now silences a whole run. Progress logs (cache writes, batch progress,
   dispatch) go through the new `on_event` observer hook; warnings and errors still log.

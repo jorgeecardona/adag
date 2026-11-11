@@ -1,23 +1,30 @@
-"""Branch dispatchers — resolve fan-out branches on workers, rejoin via the cache.
+"""Branch dispatchers: resolve fan-out branches on workers, rejoin through the cache.
 
-A ``BranchDispatcher`` (see ``deferred.py``) decides *how* a ``FanOutStep`` branch
-is resolved. The default ``InlineDispatcher`` runs it in-process.
-``SubprocessDispatcher`` runs each branch in a worker process that re-imports the pipeline, re-derives the branch, resolves it,
-and writes the result to the shared cache keyed by the branch content hash. The
-orchestrator then loads it back by that same hash: the cache is the wire, so
-nothing but ``(module, fan_out_var, key, params, cache_dir)`` ever crosses it.
+A ``BranchDispatcher`` (see ``deferred.py``) decides where the branches of a ``FanOutStep``
+run. The default ``InlineDispatcher`` runs them in-process.
+
+``RemoteDispatcher`` runs each branch as a job on a ``JobBackend``. The worker runs
+``adag resolve-branch``, which re-imports the pipeline, re-derives the branch, resolves it and
+writes the result to the shared cache under the branch content hash. The dispatcher then loads
+the result by that hash. Only the ``BranchJob`` crosses to the worker.
+
+``SubprocessDispatcher`` is ``RemoteDispatcher`` with ``LocalJobBackend``: one local process
+per branch.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
-from collections.abc import Mapping, Sequence
+from collections import deque
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Protocol
+from typing import IO, Any, Protocol
 
 import structlog
 
@@ -29,11 +36,20 @@ logger = structlog.get_logger()
 
 @dataclass(frozen=True)
 class BranchPolicy:
-    """How hard to try a branch and how patiently to wait for it."""
+    """How hard to try a branch and how patiently to wait for it.
+
+    ``timeout_seconds`` counts from when the job is RUNNING. ``queue_timeout_seconds`` counts
+    from submit while the job is PENDING; a batch queue can hold a job for hours.
+    ``result_grace_seconds`` is how long to wait for the result to appear after a job
+    SUCCEEDED, because a network filesystem can show a new file late.
+    """
 
     max_retries: int = 0
     timeout_seconds: float | None = None
+    queue_timeout_seconds: float | None = None
     poll_interval_seconds: float = 5.0
+    retry_delay_seconds: float = 0.0
+    result_grace_seconds: float = 5.0
 
 
 EXIT_BAD_BRANCH = 2
@@ -153,93 +169,257 @@ def params_json(params: Mapping[str, Any]) -> str:
         raise TypeError(f"dispatch params must be JSON-serializable: {error}") from error
 
 
-def _param_args(params: dict[str, Any]) -> list[str]:
-    """Render run params as one ``--params-json`` arg, so the worker gets the same types.
+@dataclass
+class _LiveJob:
+    """Mutable bookkeeping for one submitted job, private to ``RemoteDispatcher``."""
 
-    Raises:
-        TypeError: a param value is not JSON-serializable, so it cannot reach a worker.
+    ref: BranchRef
+    sub: StepResult[Any]
+    attempt: int
+    submitted_at: float
+    running_since: float | None = None
+    succeeded_at: float | None = None
+
+
+@dataclass(frozen=True)
+class _Queued:
+    ref: BranchRef
+    sub: StepResult[Any]
+    attempt: int
+    ready_at: float
+
+
+class RemoteDispatcher:
+    """Run each fan-out branch as a job on ``backend`` and load its result from the cache.
+
+    The dispatcher skips branches already in the cache, submits the rest (at most
+    ``max_concurrent`` at a time), polls ``backend.status`` once per
+    ``policy.poll_interval_seconds`` for all live jobs, retries failed attempts up to
+    ``policy.max_retries``, and cancels every live job when it stops early (an error, a
+    timeout, or Ctrl-C). A job that exits with ``EXIT_BAD_BRANCH`` is not retried.
+
+    ``clock`` and ``sleep`` are injectable so tests run without waiting.
     """
-    try:
-        payload = json.dumps(params, sort_keys=True)
-    except TypeError as error:
-        raise TypeError(
-            f"SubprocessDispatcher params must be JSON-serializable: {error}"
-        ) from error
-    return ["--params-json", payload]
 
-
-class SubprocessDispatcher:
-    """Resolve each branch in a separate OS process via ``adag resolve-branch``.
-
-    Workers share results through ``cache_dir``, so it must be set. Scale is
-    limited to the local machine's cores.
-    """
-
-    def __init__(self, policy: BranchPolicy | None = None) -> None:
+    def __init__(
+        self,
+        backend: JobBackend,
+        policy: BranchPolicy | None = None,
+        resources: Resources | None = None,
+        max_concurrent: int | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self.backend = backend
         self.policy = policy or BranchPolicy()
+        self.resources = resources or Resources()
+        self.max_concurrent = max_concurrent
+        self._clock = clock
+        self._sleep = sleep
 
-    def dispatch(self, branch: BranchRef, sub: StepResult[Any], context: ResolveContext) -> Any:
+    def dispatch_all(
+        self, branches: Sequence[tuple[BranchRef, StepResult[Any]]], context: ResolveContext
+    ) -> dict[str, Any]:
+        """Resolve every branch on the backend; return ``{key: result}``.
+
+        Raises:
+            ValueError: the run has no ``cache_dir``, which is where results come back.
+            TypeError: a param is not JSON-serializable.
+            FanOutBranchError: one or more branches failed. Results of the others are in
+                the cache, so a rerun submits only the failed keys.
+        """
+        from adag.fan_out import FanOutBranchError
+
         cache_dir = context.cache_dir
         if cache_dir is None:
-            raise ValueError("SubprocessDispatcher requires a cache_dir (the shared rendezvous).")
+            raise ValueError(f"{type(self).__name__} requires a cache_dir (the shared rendezvous).")
+        payload = params_json(context.params)
 
-        if sub.is_cached(cache_dir, params=context.params):
-            context.observer.on_event(
-                "branch.cache_hit", {"key": branch.key, "hash": branch.branch_hash}
-            )
-            return sub.load(cache_dir, params=context.params)
-
-        command = [
-            sys.executable,
-            "-m",
-            "adag",
-            "resolve-branch",
-            branch.pipeline_module,
-            "--fan-out",
-            branch.fan_out_var,
-            "--key",
-            branch.key,
-            "--cache-dir",
-            str(cache_dir),
-            *_param_args(context.params),
-            "--expect-hash",
-            branch.branch_hash,
-        ]
-        attempts = self.policy.max_retries + 1
-        detail = ""
-        for attempt in range(attempts):
-            context.observer.on_event(
-                "branch.dispatch", {"key": branch.key, "attempt": attempt + 1, "of": attempts}
-            )
-            try:
-                completed = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    timeout=self.policy.timeout_seconds,
-                    check=False,
+        results: dict[str, Any] = {}
+        failed: dict[str, str] = {}
+        now = self._clock()
+        queue: deque[_Queued] = deque()
+        for ref, sub in branches:
+            if sub.is_cached(cache_dir, params=context.params):
+                context.observer.on_event(
+                    "branch.cache_hit", {"key": ref.key, "hash": ref.branch_hash}
                 )
-            except subprocess.TimeoutExpired:
-                # subprocess.run RAISES on timeout rather than returning — without catching it,
-                # a timed-out branch would skip the retry loop AND surface as a raw
-                # TimeoutExpired instead of BranchExecutionError. Treat it as a failed (retryable)
-                # attempt so timeouts honour max_retries and the error contract.
-                detail = f"timed out after {self.policy.timeout_seconds}s"
-                logger.warning(
-                    "branch.timeout",
-                    key=branch.key,
-                    attempt=attempt + 1,
-                    timeout_s=self.policy.timeout_seconds,
-                )
+                results[ref.key] = sub.load(cache_dir, params=context.params)
             else:
-                if completed.returncode == 0 and sub.is_cached(cache_dir, params=context.params):
-                    return sub.load(cache_dir, params=context.params)
-                detail = (
-                    completed.stderr.strip()[-500:]
-                    or f"exit code {completed.returncode}, no result in cache"
+                queue.append(_Queued(ref, sub, 1, now))
+
+        live: dict[str, _LiveJob] = {}
+
+        def fail(job_id: str, job: _LiveJob, detail: str, exit_code: int | None) -> None:
+            del live[job_id]
+            retryable = exit_code != EXIT_BAD_BRANCH and job.attempt <= self.policy.max_retries
+            if retryable:
+                ready_at = self._clock() + self.policy.retry_delay_seconds
+                queue.append(_Queued(job.ref, job.sub, job.attempt + 1, ready_at))
+                return
+            failed[job.ref.key] = detail
+            context.observer.on_fan_out_branch_failed(job.ref.key, detail)
+
+        try:
+            while queue or live:
+                self._submit_ready(queue, live, payload, str(cache_dir), context)
+                if live:
+                    statuses = self.backend.status(list(live))
+                    now = self._clock()
+                    for job_id, job in list(live.items()):
+                        status = statuses.get(job_id, JobStatus(JobState.PENDING))
+                        self._advance(job_id, job, status, now, live, results, fail, context)
+                if queue or live:
+                    self._sleep(self.policy.poll_interval_seconds)
+        finally:
+            if live:
+                self.backend.cancel(list(live))
+
+        if failed:
+            raise FanOutBranchError(succeeded=sorted(results), failed=failed)
+        return results
+
+    def _submit_ready(
+        self,
+        queue: deque[_Queued],
+        live: dict[str, _LiveJob],
+        payload: str,
+        cache_dir: str,
+        context: ResolveContext,
+    ) -> None:
+        """Submit queued attempts whose retry delay has passed, up to ``max_concurrent``."""
+        now = self._clock()
+        for _ in range(len(queue)):
+            if self.max_concurrent is not None and len(live) >= self.max_concurrent:
+                return
+            item = queue.popleft()
+            if item.ready_at > now:
+                queue.append(item)
+                continue
+            job = BranchJob(item.ref, payload, cache_dir, item.attempt, self.resources)
+            context.observer.on_event(
+                "branch.dispatch",
+                {"key": item.ref.key, "attempt": item.attempt, "of": self.policy.max_retries + 1},
+            )
+            job_id = self.backend.submit(job)
+            live[job_id] = _LiveJob(item.ref, item.sub, item.attempt, now)
+
+    def _advance(
+        self,
+        job_id: str,
+        job: _LiveJob,
+        status: JobStatus,
+        now: float,
+        live: dict[str, _LiveJob],
+        results: dict[str, Any],
+        fail: Callable[[str, _LiveJob, str, int | None], None],
+        context: ResolveContext,
+    ) -> None:
+        """Move one live job forward from its latest status."""
+        cache_dir = context.cache_dir
+        if cache_dir is None:  # dispatch_all checks this first; here only to narrow the type
+            raise ValueError("RemoteDispatcher requires a cache_dir")
+        policy = self.policy
+        if status.state is JobState.SUCCEEDED:
+            if job.sub.is_cached(cache_dir, params=context.params):
+                del live[job_id]
+                results[job.ref.key] = job.sub.load(cache_dir, params=context.params)
+                return
+            if job.succeeded_at is None:
+                job.succeeded_at = now
+            if now - job.succeeded_at >= policy.result_grace_seconds:
+                fail(job_id, job, "job succeeded but no result is in the cache", None)
+            return
+        if status.state is JobState.FAILED:
+            fail(job_id, job, status.detail or "job failed", status.exit_code)
+            return
+        if status.state is JobState.RUNNING:
+            if job.running_since is None:
+                job.running_since = now
+            timeout = policy.timeout_seconds
+            if timeout is not None and now - job.running_since > timeout:
+                self.backend.cancel([job_id])
+                logger.warning("branch.timeout", key=job.ref.key, attempt=job.attempt)
+                fail(job_id, job, f"timed out after {timeout}s", None)
+            return
+        queue_timeout = policy.queue_timeout_seconds
+        if queue_timeout is not None and now - job.submitted_at > queue_timeout:
+            self.backend.cancel([job_id])
+            fail(job_id, job, f"still queued after {queue_timeout}s", None)
+
+
+class LocalJobBackend:
+    """Run each branch job as a local ``python -m adag resolve-branch`` process.
+
+    stderr goes to a temporary file, so a chatty worker cannot block on a full pipe. Its last
+    500 characters become the ``detail`` of a FAILED status.
+    """
+
+    def __init__(self) -> None:
+        self._procs: dict[str, tuple[subprocess.Popen[bytes], IO[bytes]]] = {}
+        self._next = 0
+
+    def submit(self, job: BranchJob) -> str:
+        # Closed in status() once the process ends, or in cancel().
+        stderr = tempfile.TemporaryFile()  # noqa: SIM115
+        proc = subprocess.Popen(
+            job.command(prefix=(sys.executable, "-m", "adag")),
+            stdout=subprocess.DEVNULL,
+            stderr=stderr,
+        )
+        self._next += 1
+        job_id = f"local-{self._next}"
+        self._procs[job_id] = (proc, stderr)
+        return job_id
+
+    def status(self, job_ids: Sequence[str]) -> dict[str, JobStatus]:
+        statuses: dict[str, JobStatus] = {}
+        for job_id in job_ids:
+            proc, stderr = self._procs[job_id]
+            code = proc.poll()
+            if code is None:
+                statuses[job_id] = JobStatus(JobState.RUNNING)
+                continue
+            if code == 0:
+                statuses[job_id] = JobStatus(JobState.SUCCEEDED, exit_code=0)
+            else:
+                stderr.seek(0)
+                tail = stderr.read().decode(errors="replace").strip()[-500:]
+                statuses[job_id] = JobStatus(
+                    JobState.FAILED, tail or f"exit code {code}", exit_code=code
                 )
-                if completed.returncode == EXIT_BAD_BRANCH:
-                    break  # a bad reference or hash mismatch fails the same way every time
-            if attempt + 1 < attempts:
-                time.sleep(self.policy.poll_interval_seconds)  # backoff between attempts
-        raise BranchExecutionError(branch.key, detail)
+            stderr.close()
+            del self._procs[job_id]
+        return statuses
+
+    def cancel(self, job_ids: Sequence[str]) -> None:
+        for job_id in job_ids:
+            entry = self._procs.pop(job_id, None)
+            if entry is None:
+                continue
+            proc, stderr = entry
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            stderr.close()
+
+
+class SubprocessDispatcher(RemoteDispatcher):
+    """Resolve each branch in a local OS process via ``adag resolve-branch``.
+
+    ``RemoteDispatcher`` with ``LocalJobBackend``. Runs at most ``max_concurrent`` processes at
+    once (default: the number of CPUs). Workers share results through ``cache_dir``, so it
+    must be set.
+    """
+
+    def __init__(
+        self, policy: BranchPolicy | None = None, max_concurrent: int | None = None
+    ) -> None:
+        super().__init__(
+            LocalJobBackend(),
+            policy or BranchPolicy(poll_interval_seconds=0.05),
+            max_concurrent=max_concurrent or os.cpu_count() or 1,
+        )

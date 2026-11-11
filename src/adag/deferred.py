@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event, Lock
@@ -204,24 +204,30 @@ class BranchRef:
 
 
 class BranchDispatcher(Protocol):
-    """Decides *how* a fan-out branch is resolved — in-process or dispatched to a
-    worker (e.g. a subprocess) that resolves it and lands the result in the
-    shared cache by ``branch.branch_hash``. Carried on ``ResolveContext`` and
-    consulted by ``FanOutStep``. The default ``InlineDispatcher`` just resolves
-    in-process, so non-fan-out and undistributed graphs behave exactly as before.
+    """Decides where the branches of one fan-out are resolved.
+
+    ``FanOutStep`` calls ``dispatch_all`` once per fan-out with every branch. A dispatcher
+    returns ``{branch.key: result}``, or raises ``FanOutBranchError`` naming the failed keys.
+    A worker writes its result to the shared cache under ``branch.branch_hash``, and the
+    dispatcher loads it from there. The default ``InlineDispatcher`` resolves in-process.
     """
 
-    def dispatch(self, branch: BranchRef, sub: StepResult[Any], context: ResolveContext) -> Any: ...
+    def dispatch_all(
+        self, branches: Sequence[tuple[BranchRef, StepResult[Any]]], context: ResolveContext
+    ) -> dict[str, Any]: ...
 
 
 class InlineDispatcher:
-    """Resolves each branch in-process — the default. Identical to the pre-dispatch
-    behaviour (``FanOutStep`` previously called ``sub.resolve(context)`` directly).
+    """Resolves each branch in-process, one after another. The default.
+
+    ``FanOutStep`` does not call it: it resolves inline branches itself, so it can honour
+    ``max_workers``. ``dispatch_all`` is here so the class meets the protocol.
     """
 
-    def dispatch(self, branch: BranchRef, sub: StepResult[Any], context: ResolveContext) -> Any:
-        del branch
-        return sub.resolve(context)
+    def dispatch_all(
+        self, branches: Sequence[tuple[BranchRef, StepResult[Any]]], context: ResolveContext
+    ) -> dict[str, Any]:
+        return {ref.key: sub.resolve(context) for ref, sub in branches}
 
 
 @dataclass(frozen=True)
