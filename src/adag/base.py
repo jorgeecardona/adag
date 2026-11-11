@@ -113,10 +113,7 @@ class CachedStep(Step[CT]):
         if result_type is None:
             return False
         try:
-            content = path.read_text()
-            if not content.strip():
-                return True
-            result_type.model_validate_json(content)
+            result_type.model_validate_json(path.read_text())
             return True
         except Exception:
             return False

@@ -186,6 +186,20 @@ def test_execute_without_cache_dir_writes_no_files(tmp_path: Path):
     assert not graph.is_cached(tmp_path)
 
 
+@pytest.mark.parametrize("bad_content", ["", "   \n", "{not json"])
+def test_empty_or_corrupt_cache_file_is_a_miss(tmp_path: Path, bad_content: str):
+    """An empty or corrupt cache file is recomputed, never returned or crashed on."""
+    graph = AddStep(a=3, b=4)(a=3, b=4)
+    pipeline = Pipeline(graph, cache_dir=tmp_path)
+    pipeline.execute()
+    [output] = [f for f in tmp_path.rglob("*") if f.is_file() and f.suffix != ".done"]
+    output.write_text(bad_content)
+
+    assert not graph.is_cached(tmp_path)
+    assert pipeline.execute().count == 7
+    assert graph.is_cached(tmp_path)
+
+
 def test_execute_uses_cache(tmp_path: Path):
     """Second execute returns cached result without re-running."""
     add = AddStep(a=3, b=4)

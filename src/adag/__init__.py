@@ -18,7 +18,7 @@ Core engine:
     BatchItem, BatchStep                — per-item batch processing with ItemCache
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep

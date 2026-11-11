@@ -500,14 +500,14 @@ class StepResult(Deferred[Out]):
         # turns back into the execution tree.
         context.observer.on_step_start(step_name)
 
-        if (
-            context.cache_dir is not None
-            and self.step.result_model() is not None
-            and self.is_cached(context.cache_dir, params=context.params)
-        ):
+        loaded = (
+            self._try_load(context.cache_dir, params=context.params)
+            if context.cache_dir is not None
+            else None
+        )
+        if loaded is not None:
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
-            loaded = self.load(context.cache_dir, params=context.params)
             with context._lock:
                 context._resolved[id(self)] = loaded
             context.observer.on_step_cached(step_name)
@@ -708,35 +708,32 @@ class StepResult(Deferred[Out]):
         return cache_dir.joinpath(content_hash + ".done")
 
     def is_cached(self, cache_dir: Path, params: dict[str, Any] | None = None) -> bool:
+        """Return True when a complete, valid result for this node is on disk."""
+        return self._try_load(cache_dir, params=params) is not None
+
+    def _try_load(self, cache_dir: Path, params: dict[str, Any] | None = None) -> Out | None:
+        """Read and validate the cached result in one pass; None on any miss.
+
+        A missing ``.done`` marker, an empty file, or a file the result model rejects is a
+        miss, never a crash. Invalid entries are logged so a broken cache surfaces.
+        """
+        result_type = self.step.result_model()
         output = self._output_path(cache_dir, params=params)
         done = self._done_path(cache_dir, params=params)
-        if output is None or done is None:
-            return False
+        if result_type is None or output is None or done is None:
+            return None
         if not output.exists() or not done.exists():
-            return False
-        return self._validate_cached(output)
-
-    def _validate_cached(self, path: Path) -> bool:
-        """Check if cached output is valid by parsing with the result model."""
-        result_type = self.step.result_model()
-        if result_type is None:
-            return False
+            return None
         try:
-            content = path.read_text()
-            if not content.strip():
-                return True
-            result_type.model_validate_json(content)
-            return True
+            return result_type.model_validate_json(output.read_text())  # pyright: ignore[reportReturnType]
         except Exception as exc:
-            # A corrupt / schema-drifted cache entry is treated as a miss (never crash on a
-            # bad cache file), but log it so a systematically-broken cache surfaces.
             logger.debug(
                 "step.cache.invalid_entry",
                 step=type(self.step).__name__,
-                path=str(path),
+                path=str(output),
                 error=str(exc),
             )
-            return False
+            return None
 
     def _save(self, result: Out, cache_dir: Path, params: dict[str, Any] | None = None) -> None:
         output = self._output_path(cache_dir, params=params)
