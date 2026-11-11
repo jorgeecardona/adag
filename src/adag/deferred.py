@@ -268,6 +268,11 @@ class InlineDispatcher:
     ) -> dict[str, Any]:
         return {ref.key: sub.resolve(context) for ref, sub in branches}
 
+    def dispatch(self, branch: BranchRef, sub: StepResult[Any], context: ResolveContext) -> Any:
+        """Resolve one branch in-process. Kept from the pre-0.2.11 one-branch protocol."""
+        del branch
+        return sub.resolve(context)
+
 
 @dataclass(frozen=True)
 class ResolveContext:
@@ -308,12 +313,13 @@ class ResolveContext:
 
     cache_dir: Path | None = None
     params: dict[str, Any] = field(default_factory=_empty_params)
-    store: CacheStore | None = None
     on_progress: Callable[[Progress], None] | None = None
     observer: PipelineObserver = field(default_factory=NullObserver)
     executor: Executor = field(default_factory=LocalExecutor)
     async_executor: AsyncExecutor = field(default_factory=LocalAsyncExecutor)
     dispatcher: BranchDispatcher = field(default_factory=InlineDispatcher)
+    # Last, so positional ResolveContext(cache_dir, params, on_progress, ...) from 0.1 still binds.
+    store: CacheStore | None = None
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
     _inflight: dict[int, Event] = field(default_factory=_empty_inflight, repr=False, compare=False)
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import warnings
 from collections.abc import Callable, Hashable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextvars import copy_context
@@ -215,8 +216,43 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         if not prepared:
             return {}
 
-        by_key = context.dispatcher.dispatch_all([(ref, sub) for _, sub, ref in prepared], context)
+        dispatch_all = getattr(context.dispatcher, "dispatch_all", None)
+        if dispatch_all is None:
+            return self._dispatch_one_by_one(context, prepared)
+        by_key = dispatch_all([(ref, sub) for _, sub, ref in prepared], context)
         return {key: by_key[ref.key] for key, _, ref in prepared}  # keep the order of ``over``
+
+    def _dispatch_one_by_one(
+        self, context: ResolveContext, prepared: list[tuple[K, StepResult[V], BranchRef]]
+    ) -> dict[K, V]:
+        """Run a dispatcher that has only the pre-0.2.11 ``dispatch(branch, sub, context)``.
+
+        One thread per branch, as before. Deprecated: implement ``dispatch_all``.
+        """
+        warnings.warn(
+            f"{type(context.dispatcher).__name__} has only dispatch(); implement "
+            "dispatch_all(branches, context). dispatch() support is removed in 1.0",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        dispatch: Any = getattr(context.dispatcher, "dispatch")  # noqa: B009
+        results: dict[K, V] = {}
+        failed: dict[str, str] = {}
+        with ThreadPoolExecutor(max_workers=len(prepared)) as pool:
+            futures = {
+                pool.submit(copy_context().run, dispatch, ref, sub, context): key
+                for key, sub, ref in prepared
+            }
+            for future in as_completed(futures):
+                key = futures[future]
+                try:
+                    results[key] = future.result()
+                except Exception as exc:
+                    failed[str(key)] = str(exc)
+                    context.observer.on_fan_out_branch_failed(str(key), str(exc))
+        if failed:
+            raise FanOutBranchError(succeeded=sorted(str(key) for key in results), failed=failed)
+        return {key: results[key] for key, _, _ in prepared}
 
     def content_hash(self) -> str | None:
         """Identity = class + each branch's sub-DAG content_hash.

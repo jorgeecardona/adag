@@ -59,10 +59,12 @@ class BranchPolicy:
 
     max_retries: int = 0
     timeout_seconds: float | None = None
-    queue_timeout_seconds: float | None = None
     poll_interval_seconds: float = 5.0
     retry_delay_seconds: float = 0.0
     result_grace_seconds: float = 5.0
+    # Added in 0.2.11. Kept after the first-release fields so BranchPolicy(1, 60, 2.0) still means
+    # (max_retries, timeout_seconds, poll_interval_seconds).
+    queue_timeout_seconds: float | None = None
 
 
 EXIT_BAD_BRANCH = 2
@@ -228,6 +230,10 @@ class RemoteDispatcher:
         self.store_url = store_url
         self._clock = clock
         self._sleep = sleep
+
+    def dispatch(self, branch: BranchRef, sub: StepResult[Any], context: ResolveContext) -> Any:
+        """Resolve one branch. Kept from the pre-0.2.11 one-branch protocol; calls ``dispatch_all``."""
+        return self.dispatch_all([(branch, sub)], context)[branch.key]
 
     def dispatch_all(
         self, branches: Sequence[tuple[BranchRef, StepResult[Any]]], context: ResolveContext

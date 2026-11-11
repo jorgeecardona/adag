@@ -18,6 +18,7 @@ import importlib.util
 import json
 import re
 import sys
+import warnings
 from pathlib import Path
 from types import ModuleType
 from typing import Any, cast, get_args
@@ -213,7 +214,7 @@ def run_branch(
     pipeline: Path | str,
     fan_out_var: str,
     key: str,
-    params: dict[str, Any],
+    params: dict[str, Any] | list[str],
     cache_dir: Path | None,
     expect_hash: str | None = None,
     store_url: str | None = None,
@@ -231,6 +232,9 @@ def run_branch(
             branch hash is not ``expect_hash`` (the worker runs different code or params than
             the orchestrator). A retry cannot fix either.
         ValueError: a param is not an input of the branch.
+
+    ``params`` as a list of ``KEY=VALUE`` strings is the 0.1 form. It still works, coerced to each
+    ``InputParam`` type, and warns.
     """
     module = load_pipeline_module(pipeline)
     targets = discover_targets(module)
@@ -253,6 +257,8 @@ def run_branch(
     sub: StepResult[Any] = fan_out.factory(original_key, value)
     store = store_from_url(store_url) if store_url is not None else None
     pipeline_obj: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir, store=store)
+    if isinstance(params, list):
+        params = _coerce_legacy_assignments(pipeline_obj, params)
     unknown = set(params) - pipeline_obj.input_names
     if unknown:
         raise ValueError(
@@ -266,6 +272,19 @@ def run_branch(
                 f"derived {actual}. The worker runs different code or params."
             )
     return pipeline_obj.resolve(sub, **params)
+
+
+def _coerce_legacy_assignments(pipeline: Pipeline[Any], items: list[str]) -> dict[str, Any]:
+    """Turn 0.1-style ``KEY=VALUE`` strings into typed params. Deprecated: pass a dict."""
+    warnings.warn(
+        "KEY=VALUE params (run_branch list form, resolve-branch --param) are deprecated; "
+        "pass a dict or --params-json",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+    raw = _parse_assignments(items)
+    type_by_name = {param.name: _param_type(param) for param in pipeline.inputs}
+    return {name: _coerce(value, type_by_name.get(name)) for name, value in raw.items()}
 
 
 def _format_targets(targets: dict[str, StepResult[Any]]) -> str:
@@ -351,12 +370,21 @@ def _parse_params_json(raw: str) -> dict[str, Any]:
     return cast("dict[str, Any]", parsed)
 
 
+def _branch_params(args: argparse.Namespace) -> dict[str, Any] | list[str]:
+    """Params from ``--params-json``, or the deprecated ``--param KEY=VALUE`` list."""
+    if not args.param:
+        return _parse_params_json(args.params_json)
+    if args.params_json != "{}":
+        raise ValueError("pass either --param or --params-json, not both")
+    return list(args.param)
+
+
 def _resolve_branch_command(args: argparse.Namespace) -> int:
     if args.cache_dir is None and args.store_url is None:
         print("error: resolve-branch needs --cache-dir or --store-url", file=sys.stderr)
         return 1
     try:
-        params = _parse_params_json(args.params_json)
+        params = _branch_params(args)
         result = run_branch(
             args.pipeline,
             args.fan_out,
@@ -445,6 +473,13 @@ def build_parser() -> argparse.ArgumentParser:
         default="{}",
         metavar="JSON",
         help="Pipeline parameters as one JSON object (keeps value types)",
+    )
+    branch_parser.add_argument(
+        "--param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Deprecated: one pipeline parameter; use --params-json",
     )
     branch_parser.add_argument(
         "--expect-hash",
