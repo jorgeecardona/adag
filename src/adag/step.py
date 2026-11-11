@@ -38,6 +38,7 @@ from uuid import UUID
 import structlog
 from pydantic import BaseModel
 
+from adag.cache_store import CacheStore, FileSystemCacheStore
 from adag.config import Config
 from adag.deferred import Deferred, InputParam, Progress, ResolveContext, emit, observing
 from adag.hashing import (
@@ -466,11 +467,8 @@ class StepResult(Deferred[Out]):
         # turns back into the execution tree.
         context.observer.on_step_start(step_name)
 
-        loaded = (
-            self._try_load(context.cache_dir, params=context.params)
-            if context.cache_dir is not None
-            else None
-        )
+        store = context.result_store()
+        loaded = self._try_load(store, params=context.params) if store is not None else None
         if loaded is not None:
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
@@ -489,8 +487,9 @@ class StepResult(Deferred[Out]):
         """
         step_name = type(self.step).__name__
         context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
-        if context.cache_dir is not None and self.step.result_model() is not None:
-            self._save(result, context.cache_dir, params=context.params)
+        store = context.result_store()
+        if store is not None and self.step.result_model() is not None:
+            self._save(result, store, params=context.params)
             emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
         with context._lock:
             context._resolved[id(self)] = result
@@ -657,91 +656,91 @@ class StepResult(Deferred[Out]):
 
         return h.hexdigest()[:12]
 
-    def _output_path(self, cache_dir: Path, params: dict[str, Any] | None = None) -> Path | None:
-        content_hash = self.content_hash(params=params)
-        if content_hash is None:
-            return None
-        return cache_dir.joinpath(content_hash)
+    def is_cached(self, where: Path | CacheStore, params: dict[str, Any] | None = None) -> bool:
+        """Return True when a complete, valid result for this node is in ``where``.
 
-    def _done_path(self, cache_dir: Path, params: dict[str, Any] | None = None) -> Path | None:
-        content_hash = self.content_hash(params=params)
-        if content_hash is None:
-            return None
-        return cache_dir.joinpath(content_hash + ".done")
+        ``where`` is a cache directory or a ``CacheStore``.
+        """
+        return self._try_load(where, params=params) is not None
 
-    def is_cached(self, cache_dir: Path, params: dict[str, Any] | None = None) -> bool:
-        """Return True when a complete, valid result for this node is on disk."""
-        return self._try_load(cache_dir, params=params) is not None
-
-    def _try_load(self, cache_dir: Path, params: dict[str, Any] | None = None) -> Out | None:
+    def _try_load(
+        self, where: Path | CacheStore, params: dict[str, Any] | None = None
+    ) -> Out | None:
         """Read and validate the cached result in one pass; None on any miss.
 
-        A missing ``.done`` marker, an empty file, or a file the result model rejects is a
-        miss, never a crash. Invalid entries are logged so a broken cache surfaces.
+        A missing ``.done`` marker, an empty value, or a value the result model rejects is a
+        miss, never a crash. Invalid entries are reported so a broken cache surfaces.
         """
         result_type = self.step.result_model()
-        output = self._output_path(cache_dir, params=params)
-        done = self._done_path(cache_dir, params=params)
-        if result_type is None or output is None or done is None:
+        key = self.content_hash(params=params)
+        if result_type is None or key is None:
             return None
-        if not output.exists() or not done.exists():
+        store = _as_store(where)
+        if not store.exists(key + ".done"):
+            return None
+        text = store.get(key)
+        if text is None:
             return None
         try:
-            return result_type.model_validate_json(output.read_text())  # pyright: ignore[reportReturnType]
+            return result_type.model_validate_json(text)  # pyright: ignore[reportReturnType]
         except Exception as exc:
-            emit(
-                "step.cache.invalid_entry",
-                step=type(self.step).__name__,
-                path=str(output),
-                error=str(exc),
-            )
+            emit("step.cache.invalid_entry", step=type(self.step).__name__, key=key, error=str(exc))
             return None
 
-    def _save(self, result: Out, cache_dir: Path, params: dict[str, Any] | None = None) -> None:
-        output = self._output_path(cache_dir, params=params)
-        done = self._done_path(cache_dir, params=params)
-        if output is None or done is None:
+    def _save(
+        self, result: Out, where: Path | CacheStore, params: dict[str, Any] | None = None
+    ) -> None:
+        key = self.content_hash(params=params)
+        if key is None:
             return
-        output.parent.mkdir(parents=True, exist_ok=True)
-        if isinstance(result, BaseModel):
-            new_text = result.model_dump_json(indent=2)
-            # Invariant: same content_hash -> same bytes. Overwriting an existing hash with
-            # different bytes means the cache key is missing an input; log loudly (the message
-            # below has the likely causes) rather than silently ship stale results.
-            if output.exists():
-                try:
-                    old_text = output.read_text()
-                except OSError:
-                    old_text = None
-                if old_text is not None and old_text != new_text:
-                    logger.error(
-                        "cached_step.invariant_violation",
-                        step=type(self.step).__name__,
-                        hash=output.stem,
-                        message=(
-                            "Same content_hash produced different bytes. The "
-                            "step's cache key is missing an input — likely a "
-                            "side-channel file (model weights, embeddings) or "
-                            "a sub-batch whose item keys do not encode all "
-                            "inputs. Overwriting cache with new bytes."
-                        ),
-                    )
-            atomic_write_text(output, new_text)
-        else:
+        if not isinstance(result, BaseModel):
             raise TypeError(
                 f"Cannot cache {type(result).__name__}: result_type is set but result is not a BaseModel"
             )
-        atomic_write_text(done, datetime.now(UTC).isoformat())
+        store = _as_store(where)
+        new_text = result.model_dump_json(indent=2)
+        # Invariant: same content_hash -> same bytes. Overwriting an existing hash with
+        # different bytes means the cache key is missing an input; log loudly (the message
+        # below has the likely causes) rather than silently ship stale results.
+        old_text = store.get(key)
+        if old_text is not None and old_text != new_text:
+            logger.error(
+                "cached_step.invariant_violation",
+                step=type(self.step).__name__,
+                hash=key,
+                message=(
+                    "Same content_hash produced different bytes. The "
+                    "step's cache key is missing an input — likely a "
+                    "side-channel file (model weights, embeddings) or "
+                    "a sub-batch whose item keys do not encode all "
+                    "inputs. Overwriting cache with new bytes."
+                ),
+            )
+        store.set(key, new_text)
+        store.set(key + ".done", datetime.now(UTC).isoformat())
 
-    def load(self, cache_dir: Path, params: dict[str, Any] | None = None) -> Out:
-        output = self._output_path(cache_dir, params=params)
+    def load(self, where: Path | CacheStore, params: dict[str, Any] | None = None) -> Out:
+        """Load the cached result from a cache directory or a ``CacheStore``.
+
+        Raises:
+            ValueError: no result is stored for this node.
+        """
+        key = self.content_hash(params=params)
         result_type = self.step.result_model()
-        if output is None or result_type is None or not output.exists():
+        text = _as_store(where).get(key) if key is not None else None
+        if text is None or result_type is None:
             raise ValueError(f"Output for '{type(self.step).__name__}' not found.")
-        return result_type.model_validate_json(output.read_text())  # pyright: ignore[reportReturnType]
+        return result_type.model_validate_json(text)  # pyright: ignore[reportReturnType]
 
     def __repr__(self) -> str:
         return f"StepResult({type(self.step).__name__})"
+
+
+def _as_store(where: Path | CacheStore) -> CacheStore:
+    """A cache directory becomes a ``FileSystemCacheStore``; a store is returned as is."""
+    if isinstance(where, Path):
+        return FileSystemCacheStore(where)
+    return where
 
 
 # Defined after StepResult so the self-reference resolves. With

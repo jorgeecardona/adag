@@ -35,6 +35,7 @@ from typing import (
 import structlog
 from pydantic import BaseModel
 
+from adag.cache_store import CacheStore
 from adag.deferred import (
     AsyncExecutor,
     BranchDispatcher,
@@ -95,6 +96,7 @@ class Pipeline(Generic[Out]):
         *,
         kind: str | None = None,
         extra_targets: list[StepResult[Any]] | None = None,
+        store: CacheStore | None = None,
     ) -> None:
         """Wrap a Deferred graph.
 
@@ -102,6 +104,8 @@ class Pipeline(Generic[Out]):
             output: the canonical terminal node of the DAG. ``execute()``
                 without an argument resolves this.
             cache_dir: on-disk cache base; None disables caching.
+            store: a ``CacheStore`` for step results and ``BatchStep`` item caches, used
+                instead of files under ``cache_dir``.
             on_progress: optional progress callback (passed to ``ResolveContext``).
             kind: pipeline kind tag (e.g. ``"hierarchical/v1"``) used by
                 ``save()`` and the pipeline registry.
@@ -115,6 +119,7 @@ class Pipeline(Generic[Out]):
         """
         self.output = output
         self.cache_dir = cache_dir
+        self.store = store
         self.on_progress = on_progress
         self.kind = kind
 
@@ -135,6 +140,7 @@ class Pipeline(Generic[Out]):
         on_progress: Callable[[Progress], None] | None = None,
         *,
         kind: str | None = None,
+        store: CacheStore | None = None,
     ) -> Pipeline[Any]:
         """Build a Pipeline that covers multiple terminal nodes.
 
@@ -154,6 +160,7 @@ class Pipeline(Generic[Out]):
             on_progress=on_progress,
             kind=kind,
             extra_targets=rest,
+            store=store,
         )
 
     @property
@@ -387,9 +394,11 @@ class Pipeline(Generic[Out]):
         return f"{index:0{width}d}_{name}"
 
     def item_cache(self, namespace: str, schema: type[R]) -> ItemCache[R]:
-        """Create an ItemCache scoped to this pipeline's cache directory."""
+        """Create an ItemCache in this pipeline's ``store``, or under its cache directory."""
+        if self.store is not None:
+            return ItemCache(self.cache_dir or Path(), namespace, schema, store=self.store)
         if self.cache_dir is None:
-            raise ValueError("Cannot create ItemCache without a cache directory.")
+            raise ValueError("Cannot create ItemCache without a cache directory or store.")
         return ItemCache(self.cache_dir, namespace, schema)
 
     def execute(
@@ -433,6 +442,7 @@ class Pipeline(Generic[Out]):
 
         context = ResolveContext(
             cache_dir=self.cache_dir,
+            store=self.store,
             params=params,
             on_progress=self.on_progress,
             observer=observer or LoggingObserver(),
@@ -469,6 +479,7 @@ class Pipeline(Generic[Out]):
 
         context = ResolveContext(
             cache_dir=self.cache_dir,
+            store=self.store,
             params=params,
             on_progress=self.on_progress,
             observer=observer or LoggingObserver(),
@@ -532,6 +543,7 @@ class Pipeline(Generic[Out]):
             raise ValueError(f"Missing parameters: {missing}")
         context = ResolveContext(
             cache_dir=self.cache_dir,
+            store=self.store,
             params=params,
             on_progress=self.on_progress,
             observer=observer or LoggingObserver(),
@@ -676,9 +688,10 @@ class Pipeline(Generic[Out]):
         """Log status of all steps."""
         for step in self._steps:
             name = self.step_name(step)
-            if step.result_model() is not None and self.cache_dir is not None:
+            where = self.store if self.store is not None else self.cache_dir
+            if step.result_model() is not None and where is not None:
                 step_result = self._find_result(step)
-                if step_result and step_result.is_cached(self.cache_dir):
+                if step_result and step_result.is_cached(where):
                     logger.info("step.cached", step=name)
                 else:
                     logger.info("step.pending", step=name)

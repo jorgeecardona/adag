@@ -128,7 +128,7 @@ class FakeJobBackend:
             job.branch.fan_out_var,
             job.branch.key,
             {},
-            Path(job.cache_dir),
+            Path(job.cache_dir) if job.cache_dir is not None else None,
             expect_hash=job.branch.branch_hash,
         )
 

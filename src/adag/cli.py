@@ -22,6 +22,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, cast, get_args
 
+from adag.cache_store import store_from_url
 from adag.deferred import InputParam, PipelineObserver
 from adag.dispatch import EXIT_BAD_BRANCH, BranchReferenceError
 from adag.fan_out import FanOutStep
@@ -213,16 +214,17 @@ def run_branch(
     fan_out_var: str,
     key: str,
     params: dict[str, Any],
-    cache_dir: Path,
+    cache_dir: Path | None,
     expect_hash: str | None = None,
+    store_url: str | None = None,
 ) -> Any:
     """Worker entry: resolve ONE fan-out branch into the shared cache.
 
     Re-imports the pipeline, finds the ``FanOutStep`` bound to ``fan_out_var``, looks up its
     own ``over[key]`` (so the value never had to cross the wire), re-derives the branch via
     ``factory(key, value)``, and resolves it under a plain in-process context.
-    ``StepResult.resolve`` writes the result to ``cache_dir`` under the branch content hash,
-    which the orchestrator reads back.
+    ``StepResult.resolve`` writes the result to ``cache_dir`` (or the store at ``store_url``)
+    under the branch content hash, which the orchestrator reads back.
 
     Raises:
         BranchReferenceError: the fan-out or key is not in the pipeline, or the re-derived
@@ -249,7 +251,8 @@ def run_branch(
     original_key, value = matches[0]
 
     sub: StepResult[Any] = fan_out.factory(original_key, value)
-    pipeline_obj: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir)
+    store = store_from_url(store_url) if store_url is not None else None
+    pipeline_obj: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir, store=store)
     unknown = set(params) - pipeline_obj.input_names
     if unknown:
         raise ValueError(
@@ -349,6 +352,9 @@ def _parse_params_json(raw: str) -> dict[str, Any]:
 
 
 def _resolve_branch_command(args: argparse.Namespace) -> int:
+    if args.cache_dir is None and args.store_url is None:
+        print("error: resolve-branch needs --cache-dir or --store-url", file=sys.stderr)
+        return 1
     try:
         params = _parse_params_json(args.params_json)
         result = run_branch(
@@ -356,8 +362,9 @@ def _resolve_branch_command(args: argparse.Namespace) -> int:
             args.fan_out,
             args.key,
             params,
-            Path(args.cache_dir),
+            Path(args.cache_dir) if args.cache_dir is not None else None,
             expect_hash=args.expect_hash,
+            store_url=args.store_url,
         )
     except BranchReferenceError as error:
         print(f"error: {error}", file=sys.stderr)
@@ -423,7 +430,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     branch_parser.add_argument("--key", required=True, help="The fan-out branch key to resolve")
     branch_parser.add_argument(
-        "--cache-dir", required=True, help="Shared cache directory (the rendezvous)"
+        "--cache-dir", default=None, help="Shared cache directory (the rendezvous)"
+    )
+    branch_parser.add_argument(
+        "--store-url",
+        dest="store_url",
+        default=None,
+        metavar="URL",
+        help="Shared cache store instead of a directory (sqlite:///, redis://, postgresql://)",
     )
     branch_parser.add_argument(
         "--params-json",

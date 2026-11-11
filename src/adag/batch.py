@@ -49,6 +49,7 @@ import hashlib
 import json
 from abc import abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
 
 import structlog
@@ -306,15 +307,15 @@ class BatchStep(Step[T], Generic[T, R]):
         per-item cache can live under the pipeline's cache directory.
         Subclasses implement items/process_item/assemble, not this.
         """
-        if context.cache_dir is None:
+        if context.cache_dir is None and context.store is None:
             raise RuntimeError(
-                f"{type(self).__name__} requires a Pipeline cache_dir for per-item caching."
+                f"{type(self).__name__} requires a Pipeline cache_dir or store for per-item caching."
             )
-        cache_dir = context.cache_dir
+        cache_dir = context.cache_dir or Path()  # unused when the store is set
 
         namespace = self.item_cache_namespace()
         item_schema: Any = self.item_type
-        cache: ItemCache[R] = ItemCache(cache_dir, namespace, item_schema)
+        cache: ItemCache[R] = ItemCache(cache_dir, namespace, item_schema, store=context.store)
 
         # Step 1: Declare items
         all_items = self.items(**inputs)

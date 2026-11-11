@@ -357,3 +357,31 @@ class SqlCacheStore:
                 .all()
             )
         return [key for key in keys if key.startswith(prefix)]
+
+
+def store_from_url(url: str) -> CacheStore:
+    """Open a ``CacheStore`` from a URL, so a remote worker can reach the orchestrator's store.
+
+    - ``file:///path`` or a plain path: ``FileSystemCacheStore``.
+    - ``sqlite:///relative.db`` or ``sqlite:////absolute.db``: ``SqliteCacheStore`` (stdlib).
+    - ``redis://...`` or ``rediss://...``: ``RedisCacheStore`` (needs ``adag[redis]``).
+    - any other ``scheme://...``: ``SqlCacheStore`` through SQLAlchemy (needs ``adag[sql]``).
+
+    Credentials belong in the URL as the worker's environment provides it, never in params.
+
+    Raises:
+        ValueError: ``memory:`` was given; a memory store cannot be shared with a worker.
+    """
+    if url.startswith("memory:"):
+        raise ValueError("a MemoryCacheStore cannot be shared with another process")
+    if "://" not in url:
+        return FileSystemCacheStore(url)
+    scheme, _, rest = url.partition("://")
+    if scheme == "file":
+        return FileSystemCacheStore(rest)
+    if scheme == "sqlite":
+        # SQLAlchemy's form: sqlite:///relative.db and sqlite:////absolute.db
+        return SqliteCacheStore(rest.removeprefix("/"))
+    if scheme in {"redis", "rediss"}:
+        return RedisCacheStore(url=url)
+    return SqlCacheStore(url=url)

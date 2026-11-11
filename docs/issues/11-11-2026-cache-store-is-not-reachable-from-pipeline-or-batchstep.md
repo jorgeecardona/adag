@@ -1,6 +1,6 @@
 ---
 title: "A CacheStore cannot be given to a Pipeline or a BatchStep"
-status: open
+status: done
 area: core
 filed: 2026-11-11
 scope: M

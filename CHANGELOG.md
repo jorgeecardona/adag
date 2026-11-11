@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   processes.
 - `BranchPolicy` gains `queue_timeout_seconds`, `retry_delay_seconds` and
   `result_grace_seconds`. `timeout_seconds` now counts from when the job starts running.
+- `Pipeline(..., store=CacheStore)` keeps step results and `BatchStep` item caches in SQLite,
+  SQL, Redis or memory instead of files under `cache_dir`.
+- `store_from_url(url)` opens a store from a URL, and `adag resolve-branch --store-url` lets a
+  worker write to that store. Pass `store_url=` to `RemoteDispatcher` when the pipeline has a
+  store.
 - `adag resolve-branch` takes a module name (`pkg.pipeline`) as well as a file path, and
   `--expect-hash`. A worker whose branch hash differs exits 2 and is not retried.
 

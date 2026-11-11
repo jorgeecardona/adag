@@ -63,3 +63,7 @@ needs:
       store to the Pipeline.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "docs/issues/11-11-2026-cache-store-is-not-reachable-from-pipeline-or-batchstep.md"}
+    proofs:
+      - "test:tests/test_store_wiring.py::test_step_results_live_in_the_store"
+      - "test:tests/test_store_wiring.py::test_batch_item_cache_lives_in_the_store"
+      - "test:tests/test_store_wiring.py::test_fan_out_rejoins_through_a_sqlite_store_only"

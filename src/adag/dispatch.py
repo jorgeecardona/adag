@@ -28,6 +28,7 @@ from typing import IO, Any, Protocol
 
 import structlog
 
+from adag.cache_store import CacheStore
 from adag.deferred import BranchRef, ResolveContext
 from adag.step import StepResult
 
@@ -82,15 +83,16 @@ class BranchJob:
     """One attempt at one fan-out branch, as a backend submits it.
 
     A backend runs ``command()`` in an environment that has the pipeline code and can reach
-    ``cache_dir``. Success means the result is in the cache under ``branch.branch_hash``; the
+    ``cache_dir``, or the store at ``store_url``. Success means the result is in the cache under ``branch.branch_hash``; the
     job's exit code alone is not trusted.
     """
 
     branch: BranchRef
     params_json: str
-    cache_dir: str
+    cache_dir: str | None
     attempt: int = 1
     resources: Resources = Resources()
+    store_url: str | None = None
 
     def command(self, prefix: Sequence[str] = ("adag",)) -> tuple[str, ...]:
         """The worker command line. ``prefix`` is how to start adag (``python -m adag``)."""
@@ -102,8 +104,8 @@ class BranchJob:
             self.branch.fan_out_var,
             "--key",
             self.branch.key,
-            "--cache-dir",
-            self.cache_dir,
+            *(("--cache-dir", self.cache_dir) if self.cache_dir is not None else ()),
+            *(("--store-url", self.store_url) if self.store_url is not None else ()),
             "--params-json",
             self.params_json,
             "--expect-hash",
@@ -198,6 +200,9 @@ class RemoteDispatcher:
     ``policy.max_retries``, and cancels every live job when it stops early (an error, a
     timeout, or Ctrl-C). A job that exits with ``EXIT_BAD_BRANCH`` is not retried.
 
+    When the pipeline has a ``store``, pass ``store_url`` (see ``store_from_url``): a store
+    object cannot cross to a worker, so the worker opens the same store from the URL.
+
     ``clock`` and ``sleep`` are injectable so tests run without waiting.
     """
 
@@ -207,6 +212,7 @@ class RemoteDispatcher:
         policy: BranchPolicy | None = None,
         resources: Resources | None = None,
         max_concurrent: int | None = None,
+        store_url: str | None = None,
         *,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
@@ -215,6 +221,7 @@ class RemoteDispatcher:
         self.policy = policy or BranchPolicy()
         self.resources = resources or Resources()
         self.max_concurrent = max_concurrent
+        self.store_url = store_url
         self._clock = clock
         self._sleep = sleep
 
@@ -231,9 +238,17 @@ class RemoteDispatcher:
         """
         from adag.fan_out import FanOutBranchError
 
-        cache_dir = context.cache_dir
-        if cache_dir is None:
-            raise ValueError(f"{type(self).__name__} requires a cache_dir (the shared rendezvous).")
+        store = context.result_store()
+        if store is None:
+            raise ValueError(
+                f"{type(self).__name__} requires a cache_dir or store (the shared rendezvous)."
+            )
+        if context.store is not None and self.store_url is None:
+            raise ValueError(
+                f"{type(self).__name__} needs store_url= when the pipeline has a store, so "
+                "workers can open the same store."
+            )
+        cache_dir = str(context.cache_dir) if context.store is None else None
         payload = params_json(context.params)
 
         results: dict[str, Any] = {}
@@ -241,11 +256,11 @@ class RemoteDispatcher:
         now = self._clock()
         queue: deque[_Queued] = deque()
         for ref, sub in branches:
-            if sub.is_cached(cache_dir, params=context.params):
+            if sub.is_cached(store, params=context.params):
                 context.observer.on_event(
                     "branch.cache_hit", {"key": ref.key, "hash": ref.branch_hash}
                 )
-                results[ref.key] = sub.load(cache_dir, params=context.params)
+                results[ref.key] = sub.load(store, params=context.params)
             else:
                 queue.append(_Queued(ref, sub, 1, now))
 
@@ -263,13 +278,13 @@ class RemoteDispatcher:
 
         try:
             while queue or live:
-                self._submit_ready(queue, live, payload, str(cache_dir), context)
+                self._submit_ready(queue, live, payload, cache_dir, context)
                 if live:
                     statuses = self.backend.status(list(live))
                     now = self._clock()
                     for job_id, job in list(live.items()):
                         status = statuses.get(job_id, JobStatus(JobState.PENDING))
-                        self._advance(job_id, job, status, now, live, results, fail, context)
+                        self._advance(job_id, job, status, now, store, live, results, fail, context)
                 if queue or live:
                     self._sleep(self.policy.poll_interval_seconds)
         finally:
@@ -285,7 +300,7 @@ class RemoteDispatcher:
         queue: deque[_Queued],
         live: dict[str, _LiveJob],
         payload: str,
-        cache_dir: str,
+        cache_dir: str | None,
         context: ResolveContext,
     ) -> None:
         """Submit queued attempts whose retry delay has passed, up to ``max_concurrent``."""
@@ -297,7 +312,9 @@ class RemoteDispatcher:
             if item.ready_at > now:
                 queue.append(item)
                 continue
-            job = BranchJob(item.ref, payload, cache_dir, item.attempt, self.resources)
+            job = BranchJob(
+                item.ref, payload, cache_dir, item.attempt, self.resources, self.store_url
+            )
             context.observer.on_event(
                 "branch.dispatch",
                 {"key": item.ref.key, "attempt": item.attempt, "of": self.policy.max_retries + 1},
@@ -311,20 +328,18 @@ class RemoteDispatcher:
         job: _LiveJob,
         status: JobStatus,
         now: float,
+        store: CacheStore,
         live: dict[str, _LiveJob],
         results: dict[str, Any],
         fail: Callable[[str, _LiveJob, str, int | None], None],
         context: ResolveContext,
     ) -> None:
         """Move one live job forward from its latest status."""
-        cache_dir = context.cache_dir
-        if cache_dir is None:  # dispatch_all checks this first; here only to narrow the type
-            raise ValueError("RemoteDispatcher requires a cache_dir")
         policy = self.policy
         if status.state is JobState.SUCCEEDED:
-            if job.sub.is_cached(cache_dir, params=context.params):
+            if job.sub.is_cached(store, params=context.params):
                 del live[job_id]
-                results[job.ref.key] = job.sub.load(cache_dir, params=context.params)
+                results[job.ref.key] = job.sub.load(store, params=context.params)
                 return
             if job.succeeded_at is None:
                 job.succeeded_at = now
@@ -416,10 +431,14 @@ class SubprocessDispatcher(RemoteDispatcher):
     """
 
     def __init__(
-        self, policy: BranchPolicy | None = None, max_concurrent: int | None = None
+        self,
+        policy: BranchPolicy | None = None,
+        max_concurrent: int | None = None,
+        store_url: str | None = None,
     ) -> None:
         super().__init__(
             LocalJobBackend(),
             policy or BranchPolicy(poll_interval_seconds=0.05),
             max_concurrent=max_concurrent or os.cpu_count() or 1,
+            store_url=store_url,
         )

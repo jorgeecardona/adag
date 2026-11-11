@@ -21,6 +21,7 @@ from threading import Event, Lock
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, get_args, get_origin
 
 if TYPE_CHECKING:
+    from adag.cache_store import CacheStore
     from adag.step import Step, StepResult
 
 T = TypeVar("T")
@@ -235,7 +236,8 @@ class ResolveContext:
     """Execution context passed through the Deferred graph during resolution.
 
     cache_dir is the on-disk location where step results are read/written for
-    cross-run reuse. None means no caching — every resolve recomputes.
+    cross-run reuse. ``store`` replaces it with any ``CacheStore`` (SQLite, SQL, Redis) for
+    step results and item caches. With neither, every resolve recomputes.
 
     observer is an instrumentation hook (see ``PipelineObserver``). On a bare
     context it defaults to the silent ``NullObserver``; ``Pipeline.execute``
@@ -268,6 +270,7 @@ class ResolveContext:
 
     cache_dir: Path | None = None
     params: dict[str, Any] = field(default_factory=_empty_params)
+    store: CacheStore | None = None
     on_progress: Callable[[Progress], None] | None = None
     observer: PipelineObserver = field(default_factory=NullObserver)
     executor: Executor = field(default_factory=LocalExecutor)
@@ -276,6 +279,16 @@ class ResolveContext:
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
     _inflight: dict[int, Event] = field(default_factory=_empty_inflight, repr=False, compare=False)
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+
+    def result_store(self) -> CacheStore | None:
+        """Where step results are cached: ``store``, else files under ``cache_dir``, else None."""
+        if self.store is not None:
+            return self.store
+        if self.cache_dir is None:
+            return None
+        from adag.cache_store import FileSystemCacheStore  # late: cache_store imports io
+
+        return FileSystemCacheStore(self.cache_dir)
 
 
 class Deferred(Generic[T]):
