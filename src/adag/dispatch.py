@@ -14,8 +14,10 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from enum import Enum
+from typing import Any, Protocol
 
 import structlog
 
@@ -48,6 +50,107 @@ class BranchExecutionError(RuntimeError):
     def __init__(self, key: str, detail: str) -> None:
         self.key = key
         super().__init__(f"branch {key!r} failed: {detail}")
+
+
+@dataclass(frozen=True)
+class Resources:
+    """What one branch job asks the scheduler for. ``None`` means the scheduler's default."""
+
+    cpus: float | None = None
+    memory_mb: int | None = None
+    gpus: int = 0
+
+
+@dataclass(frozen=True)
+class BranchJob:
+    """One attempt at one fan-out branch, as a backend submits it.
+
+    A backend runs ``command()`` in an environment that has the pipeline code and can reach
+    ``cache_dir``. Success means the result is in the cache under ``branch.branch_hash``; the
+    job's exit code alone is not trusted.
+    """
+
+    branch: BranchRef
+    params_json: str
+    cache_dir: str
+    attempt: int = 1
+    resources: Resources = Resources()
+
+    def command(self, prefix: Sequence[str] = ("adag",)) -> tuple[str, ...]:
+        """The worker command line. ``prefix`` is how to start adag (``python -m adag``)."""
+        return (
+            *prefix,
+            "resolve-branch",
+            self.branch.pipeline_module,
+            "--fan-out",
+            self.branch.fan_out_var,
+            "--key",
+            self.branch.key,
+            "--cache-dir",
+            self.cache_dir,
+            "--params-json",
+            self.params_json,
+            "--expect-hash",
+            self.branch.branch_hash,
+        )
+
+    def name(self) -> str:
+        """A job name unique per branch and attempt, for scheduler consoles."""
+        return f"adag-{self.branch.branch_hash}-{self.attempt}"
+
+
+class JobState(Enum):
+    """Where a submitted job is. ``SUCCEEDED`` and ``FAILED`` are final."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class JobStatus:
+    """A job's state, with ``detail`` (an error or exit code) for ``FAILED``.
+
+    ``exit_code`` is set when the backend knows it. ``EXIT_BAD_BRANCH`` is never retried.
+    """
+
+    state: JobState
+    detail: str = ""
+    exit_code: int | None = None
+
+
+class JobBackend(Protocol):
+    """Runs branch jobs on some scheduler: a local process, AWS Batch, Kubernetes, SLURM.
+
+    ``RemoteDispatcher`` owns the cache check, retries, timeouts and cancel. A backend only
+    starts jobs and reports on them. It must turn off the scheduler's own retries, or the
+    attempts multiply.
+    """
+
+    def submit(self, job: BranchJob) -> str:
+        """Start ``job`` and return its job id."""
+        ...
+
+    def status(self, job_ids: Sequence[str]) -> Mapping[str, JobStatus]:
+        """Report every job in ``job_ids``, in one call to the scheduler where it can."""
+        ...
+
+    def cancel(self, job_ids: Sequence[str]) -> None:
+        """Stop the jobs. Jobs already finished are ignored."""
+        ...
+
+
+def params_json(params: Mapping[str, Any]) -> str:
+    """Render run params as one JSON object, so the worker gets the same types.
+
+    Raises:
+        TypeError: a param value is not JSON-serializable, so it cannot reach a worker.
+    """
+    try:
+        return json.dumps(params, sort_keys=True)
+    except TypeError as error:
+        raise TypeError(f"dispatch params must be JSON-serializable: {error}") from error
 
 
 def _param_args(params: dict[str, Any]) -> list[str]:

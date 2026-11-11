@@ -369,8 +369,8 @@ def _resolve_branch_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Entry point for the ``adag`` console script."""
+def build_parser() -> argparse.ArgumentParser:
+    """Return the ``adag`` argument parser (``run`` and ``resolve-branch``)."""
     parser = argparse.ArgumentParser(
         prog="adag", description="Run a DAG pipeline file from the console."
     )
@@ -440,7 +440,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Exit 2 if the re-derived branch hash differs from HASH",
     )
 
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for the ``adag`` console script."""
+    args = build_parser().parse_args(argv)
     if args.command == "run":
         return _run_command(args)
     if args.command == "resolve-branch":

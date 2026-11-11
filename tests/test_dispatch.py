@@ -210,3 +210,25 @@ def test_fan_out_rejects_keys_with_the_same_text(tmp_path: Path):
     pipeline: Pipeline[Any] = Pipeline(fan, cache_dir=tmp_path / "cache")
     with pytest.raises(ValueError, match="same text"):
         pipeline.execute(dispatcher=SubprocessDispatcher())
+
+
+def test_branch_job_command_round_trips_through_the_cli_parser():
+    """The command a backend runs parses back to the same branch, params and hash."""
+    from adag.cli import build_parser
+    from adag.deferred import BranchRef
+    from adag.dispatch import BranchJob, params_json
+
+    job = BranchJob(
+        branch=BranchRef("pkg.pipe", "per_key", "a b", "abc123def456"),
+        params_json=params_json({"n": 5, "label": "5"}),
+        cache_dir="/shared/cache",
+        attempt=2,
+    )
+    command = job.command()
+    assert command[0] == "adag"
+    args = build_parser().parse_args(list(command[1:]))
+    assert (args.pipeline, args.fan_out, args.key) == ("pkg.pipe", "per_key", "a b")
+    assert args.cache_dir == "/shared/cache"
+    assert json.loads(args.params_json) == {"n": 5, "label": "5"}
+    assert args.expect_hash == "abc123def456"
+    assert job.name() == "adag-abc123def456-2"
