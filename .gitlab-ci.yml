@@ -70,6 +70,14 @@ ci:
       - site
     expire_in: 1 day
 
+# The lowest supported Python (requires-python >=3.12): tests only, no lint or docs. The main
+# `ci` job covers 3.13. Runs in parallel with it, about a minute.
+test-py312:
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  needs: []
+  script:
+    - uv run --python 3.12 pytest -q -o addopts=""
+
 # Publish the docs to GitLab Pages -- ad-free, replacing Read the Docs. A job named `pages`
 # whose artifact is public/ is what GitLab serves. It publishes the site the `ci` job already
 # built (strict, in the gated environment) rather than building its own: one build per pipeline,

@@ -97,6 +97,9 @@ needs:
       When a project runs Python 3.12, the developer can install and import adag.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_python_versions.py::test_requires_python_includes_312"
+      - "test:tests/test_python_versions.py::test_out_typevar_default_comes_from_typing_extensions"
 
   - id: CO-10
     text: >

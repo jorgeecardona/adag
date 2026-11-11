@@ -13,7 +13,7 @@ Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 pip install adag
 ```
 
-Requires Python 3.13+.
+Requires Python 3.12+.
 
 ## Quickstart
 

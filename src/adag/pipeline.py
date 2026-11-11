@@ -26,14 +26,11 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from pathlib import Path
-from typing import (
-    Any,
-    Generic,
-    TypeVar,  # PEP-696 `default=` backport — stdlib typing.TypeVar rejects it on Py3.12
-)
+from typing import Any, Generic
 
 import structlog
 from pydantic import BaseModel
+from typing_extensions import TypeVar  # default= (PEP 696) needs this on Python 3.12
 
 from adag.cache_store import CacheStore
 from adag.deferred import (

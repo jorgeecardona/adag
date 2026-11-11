@@ -3,7 +3,7 @@ name = "adag"
 dynamic = ["version"]  # the single source of truth is __version__ in src/adag/__init__.py (see [tool.hatch.version])
 description = "Another DAG: a cached, content-addressed DAG engine for Python data pipelines."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Jorge Cardona", email = "jorgeecardona@gmail.com" }]
@@ -12,6 +12,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
@@ -72,7 +73,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py312"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -146,7 +147,7 @@ known-first-party = ["adag"]
 [tool.pyright]
 include = ["src", "tests"]
 extraPaths = ["src"]
-pythonVersion = "3.13"
+pythonVersion = "3.12"
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
