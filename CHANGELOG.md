@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SerializableStep.from_directory` has a default that rebuilds a step from its `spec`. A step
+  it cannot rebuild now raises `TypeError` at save time instead of failing at load time.
 - `AdagDeprecationWarning`: every deprecated name and call form warns with it. It is a
   `FutureWarning`, so scripts and notebooks see it without changing warning filters, and each
   message names the replacement. Deprecated forms keep working until adag 1.0.

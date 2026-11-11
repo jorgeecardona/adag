@@ -136,6 +136,9 @@ needs:
       and a subclass that cannot be loaded fails at save time, not at load time.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_serializable_contract.py::test_run_only_subclass_with_spec_round_trips"
+      - "test:tests/test_serializable_contract.py::test_unloadable_subclass_fails_at_save_time"
 
   - id: CO-14
     text: >

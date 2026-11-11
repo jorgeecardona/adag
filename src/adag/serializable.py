@@ -48,11 +48,12 @@ Example — step without spec (state only):
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 import json
 import os
 from pathlib import Path
-from typing import Any, ClassVar, TypeVar, get_type_hints
+from typing import Any, ClassVar, Self, TypeVar, get_type_hints
 
 from pydantic import BaseModel
 
@@ -63,10 +64,21 @@ SpecT = TypeVar("SpecT", bound=BaseModel)
 
 
 class SerializableStep(Step[Out]):
-    """A Step that can be saved to and loaded from disk.
+    """A Step that ``Pipeline.save`` writes to disk and ``Pipeline.from_directory`` rebuilds.
 
-    Subclasses must define `kind`. Use load_spec() in from_directory() to read
-    and validate the spec — the TypeVar infers the concrete return type at the call site.
+    The contract a subclass implements:
+
+    - ``kind``: a non-empty class attribute, for example ``"my-tokenizer/v1"``. The registry passed
+      to ``Pipeline.from_directory`` maps it back to the class. Raised at class definition if
+      missing.
+    - ``spec``: an optional dataclass field holding a ``BaseModel``. ``save_artifacts`` writes it
+      to ``step.json``.
+    - ``from_directory(cls, path)``: a classmethod that returns the step saved at ``path``. The
+      default rebuilds a step whose fields are ``spec`` plus fields with defaults. A step with any
+      other required field must override it, usually with ``cls(spec=cls.load_spec(path, Spec))``.
+      Saving a step that cannot be rebuilt raises ``TypeError`` at save time, not at load time.
+    - ``save_artifacts(self, path)``: override only to write extra state (weights, tokenizer
+      files) next to ``step.json``. Call ``super().save_artifacts(path)`` first.
     """
 
     kind: ClassVar[str]
@@ -97,6 +109,7 @@ class SerializableStep(Step[Out]):
         one — readers (`from_directory`, `load_spec`) never see a partial
         JSON.
         """
+        type(self)._check_loadable()
         os.makedirs(path, exist_ok=True)
         spec_data: dict[str, Any] = {}
         spec_field = getattr(self, "spec", None)
@@ -106,6 +119,40 @@ class SerializableStep(Step[Out]):
             Path(path).joinpath("step.json"),
             json.dumps({"kind": self.kind, "spec": spec_data}, indent=2) + "\n",
         )
+
+    @classmethod
+    def from_directory(cls, path: str) -> Self:
+        """Return the step saved at ``path``. Override when the default cannot rebuild it.
+
+        The default reads ``step.json``, checks ``kind``, and passes ``spec`` (when the class has
+        that field) to the constructor. Every other field keeps its default.
+        """
+        cls._check_loadable()
+        hints = get_type_hints(cls)
+        spec_type = hints.get("spec")
+        if isinstance(spec_type, type) and issubclass(spec_type, BaseModel):
+            spec: Any = cls.load_spec(path, spec_type)
+            return cls(spec=spec)  # pyright: ignore[reportCallIssue]
+        cls.assert_kind(path)
+        return cls()
+
+    @classmethod
+    def _check_loadable(cls) -> None:
+        """Raise ``TypeError`` when the default ``from_directory`` cannot rebuild this class."""
+        if "from_directory" in _own_attrs(cls):
+            return
+        missing = [
+            f.name
+            for f in dataclasses.fields(cls)  # pyright: ignore[reportArgumentType]
+            if f.name != "spec"
+            and f.default is dataclasses.MISSING
+            and f.default_factory is dataclasses.MISSING
+        ]
+        if missing:
+            raise TypeError(
+                f"{cls.__name__} cannot be loaded back: field(s) {', '.join(missing)} have no "
+                "default and are not 'spec'. Override from_directory(cls, path) to rebuild it."
+            )
 
     @classmethod
     def load_spec(cls, path: str, spec_type: type[SpecT]) -> SpecT:
@@ -121,3 +168,13 @@ class SerializableStep(Step[Out]):
         data = json.loads(Path(path).joinpath("step.json").read_text())
         if data.get("kind") != cls.kind:
             raise ValueError(f"Expected kind {cls.kind!r}, got {data.get('kind')!r}")
+
+
+def _own_attrs(cls: type) -> set[str]:
+    """Names defined on ``cls`` or a parent below ``SerializableStep`` in the MRO."""
+    names: set[str] = set()
+    for klass in cls.__mro__:
+        if klass is SerializableStep:
+            break
+        names.update(vars(klass))
+    return names
