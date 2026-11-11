@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-11-11
+## [0.2.5] - 2026-11-11
+
+0.2.0 to 0.2.5 are one change set; patch versions were bumped per commit.
 
 ### Changed
 
@@ -24,6 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changing a `Path`, `Enum`, `dict`, `set` or `UUID` field now changes the cache key.
 - `InputParam` values hash by value, not by `repr()`, so they get cache hits.
 - An empty or corrupt cache file is recomputed instead of crashing.
+- Threaded fan-out results keep the order of `over`.
+- Worker processes receive params as JSON, so a str `"5"` stays a str.
+- Steps with a `kind` hash their source code too, so a code edit recomputes.
 
 ### Removed
 
