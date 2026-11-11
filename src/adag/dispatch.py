@@ -73,7 +73,9 @@ class SubprocessDispatcher:
             raise ValueError("SubprocessDispatcher requires a cache_dir (the shared rendezvous).")
 
         if sub.is_cached(cache_dir, params=context.params):
-            logger.info("branch.cache_hit", key=branch.key, hash=branch.branch_hash)
+            context.observer.on_event(
+                "branch.cache_hit", {"key": branch.key, "hash": branch.branch_hash}
+            )
             return sub.load(cache_dir, params=context.params)
 
         command = [
@@ -93,7 +95,9 @@ class SubprocessDispatcher:
         attempts = self.policy.max_retries + 1
         detail = ""
         for attempt in range(attempts):
-            logger.info("branch.dispatch", key=branch.key, attempt=attempt + 1, of=attempts)
+            context.observer.on_event(
+                "branch.dispatch", {"key": branch.key, "attempt": attempt + 1, "of": attempts}
+            )
             try:
                 completed = subprocess.run(
                     command,

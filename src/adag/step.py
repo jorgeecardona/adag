@@ -39,7 +39,7 @@ import structlog
 from pydantic import BaseModel
 
 from adag.config import Config
-from adag.deferred import Deferred, InputParam, Progress, ResolveContext, observing
+from adag.deferred import Deferred, InputParam, Progress, ResolveContext, emit, observing
 from adag.hashing import (
     UnhashableValueError,
     class_source_hash,
@@ -497,9 +497,7 @@ class StepResult(Deferred[Out]):
         context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
         if context.cache_dir is not None and self.step.result_model() is not None:
             self._save(result, context.cache_dir, params=context.params)
-            logger.info(
-                "Cached to disk", step=step_name, key=self.content_hash(params=context.params)
-            )
+            emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
         with context._lock:
             context._resolved[id(self)] = result
         return result
@@ -697,7 +695,7 @@ class StepResult(Deferred[Out]):
         try:
             return result_type.model_validate_json(output.read_text())  # pyright: ignore[reportReturnType]
         except Exception as exc:
-            logger.debug(
+            emit(
                 "step.cache.invalid_entry",
                 step=type(self.step).__name__,
                 path=str(output),

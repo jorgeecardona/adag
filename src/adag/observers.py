@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
+from typing import Any
 
 import structlog
 
@@ -45,6 +46,9 @@ class LoggingObserver(NullObserver):
 
     def on_step_finished(self, step: str, seconds: float) -> None:
         logger.info("step.finished", step=step, seconds=round(seconds, 4))
+
+    def on_event(self, event: str, fields: dict[str, Any]) -> None:
+        logger.info(event, **fields)
 
 
 def _empty_children() -> list[RunNode]:

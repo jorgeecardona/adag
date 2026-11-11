@@ -39,6 +39,7 @@ import structlog
 from pydantic import BaseModel
 
 from adag.cache_store import CacheStore, FileSystemCacheStore
+from adag.deferred import emit
 from adag.hashing import is_dict
 
 logger = structlog.get_logger()
@@ -216,7 +217,7 @@ class ItemCache(Generic[R]):
                 try:
                     cached[item_key] = self.load(item_key)
                 except Exception as exc:
-                    logger.debug(
+                    emit(
                         "item_cache.stale_entry",
                         namespace=self.namespace,
                         item_key=item_key,
@@ -230,7 +231,7 @@ class ItemCache(Generic[R]):
 
         n_inflight = len(self.inflight_keys())
         if cached or n_stale or n_inflight:
-            logger.info(
+            emit(
                 "item_cache.partition",
                 namespace=self.namespace,
                 cached=len(cached),
@@ -263,7 +264,7 @@ class ItemCache(Generic[R]):
                 raise ValueError(f"Item '{item_key}' not found in cache '{self.namespace}'")
             results.append(self.load(item_key))
         if missing:
-            logger.info(
+            emit(
                 "item_cache.collect.partial",
                 namespace=self.namespace,
                 kept=len(results),

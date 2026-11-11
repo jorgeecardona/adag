@@ -54,7 +54,7 @@ from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
 import structlog
 from pydantic import BaseModel
 
-from adag.deferred import ResolveContext
+from adag.deferred import ResolveContext, emit
 from adag.item_cache import ItemCache
 from adag.step import Step
 
@@ -262,7 +262,7 @@ class BatchStep(Step[T], Generic[T, R]):
         so a crash loses at most one in-flight item.
         """
         for i, item in enumerate(items, start=1):
-            logger.info(
+            emit(
                 "batch.processing",
                 step=type(self).__name__,
                 item=item.key[:12],
@@ -320,7 +320,7 @@ class BatchStep(Step[T], Generic[T, R]):
         all_items = self.items(**inputs)
         keys = [item.key for item in all_items]
 
-        logger.info(
+        emit(
             "batch.start",
             step=type(self).__name__,
             total=len(all_items),
@@ -332,7 +332,7 @@ class BatchStep(Step[T], Generic[T, R]):
         n_cached = len(all_items) - len(uncached_indices)
 
         if n_cached > 0:
-            logger.info(
+            emit(
                 "batch.resuming",
                 step=type(self).__name__,
                 cached=n_cached,
@@ -352,7 +352,7 @@ class BatchStep(Step[T], Generic[T, R]):
         # strict behavior should validate the assembled result themselves.
         all_results = cache.collect(keys, allow_missing=True)
 
-        logger.info(
+        emit(
             "batch.done",
             step=type(self).__name__,
             total=len(all_results),

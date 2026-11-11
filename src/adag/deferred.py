@@ -74,6 +74,8 @@ class PipelineObserver(Protocol):
 
     def on_fan_out_branch_failed(self, key: str, error: str) -> None: ...
 
+    def on_event(self, event: str, fields: dict[str, Any]) -> None: ...
+
 
 class NullObserver:
     """Silent observer — every hook is a no-op. Use it to turn the per-step
@@ -96,6 +98,9 @@ class NullObserver:
     def on_fan_out_branch_failed(self, key: str, error: str) -> None:
         pass
 
+    def on_event(self, event: str, fields: dict[str, Any]) -> None:
+        pass
+
 
 _CURRENT_OBSERVER: contextvars.ContextVar[PipelineObserver] = contextvars.ContextVar(
     "pipeline_observer",
@@ -113,6 +118,15 @@ def current_observer() -> PipelineObserver:
     context (``contextvars.copy_context().run``) to inherit it.
     """
     return _CURRENT_OBSERVER.get()
+
+
+def emit(event: str, **fields: Any) -> None:
+    """Send a progress event (cache writes, batch progress, dispatch) to the run's observer.
+
+    Outside a run there is no observer, so the event is dropped. Warnings and errors are
+    logged with structlog directly instead, so an observer can never hide them.
+    """
+    current_observer().on_event(event, fields)
 
 
 @contextlib.contextmanager

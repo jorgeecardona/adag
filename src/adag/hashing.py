@@ -66,9 +66,9 @@ def file_hash(path: Path) -> str:
         return cached
 
     if stat.st_size > _LARGE_FILE_BYTES:
-        logger.info(
-            "hashing.large_file", path=str(path), size_mb=round(stat.st_size / 1_000_000, 1)
-        )
+        from adag.deferred import emit  # deferred imports this module; import late
+
+        emit("hashing.large_file", path=str(path), size_mb=round(stat.st_size / 1_000_000, 1))
 
     h = hashlib.sha256()
     with open(resolved, "rb") as f:

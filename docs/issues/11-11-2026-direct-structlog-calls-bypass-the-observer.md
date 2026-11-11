@@ -1,8 +1,9 @@
 ---
 title: "Some log lines bypass the observer, so NullObserver does not silence a run"
-status: open
+status: done
 area: core
 filed: 2026-11-11
+fixed_in: pending
 scope: S
 verify: test
 ---

@@ -47,6 +47,7 @@ from adag.deferred import (
     PipelineObserver,
     Progress,
     ResolveContext,
+    observing,
 )
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
@@ -438,9 +439,10 @@ class Pipeline(Generic[Out]):
             executor=executor or LocalExecutor(),
             dispatcher=dispatcher or InlineDispatcher(),
         )
-        if parallel:
-            self._resolve_levels_concurrently(context, max_workers)
-        return self.output.resolve(context)
+        with observing(context.observer):
+            if parallel:
+                self._resolve_levels_concurrently(context, max_workers)
+            return self.output.resolve(context)
 
     async def aexecute(
         self,
@@ -472,7 +474,8 @@ class Pipeline(Generic[Out]):
             observer=observer or LoggingObserver(),
             async_executor=async_executor or LocalAsyncExecutor(),
         )
-        return await self.output.aresolve(context)
+        with observing(context.observer):
+            return await self.output.aresolve(context)
 
     def resolve(
         self,
@@ -535,7 +538,8 @@ class Pipeline(Generic[Out]):
             executor=executor or LocalExecutor(),
             dispatcher=dispatcher or InlineDispatcher(),
         )
-        return target.resolve(context)
+        with observing(context.observer):
+            return target.resolve(context)
 
     def save(self, path: str | Path) -> None:
         """Save all steps and the pipeline graph to a directory."""

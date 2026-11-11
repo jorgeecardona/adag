@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `NullObserver` now silences a whole run. Progress logs (cache writes, batch progress,
+  dispatch) go through the new `on_event` observer hook; warnings and errors still log.
+
 ## [0.2.5] - 2026-11-11
 
 0.2.0 to 0.2.5 are one change set; patch versions were bumped per commit.

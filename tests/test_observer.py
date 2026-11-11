@@ -149,3 +149,38 @@ def test_run_tree_observer_labels_fan_out_branches_with_keys():
     tree = observer.render_tree()
     assert "Start [alpha]" in tree
     assert "Start [beta]" in tree
+
+
+def test_null_observer_silences_a_cached_batch_run(tmp_path: Path):
+    """With NullObserver, a run that saves, caches and batches logs nothing at info level."""
+    from adag import BatchItem, BatchStep, InputParam
+
+    class Item(BaseModel):
+        v: int
+
+    class Items(BaseModel):
+        vs: list[int]
+
+    @dataclass(frozen=True)
+    class Batch(BatchStep[Items, Item]):
+        def items(self, n: int) -> list[BatchItem]:
+            return [BatchItem(key=str(i), data=i) for i in range(n)]
+
+        def process_item(self, item: BatchItem, n: int) -> Item:
+            return Item(v=item.data)
+
+        def assemble(self, results: list[Item], n: int) -> Items:
+            return Items(vs=[r.v for r in results])
+
+    pipeline = Pipeline(Batch()(n=InputParam[int]("n")), cache_dir=tmp_path)
+    with capture_logs() as logs:
+        pipeline.execute(observer=NullObserver(), n=3)
+        pipeline.execute(observer=NullObserver(), n=3)
+    assert [entry for entry in logs if entry["log_level"] in {"info", "debug"}] == []
+
+
+def test_default_observer_logs_progress_events(tmp_path: Path):
+    """The default LoggingObserver turns progress events (step.saved) into log lines."""
+    with capture_logs() as logs:
+        Pipeline(build_two_step_graph(), cache_dir=tmp_path).execute()
+    assert "step.saved" in [entry["event"] for entry in logs]
