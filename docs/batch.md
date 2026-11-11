@@ -23,7 +23,5 @@ second run called: ['carol', 'dave']
 ['hello alice', 'hello bob', 'hello carol', 'hello dave']
 ```
 
-(output trimmed: log lines removed)
-
 Item results live under `<cache_dir>/.items/<namespace>/`. The namespace is the class name in
 snake case (`greet` above).

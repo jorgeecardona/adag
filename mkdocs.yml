@@ -72,6 +72,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Why adag: comparison.md
   - Guide:
       - Steps and pipelines: steps.md
       - Caching: caching.md

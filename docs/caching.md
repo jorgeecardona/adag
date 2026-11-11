@@ -29,8 +29,6 @@ Scale(factor=2, workers=Config(16))           ran: False
 Scale(factor=3, workers=Config(4))            ran: True
 ```
 
-(output trimmed: log lines removed)
-
 ## Supported field types
 
 Fields are hashed by `adag.hashing.encode_value`: `None`, `bool`, `int`, `float`, `str`,

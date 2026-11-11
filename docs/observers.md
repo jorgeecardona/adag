@@ -19,8 +19,6 @@ second run:
 Square  ⟳ cached
 ```
 
-(output trimmed: log lines removed)
-
 The hooks are the methods of `PipelineObserver`: `on_step_start`, `on_step_cached`,
 `on_step_finished`, `on_fan_out_branch`, `on_fan_out_branch_failed`, and `on_event` for
 progress events (`step.saved`, `batch.*`, `item_cache.*`, `branch.*`).

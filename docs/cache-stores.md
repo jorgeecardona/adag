@@ -19,5 +19,3 @@ results are always files under `cache_dir`.
 cached: 1 missing: 2
 text='first'
 ```
-
-(output trimmed: log lines removed)

@@ -68,7 +68,8 @@ value=17
 
 A step's cache key is a hash of its fields, its inputs, and its source code. Change any of
 them and that step and everything downstream recompute; nothing else does. Use it for data
-and ML pipelines where steps are slow and you rerun the graph often.
+and ML pipelines where steps are slow and you rerun the graph often. How it compares to Luigi,
+Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gitlab.io/adag/comparison/).
 
 ## Key features
 

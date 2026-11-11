@@ -18,5 +18,3 @@ words=5
 words=3
 words=8
 ```
-
-(output trimmed: log lines removed)

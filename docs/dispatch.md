@@ -20,8 +20,6 @@ worker can import it and rebuild the branch:
 ran in other processes: True
 ```
 
-(output trimmed: log lines removed)
-
 - `cache_dir` is required.
 - Params reach workers as JSON, so they must be JSON values.
 - `BranchPolicy(max_retries=, timeout_seconds=)` sets retries and a timeout per branch.
