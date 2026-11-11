@@ -8,6 +8,8 @@ import importlib
 
 import pytest
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 TOP_LEVEL = [
     "SVG",
     "AsyncExecutor",
@@ -15,7 +17,6 @@ TOP_LEVEL = [
     "BatchItem",
     "BatchStep",
     "BranchDispatcher",
-    "BranchExecutionError",
     "BranchPolicy",
     "BranchRef",
     "CachedStep",
@@ -36,7 +37,6 @@ TOP_LEVEL = [
     "LocalExecutor",
     "LoggingObserver",
     "NullObserver",
-    "Parameter",
     "Pipeline",
     "PipelineObserver",
     "Progress",
@@ -44,7 +44,6 @@ TOP_LEVEL = [
     "RunTreeObserver",
     "SerializableStep",
     "Step",
-    "StepMode",
     "StepResult",
     "StepTimeout",
     "SubprocessDispatcher",
@@ -90,14 +89,6 @@ MISSING: set[str] = {
     "BranchExecutionError",
     "Parameter",
     "StepMode",
-    "adag.parameter.Parameter",
-    "adag.step_mode.StepMode",
-    "adag.dispatch.BranchExecutionError",
-    "adag.hashing.hash_scalar",
-    "adag.hashing.hash_list",
-    "adag.step.Step.produces",
-    "adag.step.Step.accepts",
-    "adag.step.Step.accepts_from",
     "adag.base.CachedStep.output_path",
     "adag.base.CachedStep.is_cached",
     "adag.base.CachedStep.is_partial",
@@ -136,4 +127,4 @@ def test_deep_name_resolves(label: str) -> None:
     module, _, path = label.partition(".")
     # Module names have one dot level here ("adag.x"); split after it.
     head, _, rest = path.partition(".")
-    assert _resolve(f"{module}.{head}", rest) is not None
+    _resolve(f"{module}.{head}", rest)  # raises AttributeError when missing

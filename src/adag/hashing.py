@@ -165,6 +165,20 @@ def _encode_container(value: Any, where: str) -> bytes:
     )
 
 
+def hash_scalar(value: Any) -> bytes:
+    """Return ``json.dumps(value, sort_keys=True)`` as bytes, for building your own item keys.
+
+    Not used by adag's own cache keys (those use ``encode_value``). The bytes are the same as in
+    the first release, so keys built with it stay valid.
+    """
+    return json.dumps(value, sort_keys=True).encode()
+
+
+def hash_list(value: list[Any]) -> bytes:
+    """Return ``json.dumps(value, sort_keys=True)`` as bytes. Same bytes as ``hash_scalar``."""
+    return json.dumps(value, sort_keys=True).encode()
+
+
 def class_source_hash(cls: type) -> bytes | None:
     """Return a short hash of the class's own source code, or None if it has none.
 

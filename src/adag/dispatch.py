@@ -35,6 +35,18 @@ from adag.step import StepResult
 logger = structlog.get_logger()
 
 
+class BranchExecutionError(RuntimeError):
+    """Deprecated: adag no longer raises this. Branch failures arrive as ``FanOutBranchError``.
+
+    Kept so ``except BranchExecutionError`` and custom dispatchers that raise it still import.
+    Removed in 1.0.
+    """
+
+    def __init__(self, key: str, detail: str) -> None:
+        self.key = key
+        super().__init__(f"branch {key!r} failed: {detail}")
+
+
 @dataclass(frozen=True)
 class BranchPolicy:
     """How hard to try a branch and how patiently to wait for it.

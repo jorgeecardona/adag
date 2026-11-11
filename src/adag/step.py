@@ -177,6 +177,12 @@ class Step(Generic[Out]):
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
 
+    # Optional typed ports, read by graph editors to check a connection before it is made.
+    # ``produces`` is this step's output port type; ``accepts`` the port types it can consume.
+    # ``None`` means untyped: ``accepts_from`` never rejects it. ``Pipeline`` does not check them.
+    produces: ClassVar[str | None] = None
+    accepts: ClassVar[tuple[str, ...] | None] = None
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         for parent in getattr(cls, "__orig_bases__", []):
@@ -205,6 +211,17 @@ class Step(Generic[Out]):
         override alongside ``result_model`` when the result type is generic.
         """
         return type(self).return_type
+
+    def accepts_from(self, producer: Step[Any] | str) -> bool:
+        """Return whether this step can consume ``producer``'s output port.
+
+        ``producer`` is a step (its ``produces`` is read) or a port name. Returns ``True`` when
+        either side declares no port; otherwise ``producer.produces`` must be in ``accepts``.
+        """
+        produces = producer if isinstance(producer, str) else producer.produces
+        if produces is None or self.accepts is None:
+            return True
+        return produces in self.accepts
 
     def __call__(self, **kwargs: Any) -> StepResult[Out]:
         """Wire this step into the DAG. Returns a StepResult that chains downstream.

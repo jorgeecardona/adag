@@ -5,7 +5,7 @@ This module exports every public name of the package, including the lower-level 
 imported from here.
 """
 
-__version__ = "0.2.17"
+__version__ = "0.2.18"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -87,3 +87,25 @@ __all__ = [
     "render_pipeline_svg",
     "walk",
 ]
+
+_DEPRECATED = {
+    "Parameter": ("adag.parameter", "Parameter"),
+    "StepMode": ("adag.step_mode", "StepMode"),
+    "BranchExecutionError": ("adag.dispatch", "BranchExecutionError"),
+}
+
+
+def __getattr__(name: str) -> object:
+    """Resolve deprecated top-level names on first use, so ``import adag`` does not warn."""
+    if name in _DEPRECATED:
+        import importlib
+        import warnings
+
+        module, attr = _DEPRECATED[name]
+        warnings.warn(
+            f"adag.{name} is deprecated; see the 0.3.0 migration notes",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return getattr(importlib.import_module(module), attr)
+    raise AttributeError(f"module 'adag' has no attribute {name!r}")
