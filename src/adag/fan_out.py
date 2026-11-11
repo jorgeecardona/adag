@@ -146,7 +146,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             }
             for future in as_completed(futures):
                 results[futures[future]] = future.result()
-        return results
+        return {key: results[key] for key, _ in prepared}  # keep the order of ``over``
 
     def _branch(self, key: K, value: Any) -> StepResult[V]:
         """Build one branch's sub-DAG via the factory, validating it is a resolvable Deferred."""
@@ -213,7 +213,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
 
         if failed:
             raise FanOutBranchError(succeeded=sorted(str(key) for key in results), failed=failed)
-        return results
+        return {key: results[key] for key, _, _ in prepared}  # keep the order of ``over``
 
     def content_hash(self) -> str | None:
         """Identity = class + each branch's sub-DAG content_hash.

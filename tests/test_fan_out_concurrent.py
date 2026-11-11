@@ -116,3 +116,24 @@ def test_branch_failure_propagates() -> None:
 
     with pytest.raises(BranchBoomError):
         Pipeline(fan).execute(observer=NullObserver())
+
+
+def test_threaded_results_keep_the_order_of_over() -> None:
+    """Results come back in ``over`` order even when later branches finish first."""
+    import time as _time
+
+    @dataclass(frozen=True, eq=False)
+    class SleepThenEcho(Step[Doubled]):
+        n: int
+
+        def run(self, n: int) -> Doubled:
+            _time.sleep(0.05 * (5 - n))  # the first key finishes last
+            return Doubled(value=n)
+
+    fan = FanOutStep(
+        over={f"k{index}": index for index in range(5)},
+        factory=lambda key, value: SleepThenEcho(n=value)(),
+        max_workers=5,
+    )()
+    results = Pipeline(fan).execute(observer=NullObserver())
+    assert list(results) == [f"k{index}" for index in range(5)]
