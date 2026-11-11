@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Pipeline(metadata=...)`: caller data, any JSON value, saved in `pipeline.json` and read back
+  by `from_directory`.
 - `Step.save_result` and `Step.load_result`: cache a result that is not one JSON document
   (JSONL, a directory, a file plus a sidecar), under a path keyed on the step and its inputs.
   `BatchStep` uses them too.

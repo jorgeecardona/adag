@@ -59,6 +59,9 @@ needs:
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
       - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/1"}
+    proofs:
+      - "test:tests/test_pipeline_roundtrip.py::test_metadata_round_trips_through_save_and_load"
+      - "test:tests/test_pipeline_roundtrip.py::test_pipeline_without_metadata_writes_no_key"
 
   - id: CO-6
     text: >

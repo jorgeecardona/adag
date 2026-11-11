@@ -97,6 +97,7 @@ class Pipeline(Generic[Out]):
         kind: str | None = None,
         extra_targets: list[StepResult[Any]] | None = None,
         store: CacheStore | None = None,
+        metadata: Any = None,
     ) -> None:
         """Wrap a Deferred graph.
 
@@ -109,6 +110,9 @@ class Pipeline(Generic[Out]):
             on_progress: optional progress callback (passed to ``ResolveContext``).
             kind: pipeline kind tag (e.g. ``"hierarchical/v1"``) used by
                 ``save()`` and the pipeline registry.
+            metadata: caller data saved with the pipeline: any JSON value (a string, a number, a
+                list, a dict). ``save()`` writes it to ``pipeline.json`` and ``from_directory()``
+                reads it back into ``pipeline.metadata``. adag never reads it otherwise.
             extra_targets: additional terminal or intermediate nodes whose
                 sub-DAGs should be discovered too. Use this when the
                 pipeline has multiple "ending points" so visualization and
@@ -122,6 +126,12 @@ class Pipeline(Generic[Out]):
         self.store = store
         self.on_progress = on_progress
         self.kind = kind
+        if metadata is not None:
+            try:
+                json.dumps(metadata)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(f"Pipeline metadata must be a JSON value: {exc}") from exc
+        self.metadata: Any = metadata
 
         self._steps: list[Step[Any]] = []
         self._inputs: list[InputParam[Any]] = []
@@ -141,6 +151,7 @@ class Pipeline(Generic[Out]):
         *,
         kind: str | None = None,
         store: CacheStore | None = None,
+        metadata: Any = None,
     ) -> Pipeline[Any]:
         """Build a Pipeline that covers multiple terminal nodes.
 
@@ -161,6 +172,7 @@ class Pipeline(Generic[Out]):
             kind=kind,
             extra_targets=rest,
             store=store,
+            metadata=metadata,
         )
 
     @property
@@ -595,6 +607,8 @@ class Pipeline(Generic[Out]):
         manifest: dict[str, Any] = {"steps": step_entries, "edges": edges, "parameters": parameters}
         if self.kind is not None:
             manifest["kind"] = self.kind
+        if self.metadata is not None:
+            manifest["metadata"] = self.metadata
         manifest["output"] = instance_to_name[id(self.output.step)]
         with atomic_writer(Path(path).joinpath("pipeline.json")) as f:
             json.dump(manifest, f, indent=2)
@@ -666,7 +680,7 @@ class Pipeline(Generic[Out]):
 
         terminal_name = output_name or step_entries[-1]
         output = results[terminal_name]
-        return cls(output, cache_dir=cache_dir, kind=kind)
+        return cls(output, cache_dir=cache_dir, kind=kind, metadata=manifest.get("metadata"))
 
     def _collect_edges(
         self, result: StepResult[Any], instance_to_name: dict[int, str], edges: list[dict[str, str]]

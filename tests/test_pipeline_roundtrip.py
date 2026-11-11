@@ -164,3 +164,27 @@ def test_kind_steps_with_different_code_get_different_keys():
 
     spec = GreetSpec(salutation="Hi")
     assert V1(spec=spec).content_hash() != V2(spec=spec).content_hash()
+
+
+def test_metadata_round_trips_through_save_and_load(tmp_path: Path):
+    """Caller metadata set at construction is on the pipeline loaded from disk."""
+    original = build_pipeline()
+    meta = {"purpose": "greetings", "fitted_on": ["a", "b"], "schema": 2}
+    with_meta = Pipeline(original.output, metadata=meta)
+    with_meta.save(tmp_path)
+
+    reloaded = Pipeline.from_directory(tmp_path, STEP_REGISTRY)
+    assert reloaded.metadata == meta
+
+
+def test_pipeline_without_metadata_writes_no_key(tmp_path: Path):
+    build_pipeline().save(tmp_path)
+    assert "metadata" not in tmp_path.joinpath("pipeline.json").read_text()
+    assert Pipeline.from_directory(tmp_path, STEP_REGISTRY).metadata is None
+
+
+def test_metadata_must_be_json():
+    import pytest
+
+    with pytest.raises(TypeError, match="JSON value"):
+        Pipeline(build_pipeline().output, metadata={"when": object()})
