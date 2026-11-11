@@ -1,4 +1,6 @@
-"""The top-level ``adag`` namespace: a fixed list, so a change to it is a deliberate decision."""
+"""The top-level ``adag`` namespace: a fixed list, so a change to it is a deliberate decision.
+
+It includes every top-level name of the first import (b62b906); see ``test_compat_b62b906``."""
 
 import adag
 
@@ -32,6 +34,22 @@ EXPECTED = {
     "UnhashableValueError",
     "WriteJSONL",
     "dag",
+    "AsyncExecutor",
+    "BranchDispatcher",
+    "BranchPolicy",
+    "BranchRef",
+    "Deferred",
+    "Executor",
+    "InlineDispatcher",
+    "LocalAsyncExecutor",
+    "LocalExecutor",
+    "Progress",
+    "ResolveContext",
+    "SubprocessDispatcher",
+    "current_observer",
+    "observing",
+    "render_pipeline_svg",
+    "walk",
 }
 
 

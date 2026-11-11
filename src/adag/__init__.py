@@ -1,17 +1,34 @@
 """adag: a cached, content-addressed DAG engine for Python data pipelines.
 
-This module exports the names most pipelines need. Lower-level pieces (executors,
-dispatchers, ``ResolveContext``, ``walk``) live in their submodules, for example
-``from adag.dispatch import SubprocessDispatcher``.
+This module exports every public name of the package, including the lower-level pieces
+(executors, dispatchers, ``ResolveContext``, ``walk``) that consumers of the internal package
+imported from here.
 """
 
-__version__ = "0.2.16"
+__version__ = "0.2.17"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
 from adag.config import Config
-from adag.deferred import InputParam, NullObserver, PipelineObserver
+from adag.deferred import (
+    AsyncExecutor,
+    BranchDispatcher,
+    BranchRef,
+    Deferred,
+    Executor,
+    InlineDispatcher,
+    InputParam,
+    LocalAsyncExecutor,
+    LocalExecutor,
+    NullObserver,
+    PipelineObserver,
+    Progress,
+    ResolveContext,
+    current_observer,
+    observing,
+)
 from adag.dir_source import DirSource
+from adag.dispatch import BranchPolicy, SubprocessDispatcher
 from adag.fan_out import FanOutBranchError, FanOutStep
 from adag.hashing import UnhashableValueError
 from adag.io import FileSource, JSONLSource, LinesSource
@@ -21,36 +38,52 @@ from adag.pipeline import CyclicPipelineError, Pipeline, UnboundInputError
 from adag.serializable import SerializableStep
 from adag.sinks import WriteJSONL
 from adag.step import AsyncStep, Step, StepResult, StepTimeout
-from adag.visualization import SVG, SvgOptions, dag
+from adag.visualization import SVG, SvgOptions, dag, render_pipeline_svg, walk
 
 __all__ = [
     "SVG",
+    "AsyncExecutor",
     "AsyncStep",
     "BatchItem",
     "BatchStep",
+    "BranchDispatcher",
+    "BranchPolicy",
+    "BranchRef",
     "CachedStep",
     "Config",
     "CyclicPipelineError",
+    "Deferred",
     "DirSource",
+    "Executor",
     "FanOutBranchError",
     "FanOutStep",
     "FileSource",
+    "InlineDispatcher",
     "InputParam",
     "ItemCache",
     "JSONLSource",
     "LinesSource",
+    "LocalAsyncExecutor",
+    "LocalExecutor",
     "LoggingObserver",
     "NullObserver",
     "Pipeline",
     "PipelineObserver",
+    "Progress",
+    "ResolveContext",
     "RunTreeObserver",
     "SerializableStep",
     "Step",
     "StepResult",
     "StepTimeout",
+    "SubprocessDispatcher",
     "SvgOptions",
     "UnboundInputError",
     "UnhashableValueError",
     "WriteJSONL",
+    "current_observer",
     "dag",
+    "observing",
+    "render_pipeline_svg",
+    "walk",
 ]

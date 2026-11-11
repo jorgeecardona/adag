@@ -85,44 +85,30 @@ DEEP = [
 # RemoteDispatcher + a JobBackend) and StepOutput (nothing ever returned one).
 KEPT_REMOVED = {"BatchDispatcher", "adag.output.StepOutput"}
 
-# Shrinks to empty as the 0.3.0 restore lands.
+# Not restored yet. Each 0.3.0 commit removes the names it restores; empty when done.
 MISSING: set[str] = {
-    *[
-        n
-        for n in TOP_LEVEL
-        if n
-        not in {
-            "SVG",
-            "AsyncStep",
-            "BatchItem",
-            "BatchStep",
-            "CachedStep",
-            "Config",
-            "CyclicPipelineError",
-            "DirSource",
-            "FanOutBranchError",
-            "FanOutStep",
-            "FileSource",
-            "InputParam",
-            "ItemCache",
-            "JSONLSource",
-            "LinesSource",
-            "LoggingObserver",
-            "NullObserver",
-            "Pipeline",
-            "PipelineObserver",
-            "RunTreeObserver",
-            "SerializableStep",
-            "Step",
-            "StepResult",
-            "StepTimeout",
-            "SvgOptions",
-            "UnboundInputError",
-            "WriteJSONL",
-            "dag",
-        }
-    ],
-    *[f"{m}.{a}" for m, a in DEEP],
+    "BranchExecutionError",
+    "Parameter",
+    "StepMode",
+    "adag.parameter.Parameter",
+    "adag.step_mode.StepMode",
+    "adag.dispatch.BranchExecutionError",
+    "adag.hashing.hash_scalar",
+    "adag.hashing.hash_list",
+    "adag.step.Step.produces",
+    "adag.step.Step.accepts",
+    "adag.step.Step.accepts_from",
+    "adag.base.CachedStep.output_path",
+    "adag.base.CachedStep.is_cached",
+    "adag.base.CachedStep.is_partial",
+    "adag.base.CachedStep.save",
+    "adag.base.CachedStep.load",
+    "adag.base.CachedStep.validate",
+    "adag.base.CachedStep.metadata",
+    "adag.deferred.NullObserver.on_embedding",
+    "adag.deferred.NullObserver.on_model_refused",
+    "adag.deferred.InlineDispatcher.dispatch",
+    "adag.dispatch.SubprocessDispatcher.dispatch",
 }
 
 
