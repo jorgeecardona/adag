@@ -13,7 +13,7 @@ Another DAG: run async tasks in dependency order.
 pip install adag
 ```
 
-Requires Python 3.12+.
+Requires Python 3.13+.
 
 ## Quickstart
 

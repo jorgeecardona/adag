@@ -29,9 +29,9 @@ tasks:
 
   # Run the suite against the lowest supported Python in a throwaway isolated env (not .venv),
   # so a feature that quietly needs a newer interpreter is caught at the floor rather than by a
-  # user on 3.12. --with-editable . installs this package; pytest is pulled in too.
+  # user on 3.13. --with-editable . installs this package; pytest is pulled in too.
   test-floor:
-    command: 'uv run --isolated --python 3.12 --with-editable . --with pytest pytest -q'
+    command: 'uv run --isolated --python 3.13 --with-editable . --with pytest pytest -q'
     inputs: ['src/**/*.py', 'tests/**/*.py', 'pyproject.toml']
 
   build:

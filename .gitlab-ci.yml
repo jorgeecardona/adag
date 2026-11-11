@@ -75,7 +75,7 @@ ci:
 # built (strict, in the gated environment) rather than building its own: one build per pipeline,
 # and the served site is exactly the one the gate validated. main only.
 pages:
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
   needs: ["ci"]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

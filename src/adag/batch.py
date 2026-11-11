@@ -1,0 +1,393 @@
+"""BatchStep — a CachedStep that processes items one at a time with per-item caching.
+
+For expensive operations (LLM calls, API requests) where:
+- Each item costs money or time
+- A crash at item 1500/2000 should not lose the first 1500
+- Restarting should skip already-processed items
+
+The framework handles: partition cached/uncached, save each result
+as it completes, mark .done only when ALL items are done.
+
+Subclasses pick ONE of two override patterns:
+
+**Pattern A (recommended) — items_data() + framework-generated keys.**
+
+The framework derives the per-item cache key from ``(step.kind, repr(data),
+all relevant step inputs)``. Subclasses only declare WHAT to process, never
+HOW to compose keys::
+
+    @dataclass(frozen=True)
+    class GenerateNotes(BatchStep[NotesResult, NoteRecord]):
+        catalog: CachedStep[CatalogResult]
+        model: str = "claude-sonnet-4-6"
+        concurrency: Config[int] = Config(20)
+
+        def items_data(self, catalog: CatalogResult, model: str) -> list[Any]:
+            return list(catalog.codes)
+
+        def process_item(self, item: BatchItem, catalog: CatalogResult, model: str) -> NoteRecord:
+            return call_llm(item.data, model=model)
+
+        def assemble(self, results: list[NoteRecord], catalog: CatalogResult, model: str) -> NotesResult:
+            return NotesResult(notes=results, n_notes=len(results))
+
+This eliminates a whole class of cache-poisoning bugs caused by keys that
+don't reflect every input. When a step's params change, the key changes
+automatically; when an upstream's output changes, the key changes too.
+
+**Pattern B — items() override for full control.**
+
+When you genuinely need to share a cache across slightly different inputs
+(or other unusual key topology), override ``items()`` directly and build
+``BatchItem.key`` yourself. The default ``items()`` implementation simply
+calls ``items_data()`` and wraps the framework-generated keys.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from abc import abstractmethod
+from dataclasses import dataclass
+from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
+
+import structlog
+from pydantic import BaseModel
+
+from adag.base import CachedStep
+from adag.deferred import ResolveContext
+from adag.item_cache import ItemCache
+
+logger = structlog.get_logger()
+
+T = TypeVar("T", bound=BaseModel)  # final result type
+R = TypeVar("R", bound=BaseModel)  # per-item result type
+
+
+@dataclass(frozen=True)
+class BatchItem:
+    """A single work unit in a BatchStep.
+
+    key:  cache key for this item (determines cache identity)
+    data: arbitrary payload passed to process_item()
+    """
+
+    key: str
+    data: Any = None
+
+
+class BatchStep(CachedStep[T], Generic[T, R]):
+    """A step that processes items individually with per-item disk caching.
+
+    Subclasses implement three methods:
+
+    1. ``items(**inputs)`` — declare work units and their cache keys
+    2. ``process_item(item, **inputs)`` — handle one item
+    3. ``assemble(results, **inputs)`` — combine all results into final output
+
+    The framework automatically:
+    - Partitions items into cached/uncached
+    - Skips already-processed items
+    - Saves each result to disk immediately after processing
+    - Logs progress (cached/total, processing each item)
+    - Only marks .done when ALL items are complete
+
+    On crash: restart picks up where it left off — only uncached items run.
+
+    **Per-item cache key derivation.** The framework auto-derives each
+    item's cache key from ``sha256(step_signature + inputs_signature +
+    item_data)``. The inputs signature includes every kwarg passed to
+    :meth:`execute` EXCEPT those listed in :attr:`items_source_keys` —
+    those are treated as containers of items rather than shared
+    parameters. Subclasses that take a large input list and extract items
+    from it should set ``items_source_keys`` to the kwarg name(s) so that
+    adding or removing items doesn't invalidate every other item's cache::
+
+        class LLMStage2Classify(BatchStep[Stage2Result, Stage2Prediction]):
+            items_source_keys = ("shortlists",)  # the list of inputs
+            # `notes` is NOT here, so changes to notes correctly
+            # invalidate all per-item caches.
+    """
+
+    item_type: type[BaseModel]  # auto-resolved from BatchStep[T, R]
+
+    # Names of input kwargs that are CONTAINERS of items rather than
+    # shared parameters. Excluded from per-item cache key derivation.
+    # Default empty: ALL inputs participate in the key (safe but
+    # potentially over-invalidating). Subclasses with a large source-list
+    # should override.
+    items_source_keys: ClassVar[tuple[str, ...]] = ()
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        for parent in getattr(cls, "__orig_bases__", []):
+            origin = get_origin(parent)
+            if origin is BatchStep:
+                args = get_args(parent)
+                if len(args) >= 2:  # noqa: PLR2004  (BatchStep[T, Item]: the item type is the 2nd arg)
+                    cls.item_type = args[1]
+                    return
+
+    def items_data(self, **inputs: Any) -> list[Any]:
+        """Declare the per-item DATA only — framework derives the cache key.
+
+        Recommended override path. The default ``items()`` (below) calls
+        this and wraps each entry in a ``BatchItem`` with an auto-computed
+        key that includes the step's content_hash + the item's repr.
+
+        Returns the list of data objects (any type) that
+        ``process_item(item, ...)`` will receive as ``item.data``.
+
+        Override THIS method when you don't need custom key topology —
+        every cache-poisoning bug from manual key composition becomes
+        impossible.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} must override either `items_data()` (framework derives keys) or `items()` (full control)."
+        )
+
+    def items(self, **inputs: Any) -> list[BatchItem]:
+        """Declare the work units. Called once at the start.
+
+        Default implementation calls ``items_data(**inputs)`` and assigns
+        each item an auto-generated cache key derived from
+        ``(step.content_hash, **inputs, item_data)``. The inputs signature
+        is included so that step kwargs which AFFECT the per-item LLM call
+        (e.g. a notes payload passed alongside the report shortlists)
+        invalidate item caches when they change — even though they are
+        not step dataclass fields.
+
+        Override this only when you need custom key topology (e.g.
+        deliberately sharing a cached result across two slightly-different
+        inputs).
+        """
+        step_sig = self._step_signature()
+        inputs_sig = self._inputs_signature(inputs)
+        return [
+            BatchItem(key=self._auto_item_key(step_sig, datum, inputs_sig), data=datum)
+            for datum in self.items_data(**inputs)
+        ]
+
+    def _step_signature(self) -> str:
+        """A short hex digest of the step's identity for use in item keys.
+
+        Falls back to the class kind only if ``content_hash()`` is
+        blocked by an unsatisfied upstream (e.g. a missing FileSource).
+        Whenever the step's output semantics change, ``content_hash()``
+        changes — and so does every item's auto-generated cache key.
+        """
+        return self.content_hash() or type(self).kind or type(self).__name__
+
+    def _inputs_signature(self, inputs: dict[str, Any]) -> str:
+        """Hash all BaseModel/list/scalar inputs into a single digest.
+
+        The point of this hash is to catch upstream-result changes (like a
+        notes payload, a scoped item list, a config blob) that affect
+        what ``process_item`` produces but are not step dataclass fields.
+        Without this, a BatchStep's per-item cache would silently return
+        stale results whenever an input kwarg changed but step config and
+        per-item data did not.
+
+        Inputs named in :attr:`items_source_keys` are skipped — those are
+        containers from which items are extracted, not shared parameters.
+        Including them would invalidate every item's cache when the list
+        of items changed (e.g. one new report added).
+        """
+        skip = set(type(self).items_source_keys)
+        h = hashlib.sha256()
+        for name in sorted(inputs.keys()):
+            if name in skip:
+                continue
+            val = inputs[name]
+            h.update(name.encode())
+            h.update(b"=")
+            if isinstance(val, BaseModel):
+                h.update(val.model_dump_json().encode())
+            elif isinstance(val, (str, int, float, bool)) or val is None:
+                h.update(repr(val).encode())
+            elif isinstance(val, (list, tuple)):
+                try:
+                    h.update(json.dumps(val, sort_keys=True, default=str).encode())
+                except (TypeError, ValueError):
+                    # repr() handles any object; pyright over-narrows the
+                    # generic params here because dict was dict[str, Any].
+                    h.update(repr(val).encode())  # pyright: ignore[reportUnknownArgumentType]
+            else:
+                # Unknown type — fall back to repr for stability.
+                h.update(repr(val).encode())
+            h.update(b"|")
+        return h.hexdigest()[:16]
+
+    def _auto_item_key(self, step_sig: str, item_data: Any, inputs_sig: str = "") -> str:
+        """Derive a stable cache key from ``(step_sig, inputs_sig, item_data)``.
+
+        ``item_data`` can be any object — we serialize it deterministically
+        (Pydantic JSON if possible, then a stable repr fallback). The
+        digest is truncated to 16 hex chars to match ItemCache.key().
+
+        ``inputs_sig`` is the digest of all ``**inputs`` kwargs from
+        :meth:`execute`. Included so that changing any input invalidates
+        per-item caches — see :meth:`_inputs_signature`.
+        """
+        h = hashlib.sha256()
+        h.update(step_sig.encode())
+        h.update(b"|")
+        h.update(inputs_sig.encode())
+        h.update(b"|")
+        if isinstance(item_data, BaseModel):
+            h.update(item_data.model_dump_json().encode())
+        else:
+            try:
+                h.update(json.dumps(item_data, sort_keys=True, default=str).encode())
+            except (TypeError, ValueError):
+                h.update(repr(item_data).encode())
+        return h.hexdigest()[:16]
+
+    @abstractmethod
+    def process_item(self, item: BatchItem, **inputs: Any) -> R:
+        """Process a single item. Default implementation called by process_batch().
+
+        Override this for simple one-at-a-time processing.
+        Receives the BatchItem plus all loaded input kwargs.
+        """
+        ...
+
+    def process_batch(self, items: list[BatchItem], cache: ItemCache[R], **inputs: Any) -> None:
+        """Process a batch of uncached items, saving each result to cache.
+
+        Override this to control batching strategy (concurrent LLM calls,
+        chunked API requests, etc.). The default processes one at a time.
+
+        Each result MUST be saved to cache immediately via ``cache.save()``
+        so a crash loses at most one in-flight item.
+        """
+        for i, item in enumerate(items, start=1):
+            logger.info(
+                "batch.processing",
+                step=type(self).__name__,
+                item=item.key[:12],
+                progress=f"{i}/{len(items)}",
+            )
+            # WAL: write the `.inflight` sentinel before the call starts.
+            # If `process_item` raises or the process is killed, the
+            # marker survives so the next resume can surface "you lost
+            # work on these items". `cache.save()` clears it on success.
+            cache.mark_inflight(item.key)
+            result = self.process_item(item, **inputs)
+            cache.save(item.key, result)
+
+    @abstractmethod
+    def assemble(self, results: list[R], **inputs: Any) -> T:
+        """Combine all per-item results into the final step result.
+
+        Called after all items (cached + freshly processed) are available.
+        Receives the ordered list of results plus all loaded input kwargs.
+        """
+        ...
+
+    def item_cache_namespace(self) -> str:
+        """Namespace for the ItemCache. Default: class name in snake_case."""
+        name = type(self).__name__
+        result: list[str] = []
+        for i, c in enumerate(name):
+            if c.isupper() and i > 0:
+                result.append("_")
+            result.append(c.lower())
+        return "".join(result)
+
+    def run(self, **inputs: Any) -> T:  # pyright: ignore[reportUnusedParameter]
+        """Raise: a BatchStep is driven through ``execute()``, never ``run()``."""
+        raise RuntimeError("BatchStep uses execute(context, ...); do not call run() directly.")
+
+    def execute(self, context: ResolveContext, /, **inputs: Any) -> T:
+        """Orchestrate: items → partition → process uncached → assemble.
+
+        Called by StepResult.resolve with the current ResolveContext so the
+        per-item cache can live under the pipeline's cache directory.
+        Subclasses implement items/process_item/assemble, not this.
+        """
+        if context.cache_dir is None:
+            raise RuntimeError(
+                f"{type(self).__name__} requires a Pipeline cache_dir for per-item caching."
+            )
+        cache_dir = context.cache_dir
+
+        namespace = self.item_cache_namespace()
+        item_schema: Any = self.item_type
+        cache: ItemCache[R] = ItemCache(cache_dir, namespace, item_schema)
+
+        # Step 1: Declare items
+        all_items = self.items(**inputs)
+        keys = [item.key for item in all_items]
+
+        logger.info(
+            "batch.start",
+            step=type(self).__name__,
+            total=len(all_items),
+            namespace=namespace,
+        )
+
+        # Step 2: Partition cached/uncached
+        _cached, uncached_indices = cache.partition(keys)
+        n_cached = len(all_items) - len(uncached_indices)
+
+        if n_cached > 0:
+            logger.info(
+                "batch.resuming",
+                step=type(self).__name__,
+                cached=n_cached,
+                remaining=len(uncached_indices),
+            )
+
+        # Step 3: Process uncached items via process_batch()
+        # The step decides internally how to batch (concurrent, chunked, etc.)
+        uncached_items = [all_items[idx] for idx in uncached_indices]
+        if uncached_items:
+            self.process_batch(uncached_items, cache, **inputs)
+
+        # Step 4: Collect all results in order.
+        # Tolerate per-item failures: LLM batches in particular routinely have
+        # a small percentage fail due to rate limits / transient errors, and
+        # the successful majority is worth keeping. Subclasses that need
+        # strict behavior should validate the assembled result themselves.
+        all_results = cache.collect(keys, allow_missing=True)
+
+        logger.info(
+            "batch.done",
+            step=type(self).__name__,
+            total=len(all_results),
+            processed=len(uncached_indices),
+            from_cache=n_cached,
+        )
+
+        # Step 5: Assemble final result
+        return self.assemble(all_results, **inputs)
+
+    def run_concurrent(self, *, cache_dir: Any, **inputs: Any) -> T:
+        """Drive a BatchStep outside a Pipeline.resolve() context.
+
+        Use this when another Step's ``run()`` body needs to invoke a
+        BatchStep over derived data (e.g. running Stage-2 classification
+        from inside a larger CachedStep). This helper builds a minimal
+        ResolveContext rooted at ``cache_dir`` and dispatches through
+        :meth:`execute`, which guarantees:
+
+        * Item cache keys are auto-derived from
+          ``sha256(step.content_hash() + item.model_dump_json())[:16]`` —
+          meaning ANY change to step configuration (model, max_candidates,
+          notes, etc.) OR to a single item's input invalidates that
+          item's cache entry. No stale results.
+        * Partition / process_batch / collect / assemble run in order.
+
+        DO NOT build ``BatchItem(key=..., data=...)`` manually and call
+        ``process_batch(items, cache, **inputs)`` directly. That bypasses
+        the framework's content-aware key derivation. Custom keys that
+        encode only part of the inputs (e.g. external_id but not the
+        actual data being sent to a model) silently return stale results
+        when the un-encoded inputs change. ``run_concurrent`` exists
+        specifically to make this footgun harder to find.
+        """
+        from adag.deferred import ResolveContext
+
+        context = ResolveContext(cache_dir=cache_dir, params={}, on_progress=None)
+        return self.execute(context, **inputs)

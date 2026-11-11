@@ -3,7 +3,7 @@ name = "adag"
 dynamic = ["version"]  # the single source of truth is __version__ in src/adag/__init__.py (see [tool.hatch.version])
 description = "Another DAG: run async tasks in dependency order."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Jorge Cardona", email = "jorgeecardona@gmail.com" }]
@@ -12,14 +12,22 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "pydantic>=2.12",
+    "structlog",
+    "typing-extensions>=4.4",
+]
+
+[project.scripts]
+adag = "adag.cli:main"
 
 [project.optional-dependencies]
+sql = ["sqlalchemy>=2.0"]  # SqlCacheStore
+redis = ["redis>=5.0"]  # RedisCacheStore
 # docs are an *extra* (not a uv dependency-group) so Read the Docs can install them via pip
 docs = [
     "mkdocs>=1.6",
@@ -56,7 +64,7 @@ include = ["src", "tests", "README.md", "CHANGELOG.md", "LICENSE"]
 cache-keys = [{ file = "pyproject.toml" }, { file = "src/adag/__init__.py" }]
 
 [dependency-groups]
-dev = ["ruff>=0.6", "pyright>=1.1.390", "pytest>=8"]
+dev = ["ruff>=0.6", "pyright[nodejs]>=1.1.390", "pytest>=8", "sqlalchemy>=2.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -64,7 +72,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -87,6 +95,32 @@ ignore = [
     "TC001",
     "TC002",
     "TC003",
+    # adag-specific: Step.run() takes **kwargs resolved from the graph, so Any is the honest type.
+    "ANN401",
+    # Multi-line docstring summaries are used throughout the imported engine.
+    "D205",
+    # Modules inside the package read each other's private helpers on purpose.
+    "SLF001",
+    # Step and Pipeline constructors take many keyword options by design.
+    "PLR0913",
+    "PLR0917",
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "C901",
+    # Generic[...] classes still pair with typing_extensions.TypeVar(default=...).
+    "UP046",
+    "UP040",
+    # The engine catches any step failure to record it and re-raise or report it.
+    "BLE001",
+    "TRY300",
+    # Hook and protocol overrides keep the base signature even when an argument is unused.
+    "ARG002",
+    "ARG004",
+    # StepTimeout is public API; renaming it would break callers.
+    "N818",
+    # Cache paths are built as str and handed to os functions; converting is churn, not a fix.
+    "PTH",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -95,7 +129,14 @@ convention = "pep257"
 [tool.ruff.lint.per-file-ignores]
 # Tests may assert (S101), use magic values (PLR2004), take unused fixtures (ARG), pass Any to typed
 # calls (ANN401), and group assertions pytest would otherwise split (PT018).
-"tests/**/*.py" = ["S101", "PLR2004", "ARG", "ANN401", "PT018"]
+"tests/**/*.py" = ["S101", "PLR2004", "ARG", "ANN", "PT018", "PT011", "D", "T201", "S108", "RUF043", "RUF059", "RUF009", "N818", "BLE001", "S603", "FBT001"]
+# The CLI and the run-tree observer print to stdout on purpose.
+"src/adag/cli.py" = ["T201"]
+"src/adag/observers.py" = ["T201"]
+# SVG layout uses literal pixel and ratio constants; asserts guard layout invariants.
+"src/adag/visualization.py" = ["PLR2004", "S101", "FBT001"]
+# The worker command is built from our own module name, never from user input.
+"src/adag/dispatch.py" = ["S603"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["adag"]
@@ -103,7 +144,7 @@ known-first-party = ["adag"]
 [tool.pyright]
 include = ["src", "tests"]
 extraPaths = ["src"]
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

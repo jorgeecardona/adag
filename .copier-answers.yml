@@ -11,5 +11,5 @@ has_rust: false
 import_package: adag
 license_year: 2026
 project_slug: adag
-python_floor: '3.12'
+python_floor: '3.13'
 test_dir: tests
