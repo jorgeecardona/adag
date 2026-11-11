@@ -184,3 +184,62 @@ def test_default_observer_logs_progress_events(tmp_path: Path):
     with capture_logs() as logs:
         Pipeline(build_two_step_graph(), cache_dir=tmp_path).execute()
     assert "step.saved" in [entry["event"] for entry in logs]
+
+
+def test_protocol_only_observer_without_on_event_completes_a_run(tmp_path: Path) -> None:
+    """An observer written before ``on_event`` existed (no NullObserver base) still works."""
+    from adag import Pipeline
+
+    class OldObserver:
+        def __init__(self) -> None:
+            self.started: list[str] = []
+
+        def on_step_start(self, step: str) -> None:
+            self.started.append(step)
+
+        def on_step_cached(self, step: str) -> None: ...
+
+        def on_step_finished(self, step: str, seconds: float) -> None: ...
+
+        def on_fan_out_branch(self, key: str) -> None: ...
+
+        def on_fan_out_branch_failed(self, key: str, error: str) -> None: ...
+
+    observer = OldObserver()
+    pipeline = Pipeline(_compat_step()(), cache_dir=tmp_path)
+    pipeline.execute(observer=observer)  # pyright: ignore[reportArgumentType]
+    assert observer.started
+
+
+def test_deprecated_domain_hooks_are_no_ops_that_warn_once() -> None:
+    import warnings
+
+    from adag import LoggingObserver, deferred
+
+    deferred._WARNED_DOMAIN_HOOKS.clear()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        LoggingObserver().on_embedding([0.1])
+        LoggingObserver().on_embedding([0.2])
+        LoggingObserver().on_model_refused("m")
+    messages = [str(w.message) for w in caught if w.category is DeprecationWarning]
+    assert len(messages) == 2
+    assert "on_embedding" in messages[0] and "on_model_refused" in messages[1]
+
+
+def _compat_step():
+    from dataclasses import dataclass
+
+    from pydantic import BaseModel
+
+    from adag import Step
+
+    class Value(BaseModel):
+        n: int
+
+    @dataclass(frozen=True)
+    class One(Step[Value]):
+        def run(self) -> Value:
+            return Value(n=1)
+
+    return One()

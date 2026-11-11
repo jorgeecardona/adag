@@ -29,7 +29,7 @@ from typing import IO, Any, Protocol
 import structlog
 
 from adag.cache_store import CacheStore
-from adag.deferred import BranchRef, ResolveContext
+from adag.deferred import BranchRef, ResolveContext, send_event
 from adag.step import StepResult
 
 logger = structlog.get_logger()
@@ -262,8 +262,8 @@ class RemoteDispatcher:
         queue: deque[_Queued] = deque()
         for ref, sub in branches:
             if sub.is_cached(store, params=context.params):
-                context.observer.on_event(
-                    "branch.cache_hit", {"key": ref.key, "hash": ref.branch_hash}
+                send_event(
+                    context.observer, "branch.cache_hit", {"key": ref.key, "hash": ref.branch_hash}
                 )
                 results[ref.key] = sub.load(store, params=context.params)
             else:
@@ -320,7 +320,8 @@ class RemoteDispatcher:
             job = BranchJob(
                 item.ref, payload, cache_dir, item.attempt, self.resources, self.store_url
             )
-            context.observer.on_event(
+            send_event(
+                context.observer,
                 "branch.dispatch",
                 {"key": item.ref.key, "attempt": item.attempt, "of": self.policy.max_retries + 1},
             )

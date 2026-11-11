@@ -96,8 +96,6 @@ MISSING: set[str] = {
     "adag.base.CachedStep.load",
     "adag.base.CachedStep.validate",
     "adag.base.CachedStep.metadata",
-    "adag.deferred.NullObserver.on_embedding",
-    "adag.deferred.NullObserver.on_model_refused",
     "adag.deferred.InlineDispatcher.dispatch",
     "adag.dispatch.SubprocessDispatcher.dispatch",
 }

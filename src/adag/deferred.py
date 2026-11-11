@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import warnings
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -102,6 +103,32 @@ class NullObserver:
     def on_event(self, event: str, fields: dict[str, Any]) -> None:
         pass
 
+    def on_embedding(self, vector: list[float]) -> None:
+        """Deprecated no-op, kept for code that calls it. Use a typed hook (see Observers docs)."""
+        _warn_domain_hook("on_embedding")
+
+    def on_model_refused(self, model: str) -> None:
+        """Deprecated no-op, kept for code that calls it. Use a typed hook (see Observers docs)."""
+        _warn_domain_hook("on_model_refused")
+
+
+_WARNED_DOMAIN_HOOKS: set[str] = set()
+
+
+def _warn_domain_hook(name: str) -> None:
+    """Warn once per process: these hooks are called per item, and ``-W error`` must not fire
+    on every call.
+    """
+    if name in _WARNED_DOMAIN_HOOKS:
+        return
+    _WARNED_DOMAIN_HOOKS.add(name)
+    warnings.warn(
+        f"NullObserver.{name} is deprecated and does nothing; declare a typed hook instead "
+        "(see the Observers docs)",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
 
 _CURRENT_OBSERVER: contextvars.ContextVar[PipelineObserver] = contextvars.ContextVar(
     "pipeline_observer",
@@ -127,7 +154,18 @@ def emit(event: str, **fields: Any) -> None:
     Outside a run there is no observer, so the event is dropped. Warnings and errors are
     logged with structlog directly instead, so an observer can never hide them.
     """
-    current_observer().on_event(event, fields)
+    send_event(current_observer(), event, fields)
+
+
+def send_event(observer: PipelineObserver, event: str, fields: dict[str, Any]) -> None:
+    """Call ``observer.on_event`` when it has one; skip an observer written before the hook existed.
+
+    ``on_event`` was added in 0.2.6. An observer that implements the Protocol without inheriting
+    ``NullObserver`` may not have it, and a progress event must never crash a run.
+    """
+    hook = getattr(observer, "on_event", None)
+    if hook is not None:
+        hook(event, fields)
 
 
 @contextlib.contextmanager
