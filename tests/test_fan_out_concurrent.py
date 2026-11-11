@@ -8,6 +8,7 @@ ContextVars reach every worker, that the results dict is correct, and that a bra
 import threading
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 from pydantic import BaseModel
@@ -137,3 +138,22 @@ def test_threaded_results_keep_the_order_of_over() -> None:
     )()
     results = Pipeline(fan).execute(observer=NullObserver())
     assert list(results) == [f"k{index}" for index in range(5)]
+
+
+def test_fan_out_resolves_under_aexecute(tmp_path: Path):
+    """A fan-out runs on the async path instead of raising NotImplementedError."""
+    import asyncio
+
+    class Twice(BaseModel):
+        v: int
+
+    @dataclass(frozen=True)
+    class Double(Step[Twice]):
+        n: int
+
+        def run(self, n: int) -> Twice:
+            return Twice(v=n * 2)
+
+    fan = FanOutStep(over={"a": 1, "b": 2}, factory=lambda key, n: Double(n=n)())()
+    result = asyncio.run(Pipeline(fan, cache_dir=tmp_path / "cache").aexecute())
+    assert {key: r.v for key, r in result.items()} == {"a": 2, "b": 4}

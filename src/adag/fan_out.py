@@ -22,6 +22,7 @@ the same ``ResolveContext`` that drives the parent pipeline.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from collections.abc import Callable, Hashable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
@@ -106,6 +107,14 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                 return self._resolve_branches_sequentially(context)
             return self._resolve_branches_concurrently(context, self.max_workers)
         return self._dispatch_branches(context)
+
+    async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> dict[K, V]:
+        """Async entry: run ``execute`` in a worker thread so the event loop is not blocked.
+
+        Branches resolve on the sync path inside that thread, the same as under ``execute``.
+        ``asyncio.to_thread`` copies the current context, so the observer reaches the branches.
+        """
+        return await asyncio.to_thread(self.execute, context, **kwargs)
 
     def _resolve_branches_sequentially(self, context: ResolveContext) -> dict[K, V]:
         """Resolve each branch under the parent context, one after another."""

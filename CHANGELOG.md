@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `adag resolve-branch` takes a module name (`pkg.pipeline`) as well as a file path, and
   `--expect-hash`. A worker whose branch hash differs exits 2 and is not retried.
 
+### Fixed
+
+- A `FanOutStep` runs under `Pipeline.aexecute()`. It raised `NotImplementedError` before.
+
 ### Changed
 
 - Calling a step raises `TypeError` when an upstream step is both a field and an input. Wire it
