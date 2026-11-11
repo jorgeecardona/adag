@@ -11,6 +11,9 @@ import pytest
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 TOP_LEVEL = [
+    "BranchExecutionError",
+    "Parameter",
+    "StepMode",
     "SVG",
     "AsyncExecutor",
     "AsyncStep",
@@ -85,18 +88,7 @@ DEEP = [
 KEPT_REMOVED = {"BatchDispatcher", "adag.output.StepOutput"}
 
 # Not restored yet. Each 0.3.0 commit removes the names it restores; empty when done.
-MISSING: set[str] = {
-    "BranchExecutionError",
-    "Parameter",
-    "StepMode",
-    "adag.base.CachedStep.output_path",
-    "adag.base.CachedStep.is_cached",
-    "adag.base.CachedStep.is_partial",
-    "adag.base.CachedStep.save",
-    "adag.base.CachedStep.load",
-    "adag.base.CachedStep.validate",
-    "adag.base.CachedStep.metadata",
-}
+MISSING: set[str] = set()
 
 
 def _resolve(module: str, path: str) -> object:

@@ -775,7 +775,7 @@ def test_input_param_values_hash_by_value_not_repr(tmp_path: Path):
     assert graph.content_hash(params={"a": 2}) != graph.content_hash(params={"a": "2"})
 
 
-def test_cached_step_is_a_deprecated_alias_of_step():
+def test_cached_step_subclass_warns_and_runs_in_a_pipeline():
     from adag import CachedStep
 
     with pytest.warns(DeprecationWarning, match="subclass Step"):
