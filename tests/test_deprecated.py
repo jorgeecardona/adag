@@ -5,6 +5,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ class Echo(Step[Out]):
 
 def test_parameter_of_builds_a_typed_input_param_and_warns(tmp_path: Path) -> None:
     with pytest.warns(DeprecationWarning, match="adag.Parameter"):
-        param_cls = adag.Parameter
+        param_cls: Any = adag.Parameter
     with pytest.warns(DeprecationWarning, match="InputParam"):
         code = param_cls.of("code", str)
     assert code == InputParam("code", value_type=str)
