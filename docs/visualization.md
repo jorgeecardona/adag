@@ -11,3 +11,12 @@ cached, pending, or blocked (an input is missing).
 
 In a notebook, the returned `SVG` object displays inline. Use `SvgOptions` to change the theme
 or hide the per-step parameters.
+
+## Other entry points
+
+- `adag.visualization.render_graph_svg(nodes, edges)`: draw a graph from your own
+  `NodeMetadata` list and `(source, target)` pairs. The old private name `_render_graph_svg`
+  still works.
+- `adag.visualization.compute_state(node, cache_dir)`: the state a node is drawn with
+  (`CACHED`, `PENDING`, `BLOCKED`, `SOURCE`), read from the node's cache key.
+- `dag(...)` returns an `SVG` object. A notebook renders it inline; `str(svg)` is the SVG text.

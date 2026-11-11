@@ -17,7 +17,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -58,6 +58,7 @@ class Node:
     step: Step[Any] | None
     kind: str
     title: str = ""
+    result: StepResult[Any] | None = None  # the graph node; its cache key covers the inputs
 
 
 @dataclass(frozen=True)
@@ -192,7 +193,13 @@ def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
                 name = f"{base}#{suffix}"
                 suffix += 1
             placed[id(step)] = name
-            nodes[name] = Node(name=name, step=step, kind="step", title=label)
+            nodes[name] = Node(
+                name=name,
+                step=step,
+                kind="step",
+                title=label,
+                result=cast("StepResult[Any]", deferred),
+            )
             for input_name, source in deferred.sources.items():
                 if isinstance(source, Deferred):
                     source_name = _visit(source)
@@ -218,6 +225,9 @@ def compute_state(node: Node, cache_dir: Path | None) -> str:
     h = node.step.content_hash() if hasattr(node.step, "content_hash") else None
     if h is None:
         return "BLOCKED"
+    if node.result is not None:
+        # The pipeline caches under the node key (step and inputs), not the step hash.
+        return "CACHED" if node.result.is_cached(cache_dir) else "PENDING"
     is_cached_attr: object = getattr(node.step, "is_cached", None)
     if is_cached_attr is not None:
         cached = is_cached_attr(cache_dir) if callable(is_cached_attr) else is_cached_attr
@@ -1296,7 +1306,7 @@ def _render_svg(
     return svg_string
 
 
-def _render_graph_svg(
+def render_graph_svg(
     nodes: list[NodeMetadata],
     edges: list[tuple[str, str]],
     *,
@@ -1304,11 +1314,10 @@ def _render_graph_svg(
     final_step_name: str | None = None,
     options: SvgOptions = _DEFAULT_SVG_OPTIONS,
 ) -> str:
-    """Internal: layout + render given explicit node metadata + edge pairs.
+    """Return the SVG for explicit node metadata and ``(source, target)`` edge pairs.
 
-    Private to the dag package so callers can't bypass the pipeline-shaped
-    public entry points (``dag(output)`` for live Deferred chains,
-    ``render_pipeline_svg(pipeline_dir)`` for on-disk pipeline manifests).
+    Use it to draw a graph that is not a live pipeline, for example one built from your own
+    records. ``dag(output)`` and ``render_pipeline_svg(pipeline_dir)`` call the same layout.
     """
     # Strip params before layout, not at paint time: the box sizes are computed
     # from the same metadata, so dropping them later would leave empty space.
@@ -1319,6 +1328,9 @@ def _render_graph_svg(
         nodes_dict, edges, output_label=output_label, final_step_name=final_step_name
     )
     return _render_layout(layout_nodes, edge_pairs, options)
+
+
+_render_graph_svg = render_graph_svg  # the first-release private name, kept for old callers
 
 
 def _humanize_step_name(name: str) -> str:
@@ -1395,6 +1407,6 @@ def render_pipeline_svg(
             edges.append((src_node, tgt_node))
 
     final_step_name = pipeline_data.get("output") or step_dirs[-1]
-    return _render_graph_svg(
+    return render_graph_svg(
         nodes, edges, output_label="", final_step_name=final_step_name, options=options
     )

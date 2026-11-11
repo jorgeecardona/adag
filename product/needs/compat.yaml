@@ -146,3 +146,7 @@ needs:
       can keep that call working, through a public name.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_visualization.py::test_dag_helper_renders_inline_in_a_notebook"
+      - "test:tests/test_visualization.py::test_render_graph_svg_is_public_and_old_name_still_works"
+      - "test:tests/test_visualization.py::test_compute_state_sees_a_pipeline_cached_node"

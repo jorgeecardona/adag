@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `adag.visualization.render_graph_svg`: draw a graph from your own node metadata. The private
+  name `_render_graph_svg` still works.
 - `SerializableStep.from_directory` has a default that rebuilds a step from its `spec`. A step
   it cannot rebuild now raises `TypeError` at save time instead of failing at load time.
 - `AdagDeprecationWarning`: every deprecated name and call form warns with it. It is a
@@ -37,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `dag(..., cache_dir=)` draws pipeline-cached steps as cached. It read the step hash, which the
+  pipeline does not use as a key, so every step showed as pending.
 - A `FanOutStep` runs under `Pipeline.aexecute()`. It raised `NotImplementedError` before.
 
 ### Changed

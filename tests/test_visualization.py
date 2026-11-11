@@ -326,3 +326,34 @@ def test_render_pipeline_svg_options_drop_styles_background_and_params(tmp_path:
     assert canvas_height(compact) < canvas_height(default)
 
     assert dark != default
+
+
+def test_dag_helper_renders_inline_in_a_notebook() -> None:
+    """``dag(output)`` returns an object Jupyter renders through ``_repr_svg_``."""
+    from adag import dag as dag_helper
+
+    svg = dag_helper(MiddleStep()(source=LeafStep()(x=3)))
+    assert svg._repr_svg_().startswith("<svg")  # pyright: ignore[reportPrivateUsage]
+
+
+def test_render_graph_svg_is_public_and_old_name_still_works() -> None:
+    from adag.visualization import NodeMetadata, _render_graph_svg, render_graph_svg
+
+    nodes = [
+        NodeMetadata(name="a", kind="step", title="A"),
+        NodeMetadata(name="b", kind="step", title="B"),
+    ]
+    assert render_graph_svg(nodes, [("a", "b")]).startswith("<svg")
+    assert _render_graph_svg is render_graph_svg
+
+
+def test_compute_state_sees_a_pipeline_cached_node(tmp_path: Path) -> None:
+    """A node cached by a pipeline run shows CACHED, read from its node key."""
+    from adag import Pipeline
+    from adag.visualization import compute_state, walk
+
+    output = MiddleStep()(source=LeafStep()(x=3))
+    nodes, _ = walk(output)
+    assert {compute_state(n, tmp_path) for n in nodes if n.step is not None} == {"PENDING"}
+    Pipeline(output, cache_dir=tmp_path).execute()
+    assert {compute_state(n, tmp_path) for n in nodes if n.step is not None} == {"CACHED"}
