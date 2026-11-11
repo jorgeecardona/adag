@@ -5,7 +5,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/adag.svg)](https://pypi.org/project/adag/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Another DAG: run async tasks in dependency order.
+Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 
 ## Install
 
@@ -17,22 +17,68 @@ Requires Python 3.13+.
 
 ## Quickstart
 
-```python
-import adag
+Each step is a frozen dataclass. Call a step to wire it into the graph, then run the
+graph with a `Pipeline`.
 
-# ...
+```python
+from dataclasses import dataclass
+from pathlib import Path
+
+from pydantic import BaseModel
+
+from adag import InputParam, Pipeline, Step
+
+
+class Number(BaseModel):
+    value: int
+
+
+@dataclass(frozen=True)
+class Square(Step[Number]):
+    def run(self, x: int) -> Number:
+        print("computing square")
+        return Number(value=x * x)
+
+
+@dataclass(frozen=True)
+class AddOne(Step[Number]):
+    def run(self, n: Number) -> Number:
+        return Number(value=n.value + 1)
+
+
+x = InputParam[int]("x")
+total = AddOne()(n=Square()(x=x))
+pipeline = Pipeline(total, cache_dir=Path("cache"))
+
+print(pipeline.execute(x=4))  # computes both steps
+print(pipeline.execute(x=4))  # served from the cache
 ```
+
+The second run reads both results from `cache/` and does not call `Square.run` again:
+
+```text
+computing square
+value=17
+value=17
+```
+
+(output trimmed: structlog lines removed)
 
 ## Why adag
 
-One short paragraph: the problem adag solves and who it is for. What makes it a
-better choice than the obvious alternative.
+A step's cache key is a hash of its fields, its inputs, and its source code. Change any of
+them and that step and everything downstream recompute; nothing else does. Use it for data
+and ML pipelines where steps are slow and you rerun the graph often.
 
 ## Key features
 
-- ...
-- ...
-- ...
+- Content-addressed cache: a code edit invalidates only the steps it touches.
+- Sync and async steps (`Step`, `AsyncStep`), with a parallel executor.
+- `FanOutStep` runs a sub-graph per key; `BatchStep` caches each item on its own.
+- Cache backends: filesystem, memory, SQLite, SQLAlchemy (`adag[sql]`), Redis (`adag[redis]`).
+- Save a pipeline to disk and load it back with identical hashes.
+- SVG rendering of the graph, and an `adag run pipeline.py` CLI.
+- Run fan-out branches in subprocesses or AWS Batch jobs, joined through the cache.
 
 ## Links
 

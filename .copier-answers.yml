@@ -3,7 +3,7 @@ _commit: v0.2.0
 _src_path: _starter
 author_email: jorgeecardona@gmail.com
 author_name: Jorge Cardona
-description: Another DAG: run async tasks in dependency order.
+description: Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 dist_name: adag
 gitlab_group: cardona-oss
 has_examples: false

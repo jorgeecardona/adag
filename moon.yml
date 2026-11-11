@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://moonrepo.dev/schemas/project.json
 #
-# adag — Another DAG: run async tasks in dependency order.
+# adag — Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 # Single project at the repo root. Every task runs as a system command via `uv run`
 # (see .moon/toolchain.yml for why moon's Python toolchain is not used). CI runs one
 # `moon run :ci` (lint, format-check, typecheck, test, test-floor, build, docs,

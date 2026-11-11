@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repo. Humans: read README.md and C
 
 ## Overview
 
-adag: Another DAG: run async tasks in dependency order.
+adag: Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 
 ## Build
 
