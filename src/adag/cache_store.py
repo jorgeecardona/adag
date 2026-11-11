@@ -93,7 +93,8 @@ class FileSystemCacheStore:
         path = self._path(key)
         try:
             return path.read_text()
-        except FileNotFoundError:
+        except (FileNotFoundError, IsADirectoryError):
+            # A directory is a step result written by save_result, not a text value.
             return None
 
     def set(self, key: str, value: str) -> None:
@@ -111,10 +112,17 @@ class FileSystemCacheStore:
         if not self.root.exists():
             return
         for p in self.root.rglob("*"):
-            if p.is_file():
+            if p.is_file() and not self._inside_path_result(p):
                 key = p.relative_to(self.root).as_posix()
                 if key.startswith(prefix):
                     yield key
+
+    def _inside_path_result(self, path: Path) -> bool:
+        """Return whether ``path`` is inside a directory result (a sibling ``<dir>.done`` exists)."""
+        for parent in path.relative_to(self.root).parents:
+            if parent != Path(".") and self.root.joinpath(f"{parent}.done").exists():
+                return True
+        return False
 
 
 class _RedisLike(Protocol):

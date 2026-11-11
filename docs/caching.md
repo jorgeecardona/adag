@@ -43,7 +43,8 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 - Only the step's own class body is hashed. An edit to a base class or to a helper function
   the step calls does not change the key. Change a field or the `kind` version when it should.
 - Any edit inside the class body changes the key, comments included.
-- A step whose result is not a `BaseModel` is not cached.
+- A step whose result is not a `BaseModel` is not cached, unless it overrides `save_result` and
+  `load_result` (see below).
 - Keys are 12 hex characters (48 bits) of SHA-256.
 
 ## On disk
@@ -51,3 +52,34 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 Each result is `<cache_dir>/<key>` (JSON) plus `<key>.done`, written after the result. A
 result without its `.done` file, an empty file, or a file that does not parse is a miss.
 With `store=`, the same two keys go to the store (see [Cache stores](cache-stores.md)).
+
+## Results that are not one JSON document
+
+Override `save_result(result, path)` and `load_result(path)` to cache a result in your own
+format: JSONL, a custom file, a file plus a sidecar, or a directory.
+
+- `path` is `<cache_dir>/<key>`, where the key covers the step, its inputs and the run params.
+- `save_result` creates `path` as a file or a directory. adag passes a temporary path and renames
+  it into place, then writes `<key>.done`.
+- `load_result` reads it back. Raise any exception to mark the entry invalid: the step runs again.
+- Downstream steps get the value `load_result` returns, on a fresh run and on a cached run.
+- Override both methods, or neither. Overriding one raises `TypeError` when the class is defined.
+- These results live under `cache_dir`. A run with `store=` and no `cache_dir` raises before the
+  step runs. `BatchStep` uses the same two methods for its assembled result.
+
+```python
+--8<-- "docs/examples/path_result.py"
+```
+
+```text
+computing records
+[{'i': 0}, {'i': 1}, {'i': 2}]
+[{'i': 0}, {'i': 1}, {'i': 2}]
+```
+
+(output trimmed: log lines removed)
+
+To port a deprecated `CachedStep` override: rename `save(self, result, cache_dir)` to
+`save_result(self, result, path)` and write to `path` instead of `self.output_path(cache_dir)`.
+Rename `load` to `load_result(self, path)`, and move the checks of `validate` into
+`load_result` as exceptions. Each result is computed once more, under its new key.

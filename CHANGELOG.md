@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Step.save_result` and `Step.load_result`: cache a result that is not one JSON document
+  (JSONL, a directory, a file plus a sidecar), under a path keyed on the step and its inputs.
+  `BatchStep` uses them too.
 - `InputParam(..., value_type=T)` tells `adag run` how to parse `--param`, so a required `str`
   param keeps `007` as `"007"`.
 - `RemoteDispatcher(backend)` runs fan-out branches as jobs on any scheduler. A backend

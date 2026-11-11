@@ -1,0 +1,131 @@
+who: developer whose existing code was written against the first release (b62b906)
+
+needs:
+
+  - id: CO-1
+    text: >
+      When old code imports a name from the first release, the developer can still import it, with
+      a warning that names the replacement when the name is deprecated.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_compat_b62b906.py::test_top_level_name_resolves"
+      - "test:tests/test_compat_b62b906.py::test_deep_name_resolves"
+      - "test:tests/test_deprecated.py::test_import_adag_does_not_warn"
+
+  - id: CO-2
+    text: >
+      When old code calls CachedStep.output_path, save, load or validate directly, the developer can
+      get the same files and results as in the first release (136 subclasses measured).
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+      - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/2"}
+    proofs:
+      - "test:tests/test_base.py::test_save_then_load_roundtrip"
+      - "test:tests/test_base.py::test_save_then_is_cached"
+
+  - id: CO-3
+    text: >
+      When a step's result is not one JSON document (JSONL, a custom file, a file plus a sidecar, a
+      directory), the developer can cache it by overriding save_result and load_result, under a path
+      keyed on the step, its inputs and its params.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+      - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/2"}
+    proofs:
+      - "test:tests/test_path_results.py::test_jsonl_result_is_cached_and_read_back"
+      - "test:tests/test_path_results.py::test_different_inputs_get_different_paths"
+      - "test:tests/test_path_results.py::test_file_plus_sidecar_result"
+      - "test:tests/test_path_results.py::test_directory_result_gets_its_final_path"
+      - "test:tests/test_path_results.py::test_invalid_entry_is_a_miss_and_recomputes"
+      - "test:tests/test_path_results.py::test_store_only_run_raises_before_the_body"
+
+  - id: CO-4
+    text: >
+      When a BatchStep assembles a result that is not one JSON document, the developer can cache it
+      with the same save_result and load_result, next to the per-item cache.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_path_results.py::test_batch_step_caches_a_path_result_next_to_its_items"
+
+  - id: CO-5
+    text: >
+      When the developer builds a Pipeline with caller metadata, they can find the same metadata on
+      the pipeline loaded with from_directory.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+      - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/1"}
+
+  - id: CO-6
+    text: >
+      When a step or a helper it calls sends a typed domain value to the observer, the developer can
+      receive it type-checked, from both context.observer and current_observer(), and a plain
+      NullObserver keeps working.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+      - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/3"}
+
+  - id: CO-7
+    text: >
+      When the developer schedules async steps themselves, they can call aresolve on a node directly,
+      as a documented public API.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+
+  - id: CO-8
+    text: >
+      When old code builds an ItemCache with positional arguments (69 measured sites, 1 to 3
+      arguments), the developer can keep that call working.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+
+  - id: CO-9
+    text: >
+      When a project runs Python 3.12, the developer can install and import adag.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+
+  - id: CO-10
+    text: >
+      When a script or notebook uses a deprecated name, the developer can see the warning without
+      changing warning filters, and it names the replacement and the removal version.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+
+  - id: CO-11
+    text: >
+      When old code passes a dispatcher with only dispatch(), or builds ResolveContext and
+      BranchPolicy positionally, the developer can keep the first-release behaviour.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_dispatch_compat.py::test_one_branch_dispatcher_still_resolves_a_fan_out"
+      - "test:tests/test_dispatch_compat.py::test_resolve_context_positional_fields_keep_their_first_release_meaning"
+      - "test:tests/test_dispatch_compat.py::test_branch_policy_positional_fields_keep_their_first_release_meaning"
+
+  - id: CO-12
+    text: >
+      When items were saved under keys built with ItemCache.key or the first-release hash helpers,
+      the developer can read them back after upgrading, so paid item calls do not run again.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_deprecated.py::test_hash_helpers_keep_first_release_bytes"
+
+  - id: CO-13
+    text: >
+      When the developer subclasses SerializableStep, they can read in the docs what to implement,
+      and a subclass that cannot be loaded fails at save time, not at load time.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+
+  - id: CO-14
+    text: >
+      When a notebook renders a graph with the visualization helpers it uses today, the developer
+      can keep that call working, through a public name.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}

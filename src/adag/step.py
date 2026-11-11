@@ -26,6 +26,7 @@ import dataclasses
 import hashlib
 import json
 import os
+import shutil
 import time
 import warnings
 from abc import abstractmethod
@@ -34,7 +35,7 @@ from enum import Enum
 from pathlib import Path
 from threading import Event
 from typing import Any, ClassVar, Generic, TypeAlias, TypeVar, get_args, get_origin, get_type_hints
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import structlog
 from pydantic import BaseModel
@@ -138,6 +139,13 @@ class StepTimeout(TimeoutError):
     """
 
 
+def _overrides(cls: type, name: str) -> bool:
+    """Return whether ``cls`` replaces ``Step``'s method ``name``."""
+    own: object = getattr(cls, name)
+    base: object = getattr(Step, name)
+    return own is not base
+
+
 @dataclasses.dataclass(frozen=True, eq=False)
 class Step(Generic[Out]):
     """A step in the DAG — a frozen dataclass; subclasses add config fields and run().
@@ -186,6 +194,13 @@ class Step(Generic[Out]):
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
+        overrides_save = _overrides(cls, "save_result")
+        overrides_load = _overrides(cls, "load_result")
+        if overrides_save != overrides_load:
+            raise TypeError(
+                f"{cls.__name__} overrides only one of save_result/load_result; override both, "
+                "so a cached result can be read back."
+            )
         for parent in getattr(cls, "__orig_bases__", []):
             origin = get_origin(parent)
             # Accept both `Step[X]` and any subclass of Step that's also generic
@@ -212,6 +227,40 @@ class Step(Generic[Out]):
         override alongside ``result_model`` when the result type is generic.
         """
         return type(self).return_type
+
+    def save_result(self, result: Out, path: Path) -> None:
+        """Write ``result`` to ``path``. Override with ``load_result`` for a non-JSON result.
+
+        ``path`` does not exist yet. Create it as a file or as a directory (a directory holds a
+        result plus any sidecar files). adag passes a temporary path and renames it into place
+        when this returns, so a crash never leaves a half-written result. The default writes the
+        ``BaseModel`` result as JSON.
+        """
+        if not isinstance(result, BaseModel):
+            raise TypeError(
+                f"{type(self).__name__}: the default save_result writes a BaseModel; got "
+                f"{type(result).__name__}. Override save_result and load_result."
+            )
+        atomic_write_text(path, result.model_dump_json(indent=2))
+
+    def load_result(self, path: Path) -> Out:
+        """Read the result that ``save_result`` wrote at ``path``.
+
+        Raise any exception when the entry is not valid: adag treats it as a cache miss and runs
+        the step again. The default reads JSON with ``result_model()``.
+        """
+        model = self.result_model()
+        if model is None:
+            raise TypeError(f"{type(self).__name__} has no BaseModel result type to load")
+        return model.model_validate_json(path.read_text())  # pyright: ignore[reportReturnType]
+
+    @classmethod
+    def caches_to_path(cls) -> bool:
+        """Return whether this step overrides ``save_result``/``load_result``.
+
+        Such a step is cached under ``cache_dir`` as a file or directory, never in a ``store``.
+        """
+        return _overrides(cls, "save_result")
 
     def accepts_from(self, producer: Step[Any] | str) -> bool:
         """Return whether this step can consume ``producer``'s output port.
@@ -489,8 +538,11 @@ class StepResult(Deferred[Out]):
         # turns back into the execution tree.
         context.observer.on_step_start(step_name)
 
-        store = context.result_store()
-        loaded = self._try_load(store, params=context.params) if store is not None else None
+        if self.step.caches_to_path():
+            loaded = self._try_load_path(self._result_dir(context), context.params)
+        else:
+            store = context.result_store()
+            loaded = self._try_load(store, params=context.params) if store is not None else None
         if loaded is not None:
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
@@ -509,10 +561,16 @@ class StepResult(Deferred[Out]):
         """
         step_name = type(self.step).__name__
         context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
-        store = context.result_store()
-        if store is not None and self.step.result_model() is not None:
-            self._save(result, store, params=context.params)
-            emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
+        if self.step.caches_to_path():
+            cache_dir = self._result_dir(context)
+            if cache_dir is not None:
+                result = self._save_path(result, cache_dir, context.params)
+                emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
+        else:
+            store = context.result_store()
+            if store is not None and self.step.result_model() is not None:
+                self._save(result, store, params=context.params)
+                emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
         with context._lock:
             context._resolved[id(self)] = result
         return result
@@ -681,9 +739,69 @@ class StepResult(Deferred[Out]):
     def is_cached(self, where: Path | CacheStore, params: dict[str, Any] | None = None) -> bool:
         """Return True when a complete, valid result for this node is in ``where``.
 
-        ``where`` is a cache directory or a ``CacheStore``.
+        ``where`` is a cache directory or a ``CacheStore``. For a step that overrides
+        ``save_result``, ``where`` must be a directory, and only the result and its ``.done``
+        marker are checked (no load), so the check stays cheap.
         """
+        if self.step.caches_to_path():
+            key = self.content_hash(params=params)
+            root = _path_root(where, self.step)
+            return (
+                key is not None
+                and root.joinpath(key + ".done").exists()
+                and root.joinpath(key).exists()
+            )
         return self._try_load(where, params=params) is not None
+
+    def _result_dir(self, context: ResolveContext) -> Path | None:
+        """The directory for a path result: ``cache_dir``. A ``store`` cannot hold a path.
+
+        Raises:
+            ValueError: the run has a ``store`` and no ``cache_dir``. Raised before the body runs.
+        """
+        if context.cache_dir is None and context.store is not None:
+            raise ValueError(
+                f"{type(self.step).__name__} caches to a path (it overrides save_result); "
+                "a CacheStore holds only text. Pass cache_dir= as well."
+            )
+        return context.cache_dir
+
+    def _try_load_path(self, cache_dir: Path | None, params: dict[str, Any] | None) -> Out | None:
+        """Load a path result with ``load_result``; None on a miss or an invalid entry."""
+        key = self.content_hash(params=params)
+        if cache_dir is None or key is None:
+            return None
+        path = cache_dir.joinpath(key)
+        if not cache_dir.joinpath(key + ".done").exists() or not path.exists():
+            return None
+        try:
+            return self.step.load_result(path)
+        except Exception as exc:
+            emit("step.cache.invalid_entry", step=type(self.step).__name__, key=key, error=str(exc))
+            return None
+
+    def _save_path(self, result: Out, cache_dir: Path, params: dict[str, Any] | None) -> Out:
+        """Save with ``save_result`` to a temp path, rename it into place, write the marker, and
+        return ``load_result`` of the final path.
+
+        Returning the reloaded value means a fresh run and a cached run hand downstream the same
+        thing, and a result that refers to its own location gets the final path.
+        """
+        key = self.content_hash(params=params)
+        if key is None:
+            return result
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        final = cache_dir.joinpath(key)
+        tmp = cache_dir.joinpath(f"{key}.tmp-{os.getpid()}-{uuid4().hex[:8]}")
+        try:
+            self.step.save_result(result, tmp)
+            cache_dir.joinpath(key + ".done").unlink(missing_ok=True)
+            _remove_path(final)
+            tmp.rename(final)
+        finally:
+            _remove_path(tmp)
+        atomic_write_text(cache_dir.joinpath(key + ".done"), datetime.now(UTC).isoformat())
+        return self.step.load_result(final)
 
     def _try_load(
         self, where: Path | CacheStore, params: dict[str, Any] | None = None
@@ -747,6 +865,11 @@ class StepResult(Deferred[Out]):
         Raises:
             ValueError: no result is stored for this node.
         """
+        if self.step.caches_to_path():
+            loaded = self._try_load_path(_path_root(where, self.step), params)
+            if loaded is None:
+                raise ValueError(f"Output for '{type(self.step).__name__}' not found.")
+            return loaded
         key = self.content_hash(params=params)
         result_type = self.step.result_model()
         text = _as_store(where).get(key) if key is not None else None
@@ -756,6 +879,30 @@ class StepResult(Deferred[Out]):
 
     def __repr__(self) -> str:
         return f"StepResult({type(self.step).__name__})"
+
+
+def _path_root(where: Path | CacheStore, step: Step[Any]) -> Path:
+    """The directory of a path result: ``where`` itself, or a ``FileSystemCacheStore``'s root.
+
+    Raises:
+        TypeError: ``where`` is a store that cannot hold a path.
+    """
+    if isinstance(where, Path):
+        return where
+    if isinstance(where, FileSystemCacheStore):
+        return where.root
+    raise TypeError(
+        f"{type(step).__name__} caches to a path (it overrides save_result); pass a cache "
+        f"directory, not a {type(where).__name__}."
+    )
+
+
+def _remove_path(path: Path) -> None:
+    """Delete a file or a directory tree at ``path``, if any."""
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
 
 
 def _as_store(where: Path | CacheStore) -> CacheStore:
