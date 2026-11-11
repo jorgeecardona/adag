@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v0.2.0
+_src_path: _starter
+author_email: jorgeecardona@gmail.com
+author_name: Jorge Cardona
+description: Another DAG: run async tasks in dependency order.
+dist_name: adag
+gitlab_group: cardona-oss
+has_examples: false
+has_rust: false
+import_package: adag
+license_year: 2026
+project_slug: adag
+python_floor: '3.12'
+test_dir: tests
