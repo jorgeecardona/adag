@@ -43,6 +43,9 @@ ran in other processes: True
 | `retry_delay_seconds` | 0.0 | wait before a retry |
 | `result_grace_seconds` | 5.0 | wait for the result after a job SUCCEEDED |
 
+`SubprocessDispatcher()` with no policy polls every 0.05 s. If you pass a policy, set
+`poll_interval_seconds=0.05` yourself, or local branches are polled every 5 s.
+
 A worker exits 2 when it cannot find its branch, or when it derives a different branch hash than
 the main process (`--expect-hash`). That means the worker runs different code. It is not retried.
 
@@ -71,6 +74,24 @@ Rules for a backend:
 `Resources(cpus=, memory_mb=, gpus=)` is passed on every `BranchJob`. `None` means the
 scheduler's default.
 
+Build the dispatcher and pass it to `execute()`. This uses the AWS Batch backend below:
+
+```python
+from adag.cache_store import store_from_url
+from adag.dispatch import BranchPolicy, RemoteDispatcher, Resources
+
+url = "postgresql://cache-host/adag"
+pipeline = Pipeline(per_key, store=store_from_url(url))
+dispatcher = RemoteDispatcher(
+    AwsBatchBackend("my-queue", "adag-worker"),
+    policy=BranchPolicy(max_retries=2, timeout_seconds=3600, queue_timeout_seconds=7200),
+    resources=Resources(cpus=2, memory_mb=4096),
+    max_concurrent=50,
+    store_url=url,
+)
+pipeline.execute(dispatcher=dispatcher)
+```
+
 ### AWS Batch
 
 A recipe, not shipped and not run in CI:
@@ -91,16 +112,20 @@ class AwsBatchBackend:
 
     def submit(self, job: BranchJob) -> str:
         r = job.resources
+        wanted = [("VCPU", r.cpus), ("MEMORY", r.memory_mb), ("GPU", r.gpus or None)]
         requirements = [
-            {"type": kind, "value": str(value)}
-            for kind, value in [("VCPU", r.cpus), ("MEMORY", r.memory_mb), ("GPU", r.gpus or None)]
+            {"type": kind, "value": str(int(value))}  # Batch wants whole numbers: "2", not "2.0"
+            for kind, value in wanted
             if value is not None
         ]
         response = self.client.submit_job(
             jobName=job.name(),
             jobQueue=self.queue,
             jobDefinition=self.job_definition,
-            containerOverrides={"command": list(job.command()), "resourceRequirements": requirements},
+            containerOverrides={
+                "command": list(job.command()),
+                "resourceRequirements": requirements,
+            },
             retryStrategy={"attempts": 1},
         )
         return response["jobId"]
@@ -129,7 +154,13 @@ import subprocess
 
 from adag.dispatch import BranchJob, JobState, JobStatus
 
-_STATES = {"PENDING": JobState.PENDING, "RUNNING": JobState.RUNNING, "COMPLETED": JobState.SUCCEEDED}
+_STATES = {
+    "PENDING": JobState.PENDING,
+    "RUNNING": JobState.RUNNING,
+    "SUSPENDED": JobState.RUNNING,  # not final: the job resumes
+    "RESIZING": JobState.RUNNING,
+    "COMPLETED": JobState.SUCCEEDED,
+}
 
 
 class SlurmBackend:

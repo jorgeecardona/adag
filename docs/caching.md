@@ -50,3 +50,4 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 
 Each result is `<cache_dir>/<key>` (JSON) plus `<key>.done`, written after the result. A
 result without its `.done` file, an empty file, or a file that does not parse is a miss.
+With `store=`, the same two keys go to the store (see [Cache stores](cache-stores.md)).

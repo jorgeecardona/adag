@@ -78,11 +78,12 @@ Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gi
 - Sync and async steps (`Step`, `AsyncStep`), with a parallel executor.
 - `BatchStep` caches each item on its own, so a rerun resumes after a failure.
 - `FanOutStep` runs a sub-graph per key.
-- Per-item cache backends for `BatchStep`: filesystem, memory, SQLite, SQLAlchemy
-  (`adag[sql]`), Redis (`adag[redis]`).
+- Cache stores for step results and `BatchStep` items: filesystem, memory, SQLite, SQLAlchemy
+  (`adag[sql]`), Redis (`adag[redis]`). Pass one with `Pipeline(..., store=)`.
 - Save a pipeline to disk and load it back with identical hashes.
 - SVG rendering of the graph, and an `adag run pipeline.py` CLI.
-- Run fan-out branches in worker processes, joined through the cache.
+- Run fan-out branches in worker processes or on a job scheduler (AWS Batch, SLURM, Kubernetes):
+  write `submit`, `status` and `cancel`; adag does retries, timeouts and cancel.
 
 ## Links
 

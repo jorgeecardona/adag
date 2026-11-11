@@ -344,8 +344,10 @@ class Deferred(Generic[T]):
 class InputParam(Deferred[T]):
     """A named runtime parameter. Use with_default() for optional parameters.
 
+    ```python
     text = InputParam("text", value_type=str)
     threshold = InputParam.with_default("threshold", 0.5)
+    ```
 
     ``value_type`` tells the CLI how to parse ``--param``. It is needed on a required parameter,
     because ``InputParam[int]("x")`` loses the ``int`` at runtime. It is not part of the cache key.

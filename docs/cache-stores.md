@@ -24,6 +24,9 @@ greeting cy
 
 The second run greets only `cy`: `ana` and `bo` are read from the store.
 
+The 7 keys: 3 items (`greet/<key>.json`), and a result `<key>` plus a `<key>.done` marker for
+each of the 2 runs.
+
 ## Open a store from a URL
 
 `store_from_url(url)` opens a store from text, so a remote worker can open the same store as

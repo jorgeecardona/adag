@@ -83,8 +83,8 @@ class BranchJob:
     """One attempt at one fan-out branch, as a backend submits it.
 
     A backend runs ``command()`` in an environment that has the pipeline code and can reach
-    ``cache_dir``, or the store at ``store_url``. Success means the result is in the cache under ``branch.branch_hash``; the
-    job's exit code alone is not trusted.
+    ``cache_dir``, or the store at ``store_url``. Success means the result is in the cache
+    under ``branch.branch_hash``. The job's exit code alone is not trusted.
     """
 
     branch: BranchRef
@@ -231,7 +231,8 @@ class RemoteDispatcher:
         """Resolve every branch on the backend; return ``{key: result}``.
 
         Raises:
-            ValueError: the run has no ``cache_dir``, which is where results come back.
+            ValueError: the run has neither ``cache_dir`` nor ``store``, or it has a ``store``
+                and ``store_url`` was not given.
             TypeError: a param is not JSON-serializable.
             FanOutBranchError: one or more branches failed. Results of the others are in
                 the cache, so a rerun submits only the failed keys.
@@ -426,8 +427,8 @@ class SubprocessDispatcher(RemoteDispatcher):
     """Resolve each branch in a local OS process via ``adag resolve-branch``.
 
     ``RemoteDispatcher`` with ``LocalJobBackend``. Runs at most ``max_concurrent`` processes at
-    once (default: the number of CPUs). Workers share results through ``cache_dir``, so it
-    must be set.
+    once (default: the number of CPUs). Workers share results through ``cache_dir``, or the
+    store at ``store_url``. The pipeline must have one of them.
     """
 
     def __init__(

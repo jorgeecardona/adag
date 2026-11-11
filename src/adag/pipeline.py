@@ -83,9 +83,9 @@ class Pipeline(Generic[Out]):
     pipeline = Pipeline(tokens, cache_dir=Path("cache"))
     result = pipeline.execute(text="hello world")
 
-    Pass cache_dir=None (the default) to run with no on-disk cache — useful
-    for stateless inference where each input is unique and a write-through
-    cache only fills storage with single-use entries.
+    With neither ``cache_dir`` nor ``store`` (the default), nothing is cached and every
+    ``execute()`` runs the full graph. Pass ``store`` to cache in a ``CacheStore`` instead of
+    files under ``cache_dir``.
     """
 
     def __init__(
@@ -426,7 +426,8 @@ class Pipeline(Generic[Out]):
         ``dispatcher`` decides *how* a fan-out branch is resolved (see
         ``BranchDispatcher``). Defaulting to ``None`` materialises an
         ``InlineDispatcher`` — branches resolve in-process, exactly as before.
-        Pass a ``SubprocessDispatcher`` to run branches in worker processes. Also reserved.
+        Pass a ``SubprocessDispatcher`` to run branches in worker processes, or a
+        ``RemoteDispatcher`` to run them on a job scheduler. Also reserved.
 
         ``parallel`` runs each topological level's steps concurrently in a
         thread pool (``max_workers``, default one per level) — a win for

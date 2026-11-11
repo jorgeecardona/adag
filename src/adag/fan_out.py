@@ -68,8 +68,10 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             sub-DAG for one branch. Called once per key during ``execute``;
             each returned ``StepResult`` is resolved under the same
             ``ResolveContext`` as the parent so caches are shared.
-
-    The optional ``label`` field overrides the visualization label.
+        max_workers: run branches in-process on this many threads. Ignored by a dispatcher.
+        instance_label: overrides the visualization label.
+        pipeline_module: file path or module name a dispatch worker imports.
+        fan_out_var: module-level variable that holds this fan-out's ``StepResult``.
     """
 
     over: dict[K, Any]
@@ -85,8 +87,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     # ClassVar on Step but as a per-instance override so a notebook can
     # name two FanOuts differently without subclassing.
     instance_label: str = field(default="")
-    # For distributed dispatch (e.g. SubprocessDispatcher): the absolute path of the
-    # module that defines this fan-out and the module-level variable its
+    # For distributed dispatch (e.g. SubprocessDispatcher): the file path or the module
+    # name (pkg.pipeline) of the module that defines this fan-out and the module-level variable its
     # StepResult is bound to, so a worker can re-import and re-derive a branch
     # via factory(key, over[key]). Empty for in-process runs (InlineDispatcher),
     # which never need them. Not part of content_hash (it ignores fields).

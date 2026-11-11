@@ -31,14 +31,16 @@ value=17
 
 ## Errors before running
 
-`Pipeline` checks the graph when you build it:
+Three errors can stop a graph before any step runs:
 
-- `UnboundInputError`: a `run()` argument is neither wired, a field, nor has a default.
-- `TypeError` when you call the step: a field holds a `Step` and the same name is also wired as
+- `TypeError`, when you call the step: a field holds a `Step` and the same name is also wired as
   an input. Wire an upstream step once, as an input. Do not also keep it as a field.
-- `CyclicPipelineError`: the graph has a cycle.
+- `CyclicPipelineError`, when you build the `Pipeline`: the graph has a cycle.
+- `UnboundInputError`, when you call `pipeline.validate()`: a `run()` argument is neither wired,
+  a field, nor has a default. Without `validate()`, `execute()` fails with a `TypeError` from
+  `run()`.
 
 ## Reserved names
 
 `observer`, `executor`, `dispatcher`, `parallel` and `max_workers` are keyword arguments of
-`execute()`. Do not use them as `InputParam` names.
+`execute()`, and `async_executor` of `aexecute()`. Do not use them as `InputParam` names.

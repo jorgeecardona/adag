@@ -4,6 +4,8 @@ Use `AsyncStep` when a step awaits I/O, and `parallel=True` when independent ste
 
 - `AsyncStep`: implement `async def arun(...)` and run the graph with
   `await pipeline.aexecute()`. Sync steps run unchanged inside `aexecute()`.
+- `FanOutStep` under `aexecute()`: runs in a worker thread, with its branches in-process.
+  `aexecute()` has no `dispatcher=`. A dispatcher passed there is ignored without an error.
 - `execute(parallel=True, max_workers=N)`: run independent steps on a thread pool.
 - `timeout_s` (class attribute): a step that runs longer raises `StepTimeout`.
 

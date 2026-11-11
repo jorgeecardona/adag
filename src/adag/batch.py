@@ -18,7 +18,6 @@ HOW to compose keys::
 
     @dataclass(frozen=True)
     class GenerateNotes(BatchStep[NotesResult, NoteRecord]):
-        catalog: Step[CatalogResult]
         model: str = "my-model"
         concurrency: Config[int] = Config(20)
 
@@ -30,6 +29,8 @@ HOW to compose keys::
 
         def assemble(self, results: list[NoteRecord], catalog: CatalogResult, model: str) -> NotesResult:
             return NotesResult(notes=results, n_notes=len(results))
+
+    notes = GenerateNotes()(catalog=catalog_step())
 
 This eliminates a whole class of cache-poisoning bugs caused by keys that
 don't reflect every input. When a step's params change, the key changes

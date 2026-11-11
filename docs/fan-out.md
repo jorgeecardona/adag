@@ -15,5 +15,7 @@ same keys. Each branch is cached like any other step.
 {'intro': 6, 'body': 19, 'end': 4}
 ```
 
-A failing branch raises `FanOutBranchError`, which names the key. To run branches in separate
-processes, see [Dispatch](dispatch.md).
+A failing branch raises its own exception and stops the fan-out. With a dispatcher, the other
+branches still finish, and the fan-out raises `FanOutBranchError`: its `failed` dict maps each
+failed key to the error. To run branches in separate processes or on a scheduler, see
+[Dispatch](dispatch.md).

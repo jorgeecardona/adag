@@ -1,40 +1,26 @@
-"""CacheStore — the pluggable key→text backend behind the DAG cache.
+"""CacheStore: the key-to-text backend behind every adag cache.
 
-The DAG's caches (``ItemCache`` per-item results, the
-dispatch "cache-as-IPC" rejoin) all reduce to one tiny primitive: **put a piece of
-text somewhere under a key, and load it back later**. Today that primitive is
-hard-wired to the local filesystem, which is fine for offline/CLI/single-process
-runs but wrong for a deployed multi-instance service — there the cache must live in
-a SHARED store (Redis, a database, an object store, …).
+Step results, ``BatchStep`` item caches and dispatched fan-out branches are all stored as text
+under a key. Pass a store with ``Pipeline(..., store=)``. Without one, the pipeline uses
+``FileSystemCacheStore`` on ``cache_dir``.
 
-`CacheStore` is that primitive, deliberately minimal so a user can back it with
-anything in a few lines: ``get`` / ``set`` / ``exists`` / ``delete`` / ``iter_keys``,
-all over plain ``str`` values. Higher-level concerns (the schema-version stamp, the
-in-flight WAL, JSON (de)serialization) stay in ``ItemCache`` and are expressed PURELY
-in terms of these five operations — e.g. an in-flight marker is just another key with
-an ``.inflight`` suffix — so a custom backend never has to know about them.
+A backend implements five methods over ``str`` values: ``get``, ``set``, ``exists``, ``delete``,
+``iter_keys``. ``ItemCache`` builds its schema stamp and in-flight markers from those five, so a
+backend does not need to know about them.
 
-Backends split into two tiers by dependency. The rule: **anything backed by the
-stdlib is always available** — a plain ``adag`` install gives you these with
-no extra install. Backends that need a third-party driver are opt-in behind an extra.
+Stores with no extra install:
 
-Always available (stdlib only):
-- ``FileSystemCacheStore`` — the default; one text file per key, atomic writes, nested
-  keys as sub-paths (the current on-disk behaviour; existing pipelines are unchanged).
-- ``SqliteCacheStore`` — a durable single-file cache on stdlib ``sqlite3``; "persistence
-  without standing up a server", with tighter concurrent-writer locking than loose files.
-- ``MemoryCacheStore`` — in-process dict, for tests and single-process runs.
+- ``FileSystemCacheStore``: one text file per key, atomic writes. The default.
+- ``SqliteCacheStore``: one SQLite file, on stdlib ``sqlite3``.
+- ``MemoryCacheStore``: a dict in this process, for tests.
 
-Optional (a SHARED backend for deployed multi-instance services, behind a conditional
-import + an install extra — the driver is NEVER required just to import this module):
-- ``SqlCacheStore`` — any SQLAlchemy-supported database (Postgres, MySQL, sqlite, …),
-  so the cache can live in the database a service already runs. Extra: ``adag[sql]``.
-- ``RedisCacheStore`` — redis / valkey (redis-py speaks the valkey protocol too).
-  Extra: ``adag[redis]``.
+Stores behind an extra (the driver is imported only when the store is built):
 
-A backend must be CONSISTENT across the processes that share it (the dispatch path writes
-on a worker and reads back on the orchestrator): Redis, a SQL database, or a shared SQLite
-file satisfy this; a per-pod local filesystem would not.
+- ``SqlCacheStore``: any SQLAlchemy database. Extra: ``adag[sql]``.
+- ``RedisCacheStore``: Redis or Valkey. Extra: ``adag[redis]``.
+
+For dispatch, every worker and the main process must see the same store: Redis, a SQL
+database, or a filesystem all of them mount. A disk local to one machine does not work.
 """
 
 from __future__ import annotations
@@ -58,8 +44,9 @@ logger = structlog.get_logger()
 
 @runtime_checkable
 class CacheStore(Protocol):
-    """A string key → string value store. The whole contract a cache backend must
-    satisfy; implement these five methods over Redis, a DB, S3, memory — anything.
+    """A string key to string value store: the five methods a cache backend implements.
+
+    Implement them over any storage: Redis, a database, S3, memory.
 
     Keys are opaque strings the cache layer builds (content hashes, namespaced like
     ``"namespace/abc123"``). Values are UTF-8 text (the cache layer JSON-encodes its
@@ -88,8 +75,9 @@ class CacheStore(Protocol):
 
 
 class FileSystemCacheStore:
-    """Default backend: one text file per key under ``root``. Keys may contain ``/``
-    to nest into sub-directories. Writes are atomic (temp file + rename), matching the
+    """Stores one text file per key under ``root``. The default.
+
+    Keys may contain ``/`` to nest into sub-directories. Writes are atomic (temp file + rename), matching the
     current ItemCache on-disk semantics so nothing changes for local runs.
     """
 
@@ -130,7 +118,7 @@ class FileSystemCacheStore:
 
 
 class _RedisLike(Protocol):
-    """The slice of the redis client API ``RedisCacheStore`` calls — lets the store
+    """The slice of the redis client API ``RedisCacheStore`` calls. It lets the store
     be fully typed without a hard dependency on redis' own stubs (redis is an
     optional, lazily-imported backend dependency).
     """
@@ -143,14 +131,15 @@ class _RedisLike(Protocol):
 
 
 class RedisCacheStore:
-    """Shared backend for deployed services. Keys are namespaced under ``key_prefix``
-    so one Redis can host many apps. ``redis`` is imported lazily — only constructing
+    """Stores keys in Redis or Valkey, under ``key_prefix``. Needs ``adag[redis]``.
+
+    The prefix lets one Redis host many apps. ``redis`` is imported lazily: only building
     this class (or passing a client) needs the package installed.
 
     Pass an existing client (``RedisCacheStore(client=...)``) or a URL
     (``RedisCacheStore(url="redis://…")``). ``ttl_seconds`` optionally expires entries
     (None = persist; the DAG cache is content-addressed, so stale entries can't be
-    wrong — TTL is purely an eviction/cost knob).
+    wrong; TTL only controls eviction and cost).
     """
 
     def __init__(
@@ -208,8 +197,9 @@ class RedisCacheStore:
 
 
 class MemoryCacheStore:
-    """In-process dict backend — handy for tests and single-process runs that don't
-    want disk. Not shared across processes (so not for the dispatch path).
+    """Stores keys in a dict in this process. Cannot be shared with a worker.
+
+    Use it for tests and single-process runs that should not touch disk.
     """
 
     def __init__(self) -> None:
@@ -232,7 +222,9 @@ class MemoryCacheStore:
 
 
 class SqliteCacheStore:
-    """Single-file SQLite backend (stdlib ``sqlite3`` — no extra dependency). One row per
+    """Stores keys in one SQLite file, on stdlib ``sqlite3``.
+
+    One row per
     key in a ``cache(key, value)`` table; the DB is a single ``.db`` file, so it's a durable
     single-host cache without standing up Redis. Each op opens its own short-lived connection,
     so it's safe across the dispatch thread pool (SQLite's file locking serialises writers).
@@ -283,13 +275,15 @@ class SqliteCacheStore:
 
 
 class SqlCacheStore:
-    """SQL backend via SQLAlchemy — works against any URL it supports (``postgresql://…``,
+    """Stores keys in one table of any SQLAlchemy database. Needs ``adag[sql]``.
+
+    Works with any URL SQLAlchemy supports (``postgresql://…``,
     ``mysql://…``, ``sqlite:///path.db``), so the DAG cache can live in the same database the
     rest of a deployed service already uses. ``sqlalchemy`` is a lazily-imported optional
     dependency.
 
     One ``key/value`` table (name configurable). ``set`` overwrites via delete-then-insert in
-    one transaction — portable across dialects without a dialect-specific UPSERT. Pass a URL
+    one transaction, which works on every dialect without a dialect-specific UPSERT. Pass a URL
     (``SqlCacheStore(url="postgresql://…")``) or an existing engine (``SqlCacheStore(engine=…)``)
     to share a connection pool with the host app.
     """

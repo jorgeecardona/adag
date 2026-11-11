@@ -26,7 +26,8 @@ Facts are from each tool's docs, checked on 2026-11-11; links at the end.
 
 ## When to use something else
 
-- You need scheduling, retries across machines, or a web UI: use Airflow, Dagster or Prefect.
+- You need scheduling, a web UI, or retries for every task across machines: use Airflow, Dagster
+  or Prefect. adag retries only fan-out branches (see [Dispatch](dispatch.md)).
 - You cache single functions, not a graph: joblib.Memory is enough.
 - Your graph is pandas columns defined by function names: Hamilton fits that model.
 - You want the same source-and-input caching with per-item caching, plus a larger project
