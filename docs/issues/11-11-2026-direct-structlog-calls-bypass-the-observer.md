@@ -3,7 +3,7 @@ title: "Some log lines bypass the observer, so NullObserver does not silence a r
 status: done
 area: core
 filed: 2026-11-11
-fixed_in: pending
+fixed_in: c617fcd
 scope: S
 verify: test
 ---
