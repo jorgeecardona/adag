@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `Step.produces`, `Step.accepts` and `Step.accepts_from`. Nothing checked them.
+- `BranchExecutionError`. Branch failures arrive as `FanOutBranchError`.
 
 ## [0.2.5] - 2026-11-11
 

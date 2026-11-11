@@ -61,14 +61,6 @@ class BranchReferenceError(LookupError):
     """The worker cannot find the branch, or derives a different hash than the orchestrator."""
 
 
-class BranchExecutionError(RuntimeError):
-    """A single branch's worker failed (nonzero exit, timeout, or job FAILED)."""
-
-    def __init__(self, key: str, detail: str) -> None:
-        self.key = key
-        super().__init__(f"branch {key!r} failed: {detail}")
-
-
 @dataclass(frozen=True)
 class Resources:
     """What one branch job asks the scheduler for. ``None`` means the scheduler's default."""
