@@ -78,13 +78,13 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     # ThreadPoolExecutor of that size — a win when each branch is I/O-bound (an LLM/HTTP
     # call). Shared upstreams stay safe under it: ResolveContext's in-flight dedup runs a
     # shared node's body once even when many branch workers reach it at the same instant.
-    # Ignored on the distributed (BatchDispatcher) path, which has its own concurrency.
+    # Ignored by a non-inline dispatcher, which has its own concurrency.
     max_workers: int | None = field(default=None)
     # Optional human-readable label for visualization. Mirrors the
     # ClassVar on Step but as a per-instance override so a notebook can
     # name two FanOuts differently without subclassing.
     instance_label: str = field(default="")
-    # For distributed dispatch (e.g. BatchDispatcher): the absolute path of the
+    # For distributed dispatch (e.g. SubprocessDispatcher): the absolute path of the
     # module that defines this fan-out and the module-level variable its
     # StepResult is bound to, so a worker can re-import and re-derive a branch
     # via factory(key, over[key]). Empty for in-process runs (InlineDispatcher),

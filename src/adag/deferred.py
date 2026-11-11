@@ -50,23 +50,10 @@ class Progress:
 
 
 class PipelineObserver(Protocol):
-    """Instrumentation hook for steps that want to expose internals during
-    resolution — e.g. an encoder step emitting its CLS vector for the
-    observability dashboard.
-
-    The pipeline never knows what an observer *does* with the value. It only
-    knows the value exists, hands it over as a plain ``list[float]``, and
-    lets the observer decide on sampling, persistence, fan-out, or no-op.
-
-    Values are passed already materialised (not as thunks) so step code never
-    holds a torch tensor reference in a closure — that would keep GPU/CPU
-    memory alive across the observer call and risk accumulating buffers
-    across in-flight requests. Materialising a 768-float vector costs
-    ~10 µs and ~3 KB, which is negligible compared to the encoder forward
-    pass that just produced it.
+    """Hooks a pipeline run calls so you can watch it: logs, timing, progress.
 
     Extension: when a step needs to expose a different kind of internal,
-    add a new ``on_<thing>`` method here with a plain-value argument and a
+    add a new ``on_<thing>`` method here with plain-value arguments and a
     no-op default on ``NullObserver``. Existing observers ignore it
     automatically — provided they inherit ``NullObserver``.
 
@@ -76,10 +63,6 @@ class PipelineObserver(Protocol):
     resolve order brackets each child's start/finished inside its parent's,
     which is how ``RunTreeObserver`` reconstructs the execution tree.
     """
-
-    def on_embedding(self, vector: list[float]) -> None: ...
-
-    def on_model_refused(self, model: str) -> None: ...
 
     def on_step_start(self, step: str) -> None: ...
 
@@ -97,12 +80,6 @@ class NullObserver:
     logging off. Concrete observers inherit this and override only the hooks
     they care about, so new hooks never break an existing observer.
     """
-
-    def on_embedding(self, vector: list[float]) -> None:
-        pass
-
-    def on_model_refused(self, model: str) -> None:
-        pass
 
     def on_step_start(self, step: str) -> None:
         pass
@@ -129,8 +106,8 @@ _CURRENT_OBSERVER: contextvars.ContextVar[PipelineObserver] = contextvars.Contex
 def current_observer() -> PipelineObserver:
     """The observer bound for the in-flight step, or a NullObserver outside any run.
 
-    Set for the duration of a step body by :func:`observing` (which the LLM steps enter in their
-    ``execute``), so nested asyncio tasks and worker threads can emit (e.g. ``on_model_refused``)
+    Set for the duration of a step body by :func:`observing` (which ``Step.execute`` enters), so nested
+    asyncio tasks and worker threads can emit hooks
     without threading an observer argument through every signature. Propagates across ``asyncio.to_thread``
     and asyncio tasks automatically; a raw ``ThreadPoolExecutor`` submit must run inside a copied
     context (``contextvars.copy_context().run``) to inherit it.
@@ -214,7 +191,7 @@ class BranchRef:
 
 class BranchDispatcher(Protocol):
     """Decides *how* a fan-out branch is resolved — in-process or dispatched to a
-    worker (subprocess, AWS Batch) that resolves it and lands the result in the
+    worker (e.g. a subprocess) that resolves it and lands the result in the
     shared cache by ``branch.branch_hash``. Carried on ``ResolveContext`` and
     consulted by ``FanOutStep``. The default ``InlineDispatcher`` just resolves
     in-process, so non-fan-out and undistributed graphs behave exactly as before.
@@ -248,7 +225,7 @@ class ResolveContext:
 
     ``_resolved`` memoizes the resolved result of every ``StepResult`` reached
     during a single ``Pipeline.execute`` call. Without it, a non-cached step
-    (``Step`` subclass that returns a non-serializable object — e.g. a torch
+    (``Step`` subclass that returns a non-serializable object — e.g. a model
     model wrapper) would be re-executed once per downstream consumer, and each
     consumer would receive a *different* instance — breaking shared-state
     contracts. With it, the first consumer runs the step, every subsequent

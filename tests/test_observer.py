@@ -2,7 +2,7 @@
 
 resolve() emits on_step_start / on_step_cached / on_step_finished for every step it reaches,
 through context.observer. NullObserver no-ops them, so existing observers (e.g. the inference
-EmbeddingObserver) that only care about on_embedding keep working by inheriting NullObserver.
+observers) that only care about one hook keep working by inheriting NullObserver.
 RunTreeObserver reconstructs the execution as an indented tree from the start/finish nesting —
 the depth-first resolve order brackets each child's events inside its parent's.
 """
@@ -91,18 +91,20 @@ def test_observer_cache_hit_emits_cached_not_finished(tmp_path: Path):
     assert all(kind != "finished" for kind, _ in observer.events)
 
 
-def test_existing_embedding_only_observer_still_works():
-    """An observer that overrides only on_embedding must not break — NullObserver no-ops the rest."""
+def test_single_hook_observer_still_works():
+    """An observer that overrides only on_step_start must not break — NullObserver no-ops the rest."""
 
-    class EmbeddingOnly(NullObserver):
+    class StartOnly(NullObserver):
         def __init__(self) -> None:
-            self.vectors: list[list[float]] = []
+            self.started: list[str] = []
 
-        def on_embedding(self, vector: list[float]) -> None:
-            self.vectors.append(vector)
+        def on_step_start(self, step: str) -> None:
+            self.started.append(step)
 
-    result = Pipeline(build_two_step_graph()).execute(observer=EmbeddingOnly())
+    observer = StartOnly()
+    result = Pipeline(build_two_step_graph()).execute(observer=observer)
     assert result.value == 6
+    assert observer.started
 
 
 def test_default_observer_logs_step_lifecycle():

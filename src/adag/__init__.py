@@ -16,12 +16,9 @@ Core engine:
     Config, ItemCache                    — input/cache types
     Pipeline                            — DAG executor
     BatchItem, BatchStep                — per-item batch processing with ItemCache
-
-Backward compatibility:
-    Parameter                           — alias for InputParam
 """
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -44,24 +41,21 @@ from adag.deferred import (
     observing,
 )
 from adag.dir_source import DirSource
-from adag.dispatch import BatchDispatcher, BranchExecutionError, BranchPolicy, SubprocessDispatcher
+from adag.dispatch import BranchExecutionError, BranchPolicy, SubprocessDispatcher
 from adag.fan_out import FanOutBranchError, FanOutStep
 from adag.io import FileSource, JSONLSource, LinesSource
 from adag.item_cache import ItemCache
 from adag.observers import LoggingObserver, RunTreeObserver
-from adag.parameter import Parameter
 from adag.pipeline import CyclicPipelineError, Pipeline, UnboundInputError
 from adag.serializable import SerializableStep
 from adag.sinks import WriteJSONL
 from adag.step import AsyncStep, Step, StepResult, StepTimeout
-from adag.step_mode import StepMode
 from adag.visualization import SVG, SvgOptions, dag, render_pipeline_svg, walk
 
 __all__ = [
     "SVG",
     "AsyncExecutor",
     "AsyncStep",
-    "BatchDispatcher",
     "BatchItem",
     "BatchStep",
     "BranchDispatcher",
@@ -86,7 +80,6 @@ __all__ = [
     "LocalExecutor",
     "LoggingObserver",
     "NullObserver",
-    "Parameter",
     "Pipeline",
     "PipelineObserver",
     "Progress",
@@ -94,7 +87,6 @@ __all__ = [
     "RunTreeObserver",
     "SerializableStep",
     "Step",
-    "StepMode",
     "StepResult",
     "StepTimeout",
     "SubprocessDispatcher",

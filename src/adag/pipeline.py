@@ -416,7 +416,7 @@ class Pipeline(Generic[Out]):
         ``dispatcher`` decides *how* a fan-out branch is resolved (see
         ``BranchDispatcher``). Defaulting to ``None`` materialises an
         ``InlineDispatcher`` — branches resolve in-process, exactly as before.
-        Pass a ``BatchDispatcher`` to distribute branches. Also reserved.
+        Pass a ``SubprocessDispatcher`` to run branches in worker processes. Also reserved.
 
         ``parallel`` runs each topological level's steps concurrently in a
         thread pool (``max_workers``, default one per level) — a win for

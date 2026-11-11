@@ -17,15 +17,15 @@ class Config(Generic[T]):
     Usage in step fields::
 
         @dataclass(frozen=True)
-        class Stage1Candidates(CachedStep[Stage1Result]):
-            model: str = "sonnet"                       # hashed — affects output
+        class FindCandidates(Step[Candidates]):
+            model: str = "my-model"                      # hashed — affects output
             concurrency: Config[int] = Config(20)       # NOT hashed — execution only
             batch_size: Config[int] = Config(256)       # NOT hashed — execution only
-            tracker: Config[UsageTracker | None] = Config(None)
+            tracker: Config[Tracker | None] = Config(None)
 
     In ``run()``, the value is unwrapped automatically::
 
-        def run(self, model: str, concurrency: int, batch_size: int) -> Stage1Result:
+        def run(self, model: str, concurrency: int, batch_size: int) -> Candidates:
             ...
 
     Generic over ``T`` so you can wrap anything an execution-time knob

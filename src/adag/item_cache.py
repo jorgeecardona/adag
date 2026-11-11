@@ -249,7 +249,7 @@ class ItemCache(Generic[R]):
 
         With ``allow_missing=True``: silently skip missing keys and return
         whatever was actually cached. Used by batch steps that tolerate
-        partial failure (e.g. Stage-2 LLM calls where a small percentage may
+        partial failure (e.g. LLM calls where a small percentage may
         legitimately fail due to rate limits / transient errors, but the
         successful majority is still worth keeping).
         """

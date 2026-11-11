@@ -239,7 +239,7 @@ class Step(Generic[Out]):
         (e.g. BatchStep needs context.cache_dir for its ItemCache). Most
         steps don't — the default binds the run's observer as the ambient
         ``current_observer()`` (so step internals, incl. worker threads and
-        asyncio tasks, can emit ``on_model_refused``) and delegates to run().
+        asyncio tasks, can emit observer hooks) and delegates to run().
         """
         with observing(context.observer):
             return self.run(**kwargs)
@@ -377,7 +377,7 @@ class Step(Generic[Out]):
         Default implementation captures the dataclass fields that ``_serialize_step_field``
         recognises (scalars, Path, UUID, Enum, BaseModel, composites thereof).
         Fields representing runtime state (Step instances, tokenizers, HF clients,
-        torch modules) are skipped — those subclasses override this method, call
+        model handles) are skipped — those subclasses override this method, call
         ``super().save_artifacts(path)``, then write their own state files
         (safetensors, tokenizer files, etc.) next to step.json.
 
@@ -537,7 +537,7 @@ class StepResult(Deferred[Out]):
 
         Memoizes by ``id(self)`` so multiple downstream consumers of the SAME ``StepResult``
         share one computed result within a ``Pipeline.execute`` — critical for non-cached
-        steps returning non-serializable objects (e.g. torch handles), where consumers must
+        steps returning non-serializable objects (e.g. model handles), where consumers must
         see the same instance, not two re-executions. The cache/memo/observer skeleton lives
         in ``_check_cache``/``_finalize`` (shared with ``aresolve``); only the two lines that
         genuinely differ — upstream resolution and the step body — stay here, run inline.

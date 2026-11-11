@@ -19,7 +19,7 @@ HOW to compose keys::
     @dataclass(frozen=True)
     class GenerateNotes(BatchStep[NotesResult, NoteRecord]):
         catalog: CachedStep[CatalogResult]
-        model: str = "claude-sonnet-4-6"
+        model: str = "my-model"
         concurrency: Config[int] = Config(20)
 
         def items_data(self, catalog: CatalogResult, model: str) -> list[Any]:
@@ -103,7 +103,7 @@ class BatchStep(CachedStep[T], Generic[T, R]):
     from it should set ``items_source_keys`` to the kwarg name(s) so that
     adding or removing items doesn't invalidate every other item's cache::
 
-        class LLMStage2Classify(BatchStep[Stage2Result, Stage2Prediction]):
+        class ClassifyDocs(BatchStep[Labels, Label]):
             items_source_keys = ("shortlists",)  # the list of inputs
             # `notes` is NOT here, so changes to notes correctly
             # invalidate all per-item caches.
