@@ -1,6 +1,7 @@
 """Tests for Step, StepResult, and Pipeline — the core DAG engine."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Generic, TypeVar
 
@@ -9,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from adag.config import Config
 from adag.deferred import InputParam
+from adag.hashing import UnhashableValueError
 from adag.io import FileSource
 from adag.pipeline import Pipeline
 from adag.step import Step
@@ -711,3 +713,63 @@ def test_generic_step_type_field_distinguishes_cache_identity() -> None:
     pool_of_count = _GenericPoolStep(item_type=CountResult)()
     pool_of_concat = _GenericPoolStep(item_type=ConcatResult)()
     assert pool_of_count.content_hash() != pool_of_concat.content_hash()
+
+
+class _Color(Enum):
+    RED = "red"
+    BLUE = "blue"
+
+
+@dataclass(frozen=True)
+class _RichStep(Step[CountResult]):
+    """A step with field types the old hash silently skipped."""
+
+    path: Path = Path("a.txt")
+    color: _Color = _Color.RED
+    table: dict[str, int] = field(default_factory=dict[str, int])
+    pair: tuple[int, int] = (1, 23)
+
+    def run(self) -> CountResult:
+        return CountResult(count=0)
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"path": Path("b.txt")},
+        {"color": _Color.BLUE},
+        {"table": {"x": 1}},
+        {"pair": (12, 3)},
+    ],
+)
+def test_every_field_change_changes_the_key(changed: dict[str, Any]):
+    """Path, Enum, dict and tuple fields all reach the cache key (no silent skip, no collision)."""
+    assert _RichStep(**changed).content_hash() != _RichStep().content_hash()
+
+
+def test_unhashable_field_raises_with_config_hint():
+    """A field the key cannot encode raises and names Config, instead of being skipped."""
+
+    @dataclass(frozen=True)
+    class HoldsClient(Step[CountResult]):
+        client: object = field(default_factory=object)
+
+        def run(self) -> CountResult:
+            return CountResult(count=0)
+
+    with pytest.raises(UnhashableValueError, match=r"client.*Config"):
+        HoldsClient().content_hash()
+
+
+def test_input_param_values_without_stable_encoding_raise(tmp_path: Path):
+    """An InputParam value with no stable encoding raises (it used to hash by repr and never hit)."""
+    graph = AddStep(a=0, b=0)(a=InputParam[Any]("a"), b=1)
+    with pytest.raises(UnhashableValueError, match="InputParam 'a'"):
+        Pipeline(graph, cache_dir=tmp_path).execute(a=object())
+
+
+def test_input_param_values_hash_by_value_not_repr(tmp_path: Path):
+    """Equal param values give equal keys; different values give different keys."""
+    graph = AddStep(a=0, b=0)(a=InputParam[int]("a"), b=1)
+    assert graph.content_hash(params={"a": 2}) == graph.content_hash(params={"a": 2})
+    assert graph.content_hash(params={"a": 2}) != graph.content_hash(params={"a": "2"})

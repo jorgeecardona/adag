@@ -6,10 +6,13 @@ import hashlib
 import inspect
 import json
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, TypeGuard
+from enum import Enum
+from pathlib import Path, PurePath
+from typing import Any, TypeGuard, cast
+from uuid import UUID
 
 import structlog
+from pydantic import BaseModel
 
 logger = structlog.get_logger()
 
@@ -91,14 +94,75 @@ def is_dict(obj: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(obj, dict)
 
 
-def hash_scalar(value: Any) -> bytes:
-    """Deterministic hash bytes for a scalar value."""
-    return json.dumps(value, sort_keys=True).encode()
+class UnhashableValueError(TypeError):
+    """A value has a type the cache key cannot encode."""
 
 
-def hash_list(value: list[Any]) -> bytes:
-    """Deterministic hash bytes for a list of scalars."""
-    return json.dumps(value, sort_keys=True).encode()
+def _frame(tag: bytes, payload: bytes) -> bytes:
+    """Prefix ``payload`` with a type tag and its length so no two values share bytes."""
+    return tag + len(payload).to_bytes(8, "big") + payload
+
+
+def encode_value(value: Any, where: str = "value") -> bytes:
+    """Return the cache-key bytes for one value.
+
+    Every value is framed with a type tag and a byte length, so ``(1, 23)`` and
+    ``(12, 3)``, or ``1`` and ``"1"``, never encode the same. A ``Path`` is hashed by
+    its text, not its file content: use ``FileSource`` to hash content.
+
+    Raises:
+        UnhashableValueError: ``value`` has no stable encoding. ``where`` names it in
+            the message. Wrap execution-only values in ``Config(...)``.
+    """
+    if value is None:
+        return _frame(b"N", b"")
+    if isinstance(value, bool):
+        return _frame(b"B", b"1" if value else b"0")
+    if isinstance(value, Enum):
+        cls = type(value)
+        name = f"{cls.__module__}.{cls.__qualname__}".encode()
+        return _frame(b"E", _frame(b"S", name) + encode_value(value.value, where))
+    if isinstance(value, int):
+        return _frame(b"I", str(value).encode())
+    if isinstance(value, float):
+        return _frame(b"F", repr(value).encode())
+    if isinstance(value, str):
+        return _frame(b"S", value.encode())
+    if isinstance(value, bytes):
+        return _frame(b"Y", value)
+    if isinstance(value, UUID):
+        return _frame(b"Q", str(value).encode())
+    if isinstance(value, PurePath):
+        return _frame(b"P", value.as_posix().encode())
+    if isinstance(value, type):
+        return _frame(b"T", f"{value.__module__}.{value.__qualname__}".encode())
+    if isinstance(value, BaseModel):
+        cls = type(value)
+        dumped = json.dumps(value.model_dump(mode="json"), sort_keys=True).encode()
+        return _frame(b"M", f"{cls.__module__}.{cls.__qualname__}".encode() + b"\0" + dumped)
+    return _encode_container(value, where)
+
+
+def _encode_container(value: Any, where: str) -> bytes:
+    """Encode a list, tuple, dict, set, or frozenset (the tail of ``encode_value``)."""
+    # A list and a tuple with the same items encode the same: frozen dataclasses use
+    # tuples where other code uses lists, and that choice should not change a key.
+    if is_list(value) or is_tuple(value):
+        return _frame(b"L", b"".join(encode_value(v, f"{where}[]") for v in value))
+    if isinstance(value, dict):
+        items = cast("dict[Any, Any]", value).items()
+        pairs = sorted(
+            (encode_value(k, f"{where} key"), encode_value(v, f"{where}[{k!r}]")) for k, v in items
+        )
+        return _frame(b"D", b"".join(k + v for k, v in pairs))
+    if isinstance(value, (set, frozenset)):
+        members = cast("set[Any] | frozenset[Any]", value)
+        return _frame(b"Z", b"".join(sorted(encode_value(v, f"{where}{{}}") for v in members)))
+    raise UnhashableValueError(
+        f"{where} has type {type(value).__name__}, which the cache key cannot hash. "
+        "Supported: None, bool, int, float, str, bytes, Enum, Path, UUID, type, BaseModel, "
+        "and list / tuple / dict / set of those. Wrap execution-only values in Config(...)."
+    )
 
 
 def class_source_hash(cls: type) -> bytes | None:

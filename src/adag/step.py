@@ -40,7 +40,14 @@ from pydantic import BaseModel
 
 from adag.config import Config
 from adag.deferred import Deferred, InputParam, Progress, ResolveContext, observing
-from adag.hashing import class_source_hash, hash_scalar, is_dict, is_list, is_tuple
+from adag.hashing import (
+    UnhashableValueError,
+    class_source_hash,
+    encode_value,
+    is_dict,
+    is_list,
+    is_tuple,
+)
 from adag.io import FileSource, atomic_write_text
 
 logger = structlog.get_logger()
@@ -165,7 +172,7 @@ class Step(Generic[Out]):
     result_type: ClassVar[type[BaseModel] | None] = None
     return_type: ClassVar[type[Any] | None] = None
     cache_key: ClassVar[str | None] = None
-    strict_content_hash: ClassVar[bool] = False
+    strict_content_hash: ClassVar[bool] = True
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
     # Optional typed ports for connection-validity introspection. `produces` is this step's output port-type;
@@ -267,10 +274,11 @@ class Step(Generic[Out]):
         Fields:
           - `Config` — skipped (runtime-only values, not identity).
           - `FileSource` — hashed by file content; a missing file blocks the hash (`None`).
-          - `BaseModel` — hashed by pydantic JSON dump.
           - Nested `Step` — recursed; a blocked nested hash blocks the parent.
-          - Scalars and `list` — hashed directly.
-          - Anything else — raises if `strict_content_hash` is set, skipped otherwise.
+          - Other values — encoded by ``adag.hashing.encode_value`` (scalars, Enum, Path,
+            UUID, type, BaseModel, and list / tuple / dict / set of those).
+          - Anything else — raises ``UnhashableValueError``. Set
+            ``strict_content_hash = False`` to skip such fields instead.
 
         Subclasses only override this if they need a fundamentally different identity strategy.
         """
@@ -305,71 +313,33 @@ class Step(Generic[Out]):
           - `bytes` to mix into the parent hash (empty bytes = skip).
           - `None` to block the parent hash entirely (unsatisfied input).
 
-        Unknown field types are silently skipped by default; set
-        `strict_content_hash = True` on the class to raise instead.
+        Raises:
+            UnhashableValueError: the field type has no stable encoding. Wrap it in
+                ``Config(...)``, or set ``strict_content_hash = False`` to skip it.
         """
+        name = encode_value(field_name)
         if isinstance(value, Config):
             return b""
         if isinstance(value, FileSource):
             file_content_hash = value.content_hash()
             if file_content_hash is None:
                 return None
-            return b"FILE:" + field_name.encode() + file_content_hash.encode()
-        if isinstance(value, BaseModel):
-            dumped = json.dumps(value.model_dump(mode="json"), sort_keys=True, default=str).encode()
-            return b"PYD:" + field_name.encode() + dumped
+            return b"FILE:" + name + encode_value(file_content_hash)
         if isinstance(value, Step):
             sub = value.content_hash()
             if sub is None:
                 return None
-            return b"SUB:" + field_name.encode() + sub.encode()
-        return self._hash_plain_field(field_name, value)
-
-    def _hash_plain_field(self, field_name: str, value: Any) -> bytes | None:
-        """Hash a non-wrapper field: scalar, class object, or list/tuple (the tail of ``_hash_field``)."""
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            return b"SCALAR:" + field_name.encode() + hash_scalar(value)
-        # A class object (e.g. a generic step's item/example type) is identity — hash it by qualified name so two
-        # parametrizations do not collide on one cache key. Without this a `type`-valued field would be skipped.
-        if isinstance(value, type):
+            return b"SUB:" + name + encode_value(sub)
+        try:
             return (
-                b"TYPE:" + field_name.encode() + f"{value.__module__}.{value.__qualname__}".encode()
+                b"VALUE:"
+                + name
+                + encode_value(value, f"field {field_name!r} of {type(self).__name__}")
             )
-        # Tuples hash like lists — useful for fixed-size config (categories,
-        # axes, etc.) where the dataclass author wants immutability.
-        if is_list(value) or is_tuple(value):
-            return self._hash_list(field_name, list(value))
-        if type(self).strict_content_hash:
-            raise TypeError(
-                f"Field '{field_name}' has unsupported type {type(value).__name__}. "
-                f"Allowed: str, int, float, bool, type, list, tuple, FileSource, Step, BaseModel, Config."
-            )
-        return b""
-
-    def _hash_list(self, field_name: str, value: list[Any]) -> bytes:
-        """Hash a list field, handling mixed scalar and BaseModel items.
-
-        Nested tuples/lists are recursively hashed so configs like
-        ``list[tuple[str, int]]`` (e.g. ordered cap mappings) work without
-        forcing the caller to flatten or wrap them in a BaseModel.
-        """
-        h = hashlib.sha256()
-        h.update(b"LIST:" + field_name.encode())
-        for item in value:
-            if isinstance(item, BaseModel):
-                h.update(
-                    json.dumps(item.model_dump(mode="json"), sort_keys=True, default=str).encode()
-                )
-            elif isinstance(item, (str, int, float, bool)) or item is None:
-                h.update(hash_scalar(item))
-            elif is_list(item) or is_tuple(item):
-                h.update(self._hash_list(f"{field_name}[]", list(item)))
-            elif type(self).strict_content_hash:
-                raise TypeError(
-                    f"List field '{field_name}' has unsupported item type {type(item).__name__}. "
-                    f"Allowed items: str, int, float, bool, list, tuple, BaseModel."
-                )
-        return h.digest()
+        except UnhashableValueError:
+            if type(self).strict_content_hash:
+                raise
+            return b""
 
     def save_artifacts(self, path: str) -> None:
         """Write step.json with the step's kind and serialized config fields.
@@ -664,12 +634,12 @@ class StepResult(Deferred[Out]):
         h.update(step_hash.encode())
 
         for name, source in sorted(self.sources.items()):
-            h.update(name.encode())
+            h.update(encode_value(name))
             if isinstance(source, StepResult):
                 upstream_hash = source.content_hash(params=params)
                 if upstream_hash is None:
                     return None
-                h.update(upstream_hash.encode())
+                h.update(b"UP:" + encode_value(upstream_hash))
             elif isinstance(source, InputParam):
                 if params and source.name in params:
                     param_value: Any = params[source.name]
@@ -677,21 +647,19 @@ class StepResult(Deferred[Out]):
                     param_value = source.default
                 else:
                     param_value = None
-                h.update(f"param:{source.name}:{param_value!r}".encode())
+                where = f"value of InputParam {source.name!r}"
+                h.update(b"PARAM:" + encode_value(source.name) + encode_value(param_value, where))
             elif isinstance(source, Deferred):
-                # Use the Deferred's content_hash if it implements one
-                # (FileSource hashes by file bytes, etc.). Falling back to
-                # just the class name would silently mask content changes:
-                # editing a FileSource-tracked file would not invalidate any
-                # downstream cache. This is the path that surfaces file-byte
-                # changes through the DAG.
+                # A Deferred's own content_hash (FileSource hashes file bytes) must reach the
+                # key, or editing a tracked file would not invalidate anything downstream.
                 deferred_hash = source.content_hash() if hasattr(source, "content_hash") else None
-                if deferred_hash is None:
-                    h.update(f"deferred:{type(source).__name__}".encode())
-                else:
-                    h.update(f"deferred:{type(source).__name__}:{deferred_hash}".encode())
+                h.update(
+                    b"DEFERRED:" + encode_value(type(source).__name__) + encode_value(deferred_hash)
+                )
             else:
-                h.update(repr(source).encode())
+                h.update(
+                    b"RAW:" + encode_value(source, f"input {name!r} of {type(self.step).__name__}")
+                )
 
         return h.hexdigest()[:12]
 

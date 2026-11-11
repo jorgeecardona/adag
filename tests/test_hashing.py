@@ -3,12 +3,14 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from adag.hashing import (
+    UnhashableValueError,
     _file_hash_cache,
     class_source_hash,
+    encode_value,
     file_hash,
-    hash_list,
-    hash_scalar,
     is_dict,
     is_list,
 )
@@ -82,12 +84,38 @@ def test_is_dict_false_for_list():
     assert is_dict([1, 2]) is False
 
 
-def test_hash_scalar_is_deterministic():
-    assert hash_scalar("x") == hash_scalar("x")
+def test_encode_value_is_deterministic():
+    assert encode_value({"b": [1, 2], "a": {3}}) == encode_value({"a": {3}, "b": [1, 2]})
 
 
-def test_hash_list_is_deterministic():
-    assert hash_list([1, 2, 3]) == hash_list([1, 2, 3])
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        ([1, 23], [12, 3]),
+        ((1, 23), (12, 3)),
+        (["a", "bc"], ["ab", "c"]),
+        (1, "1"),
+        (1, 1.0),
+        (True, 1),
+        (Path("a"), "a"),
+        ({"a": 1}, [("a", 1)]),
+    ],
+)
+def test_encode_value_never_collides(left: object, right: object):
+    """Different values (including different types with the same text) encode differently."""
+    assert encode_value(left) != encode_value(right)
+
+
+def test_list_and_tuple_with_same_items_encode_the_same():
+    assert encode_value([1, 2]) == encode_value((1, 2))
+
+
+def test_encode_value_rejects_unknown_types_with_a_hint():
+    class Opaque:
+        pass
+
+    with pytest.raises(UnhashableValueError, match=r"Config\(\.\.\.\)"):
+        encode_value(Opaque(), "field 'client'")
 
 
 def test_class_source_hash_returns_bytes_for_inspectable_class():
