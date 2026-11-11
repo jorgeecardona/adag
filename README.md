@@ -73,12 +73,15 @@ and ML pipelines where steps are slow and you rerun the graph often.
 ## Key features
 
 - Content-addressed cache: a code edit invalidates only the steps it touches.
+- `Config` fields stay out of the cache key (worker counts, clients, timeouts).
 - Sync and async steps (`Step`, `AsyncStep`), with a parallel executor.
-- `FanOutStep` runs a sub-graph per key; `BatchStep` caches each item on its own.
-- Cache backends: filesystem, memory, SQLite, SQLAlchemy (`adag[sql]`), Redis (`adag[redis]`).
+- `BatchStep` caches each item on its own, so a rerun resumes after a failure.
+- `FanOutStep` runs a sub-graph per key.
+- Per-item cache backends for `BatchStep`: filesystem, memory, SQLite, SQLAlchemy
+  (`adag[sql]`), Redis (`adag[redis]`).
 - Save a pipeline to disk and load it back with identical hashes.
 - SVG rendering of the graph, and an `adag run pipeline.py` CLI.
-- Run fan-out branches in subprocesses or AWS Batch jobs, joined through the cache.
+- Run fan-out branches in worker processes, joined through the cache.
 
 ## Links
 

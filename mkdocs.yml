@@ -72,5 +72,18 @@ plugins:
 
 nav:
   - Home: index.md
+  - Guide:
+      - Steps and pipelines: steps.md
+      - Caching: caching.md
+      - Inputs: inputs.md
+      - Batch steps: batch.md
+      - Fan-out: fan-out.md
+      - Async and parallel: async-parallel.md
+      - Observers: observers.md
+      - Visualization: visualization.md
+      - Command line: cli.md
+      - Cache stores: cache-stores.md
+      - Save and load: save-load.md
+      - Dispatch: dispatch.md
   - API reference: api.md
   - Changelog: changelog.md

@@ -130,6 +130,8 @@ convention = "pep257"
 # Tests may assert (S101), use magic values (PLR2004), take unused fixtures (ARG), pass Any to typed
 # calls (ANN401), and group assertions pytest would otherwise split (PT018).
 "tests/**/*.py" = ["S101", "PLR2004", "ARG", "ANN", "PT018", "PT011", "D", "T201", "S108", "RUF043", "RUF059", "RUF009", "N818", "BLE001", "S603", "FBT001"]
+# Doc examples are standalone scripts: they print their output and live outside a package.
+"docs/examples/**/*.py" = ["T201", "INP001", "D", "ANN", "ARG", "PLR2004", "RUF009"]
 # The CLI and the run-tree observer print to stdout on purpose.
 "src/adag/cli.py" = ["T201"]
 "src/adag/observers.py" = ["T201"]
