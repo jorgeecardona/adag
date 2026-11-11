@@ -51,6 +51,11 @@ needs:
       adag.
     sources:
       - {kind: assumption, date: 2026-11-11, locator: "Fable dispatch verdict, 2026-11-11 session"}
+    proofs:
+      - "test:tests/test_remote_dispatcher.py::test_failed_job_is_retried_up_to_max_retries_then_raises"
+      - "test:tests/test_remote_dispatcher.py::test_timeout_counts_from_running_not_from_submit"
+      - "test:tests/test_remote_dispatcher.py::test_ctrl_c_cancels_every_live_job"
+      - "test:tests/test_remote_dispatcher.py::test_rerun_after_partial_failure_submits_only_failed_keys"
 
   - id: SC-6
     text: >
