@@ -338,13 +338,9 @@ class InputParam(Deferred[T]):
     value_type: type[Any] | None = None
 
     @staticmethod
-    def with_default(
-        name: str, default: _S, value_type: type[Any] | None = None
-    ) -> InputParam[_S]:
+    def with_default(name: str, default: _S, value_type: type[Any] | None = None) -> InputParam[_S]:
         """Create a parameter with a default value (even if the default is None)."""
-        param: Any = InputParam(
-            name=name, default=default, has_default=True, value_type=value_type
-        )
+        param: Any = InputParam(name=name, default=default, has_default=True, value_type=value_type)
         return param
 
     def resolve(self, context: ResolveContext) -> T:

@@ -175,6 +175,7 @@ class Step(Generic[Out]):
     strict_content_hash: ClassVar[bool] = True
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         for parent in getattr(cls, "__orig_bases__", []):
