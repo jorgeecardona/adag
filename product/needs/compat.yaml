@@ -89,6 +89,8 @@ needs:
       arguments), the developer can keep that call working.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_item_cache.py::test_positional_signature_is_frozen"
 
   - id: CO-9
     text: >

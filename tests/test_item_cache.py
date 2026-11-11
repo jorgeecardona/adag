@@ -225,3 +225,20 @@ def test_pipeline_creates_item_cache(tmp_path: Path):
     cache = pipeline.item_cache("notes", NoteEntry)
     assert cache.cache_dir == pipeline.cache_dir
     assert cache.namespace == "notes"
+
+
+def test_positional_signature_is_frozen(tmp_path: Path) -> None:
+    """``ItemCache(cache_dir, namespace, schema)`` keeps its first-release positional order.
+
+    Old code builds it positionally; a reorder of two ``str``/``Path`` parameters would not fail
+    loudly, it would write to the wrong place.
+    """
+    import inspect
+
+    params = list(inspect.signature(ItemCache).parameters.values())
+    assert [p.name for p in params[:3]] == ["cache_dir", "namespace", "schema"]
+    assert all(p.kind is p.KEYWORD_ONLY for p in params[3:])
+
+    cache = ItemCache(tmp_path, "ns", NoteEntry)
+    cache.save("k", NoteEntry(code="c", note="n"))
+    assert tmp_path.joinpath(".items", "ns", "k.json").exists()
