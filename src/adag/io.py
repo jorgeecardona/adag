@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -136,7 +136,7 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
 
 
 @contextmanager
-def atomic_writer(path: Path) -> Iterator[TextIO]:
+def atomic_writer(path: Path) -> Generator[TextIO]:
     """Open ``path`` for atomic text writing. Yields a text-mode file handle.
 
     On normal context exit, the bytes are flushed, fsynced, and the temp file

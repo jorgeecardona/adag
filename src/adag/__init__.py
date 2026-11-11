@@ -21,7 +21,7 @@ Backward compatibility:
     Parameter                           — alias for InputParam
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep

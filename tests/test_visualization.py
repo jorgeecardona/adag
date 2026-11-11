@@ -45,7 +45,7 @@ def test_walk_single_step():
     x = InputParam[int]("x")
     step = LeafStep()
     result = step(x=x)
-    nodes, edges = walk(result)
+    nodes, _edges = walk(result)
     node_names = [n.name for n in nodes]
     assert "LeafStep" in node_names
     assert "x" in node_names

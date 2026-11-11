@@ -95,7 +95,7 @@ def test_content_hash_with_default_params_is_computed():
 def test_content_hash_memoized_for_same_params_object(monkeypatch: Any):
     """Two calls with the same params object compute once; the second is served from the memo."""
     compute_calls: list[StepResult[Any]] = []
-    real_compute = StepResult._compute_content_hash
+    real_compute = StepResult[Any]._compute_content_hash
 
     def counting_compute(self: StepResult[Any], params: dict[str, Any] | None = None) -> str | None:
         compute_calls.append(self)
@@ -115,7 +115,7 @@ def test_content_hash_memoized_for_same_params_object(monkeypatch: Any):
 def test_content_hash_recomputes_for_new_params_object(monkeypatch: Any):
     """The memo is single-slot, keyed by identity — a different params object recomputes."""
     compute_calls: list[StepResult[Any]] = []
-    real_compute = StepResult._compute_content_hash
+    real_compute = StepResult[Any]._compute_content_hash
 
     def counting_compute(self: StepResult[Any], params: dict[str, Any] | None = None) -> str | None:
         compute_calls.append(self)

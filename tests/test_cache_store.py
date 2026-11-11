@@ -9,6 +9,8 @@ structurally with a fake client — it needs a live server.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from adag.cache_store import (
@@ -23,7 +25,7 @@ from adag.cache_store import (
 ALL_BACKENDS = ["filesystem", "memory", "sqlite", "sql"]
 
 
-def _store(tmp_path, backend: str) -> CacheStore:
+def _store(tmp_path: Path, backend: str) -> CacheStore:
     """One disk-or-memory backend per name. `sql` uses a file-based sqlite URL so the
     SQLAlchemy path is exercised without a live Postgres (valkey == RedisCacheStore,
     covered separately by the fake-client test).
@@ -40,7 +42,7 @@ def _store(tmp_path, backend: str) -> CacheStore:
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS)
-def test_roundtrip_and_absence(tmp_path, backend):
+def test_roundtrip_and_absence(tmp_path: Path, backend: str) -> None:
     store = _store(tmp_path, backend)
     assert store.get("missing") is None  # absence → None, never raises
     assert store.exists("missing") is False
@@ -55,7 +57,7 @@ def test_roundtrip_and_absence(tmp_path, backend):
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS)
-def test_nested_keys_and_prefix_scan(tmp_path, backend):
+def test_nested_keys_and_prefix_scan(tmp_path: Path, backend: str) -> None:
     """Namespaced keys (the cache layer uses 'namespace/hash') round-trip, and the
     in-flight WAL pattern (a sibling key with an '.inflight' suffix) needs no special
     method — it's just another key under the same prefix.
@@ -73,27 +75,27 @@ def test_nested_keys_and_prefix_scan(tmp_path, backend):
     assert set(store.iter_keys()) == {"ns/k1", "ns/k2", "other/k3", "ns/k1.inflight"}
 
 
-def test_filesystem_rejects_path_traversal(tmp_path):
+def test_filesystem_rejects_path_traversal(tmp_path: Path) -> None:
     store = FileSystemCacheStore(tmp_path)
     with pytest.raises(ValueError):
         store.set("../escape", "x")
 
 
-def test_filesystem_persists_across_instances(tmp_path):
+def test_filesystem_persists_across_instances(tmp_path: Path) -> None:
     FileSystemCacheStore(tmp_path).set("ns/k", "durable")
     assert (
         FileSystemCacheStore(tmp_path).get("ns/k") == "durable"
     )  # survives a new instance (real disk)
 
 
-def test_sqlite_persists_across_instances(tmp_path):
+def test_sqlite_persists_across_instances(tmp_path: Path) -> None:
     SqliteCacheStore(tmp_path.joinpath("cache.db")).set("ns/k", "durable")
     assert (
         SqliteCacheStore(tmp_path.joinpath("cache.db")).get("ns/k") == "durable"
     )  # survives a new instance (single .db file)
 
 
-def test_sql_persists_across_instances(tmp_path):
+def test_sql_persists_across_instances(tmp_path: Path) -> None:
     url = f"sqlite:///{tmp_path.joinpath('sql_cache.db')}"
     SqlCacheStore(url=url).set("ns/k", "durable")
     assert (
@@ -101,43 +103,43 @@ def test_sql_persists_across_instances(tmp_path):
     )  # survives a new engine against the same URL
 
 
-def test_sql_requires_url_or_engine():
+def test_sql_requires_url_or_engine() -> None:
     with pytest.raises(ValueError):
         SqlCacheStore()
 
 
-def test_all_backends_satisfy_the_protocol(tmp_path):
+def test_all_backends_satisfy_the_protocol(tmp_path: Path) -> None:
     assert isinstance(FileSystemCacheStore(tmp_path), CacheStore)
     assert isinstance(MemoryCacheStore(), CacheStore)
     assert isinstance(SqliteCacheStore(tmp_path.joinpath("c.db")), CacheStore)
     assert isinstance(SqlCacheStore(url=f"sqlite:///{tmp_path.joinpath('s.db')}"), CacheStore)
 
 
-def test_redis_store_namespaces_keys_with_a_fake_client():
+def test_redis_store_namespaces_keys_with_a_fake_client() -> None:
     """RedisCacheStore is pure delegation to a redis client — verify key namespacing +
     decode without a live server, using a minimal fake that mimics the redis API.
     """
 
     class FakeRedis:
-        def __init__(self):
+        def __init__(self) -> None:
             self.d: dict[str, bytes] = {}
 
-        def get(self, k):
-            return self.d.get(k)
+        def get(self, name: str) -> bytes | None:
+            return self.d.get(name)
 
-        def set(self, k, v, ex=None):
-            self.d[k] = v.encode() if isinstance(v, str) else v
+        def set(self, name: str, value: str, ex: int | None = None) -> None:
+            self.d[name] = value.encode()
 
-        def exists(self, k):
-            return 1 if k in self.d else 0
+        def exists(self, name: str) -> int:
+            return 1 if name in self.d else 0
 
-        def delete(self, k):
-            self.d.pop(k, None)
+        def delete(self, name: str) -> None:
+            self.d.pop(name, None)
 
-        def scan_iter(self, match=None):
+        def scan_iter(self, match: str) -> list[str]:
             import fnmatch
 
-            return [k for k in self.d if match is None or fnmatch.fnmatch(k, match)]
+            return [k for k in self.d if fnmatch.fnmatch(k, match)]
 
     fake = FakeRedis()
     store = RedisCacheStore(client=fake, key_prefix="dag:")

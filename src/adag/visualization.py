@@ -218,8 +218,8 @@ def compute_state(node: Node, cache_dir: Path | None) -> str:
     h = node.step.content_hash() if hasattr(node.step, "content_hash") else None
     if h is None:
         return "BLOCKED"
-    if hasattr(node.step, "is_cached"):
-        is_cached_attr = node.step.is_cached
+    is_cached_attr: object = getattr(node.step, "is_cached", None)
+    if is_cached_attr is not None:
         cached = is_cached_attr(cache_dir) if callable(is_cached_attr) else is_cached_attr
         return "CACHED" if cached else "PENDING"
     return "PENDING"
@@ -336,7 +336,7 @@ class LayoutNode:
     y: float = 0.0
     width: float = 0.0
     height: float = 0.0
-    params: list[tuple[str, str]] = field(default_factory=list)
+    params: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
 
 
 def _orient(ax: float, ay: float, bx: float, by: float, cx: float, cy: float) -> float:

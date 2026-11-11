@@ -151,7 +151,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     def _branch(self, key: K, value: Any) -> StepResult[V]:
         """Build one branch's sub-DAG via the factory, validating it is a resolvable Deferred."""
         sub = self.factory(key, value)
-        if not isinstance(sub, StepResult):
+        if not isinstance(sub, StepResult):  # pyright: ignore[reportUnnecessaryIsInstance]  (factory is user code)
             raise TypeError(
                 f"FanOutStep factory must return a StepResult/Deferred; got {type(sub).__name__} for key {key!r}."
             )
@@ -175,7 +175,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         for key, value in self.over.items():
             context.observer.on_fan_out_branch(str(key))
             sub = self.factory(key, value)
-            if not isinstance(sub, StepResult):
+            if not isinstance(sub, StepResult):  # pyright: ignore[reportUnnecessaryIsInstance]  (factory is user code)
                 raise TypeError(
                     f"FanOutStep factory must return a StepResult; got {type(sub).__name__} for key {key!r}."
                 )
@@ -243,7 +243,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                     error=str(exc)[:200],
                 )
                 return None
-            sub_hash = sub.content_hash() if isinstance(sub, StepResult) else None
+            sub_hash = sub.content_hash() if isinstance(sub, StepResult) else None  # pyright: ignore[reportUnnecessaryIsInstance]
             if sub_hash is None:
                 return None
             h.update(b"|K:" + repr(key).encode() + b"|H:" + sub_hash.encode())

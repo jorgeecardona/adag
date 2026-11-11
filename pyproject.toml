@@ -148,3 +148,8 @@ pythonVersion = "3.13"
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
+# Modules inside the package share private helpers and ResolveContext internals on purpose
+# (same reason as ruff SLF001).
+reportPrivateUsage = false
+# Step subclasses narrow run(self, **kwargs: Any) into a typed signature on purpose.
+reportIncompatibleMethodOverride = false
