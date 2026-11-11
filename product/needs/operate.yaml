@@ -1,0 +1,41 @@
+who: developer operating and inspecting a pipeline
+
+needs:
+
+  - id: OP-1
+    text: >
+      When the developer runs a pipeline, the developer can have an observer see each step start, finish or hit the cache,
+      and NullObserver silences the whole run.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/observers.md"}
+    proofs:
+      - "test:tests/test_observer.py::test_observer_sees_step_lifecycle_depth_first"
+      - "test:tests/test_observer.py::test_null_observer_silences_a_cached_batch_run"
+
+  - id: OP-2
+    text: >
+      When the developer wants to see the graph, they can get an SVG of the steps and edges.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/visualization.md"}
+    proofs:
+      - "test:tests/test_visualization.py::test_render_pipeline_svg_binary_pipeline"
+
+  - id: OP-3
+    text: >
+      When the developer runs a pipeline from the shell, they can use `adag run`, which lists targets and params and
+      parses each --param as its declared type.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/cli.md"}
+    proofs:
+      - "test:tests/test_cli.py::test_run_pipeline_resolves_target_with_coerced_params"
+      - "test:tests/test_cli.py::test_str_value_type_keeps_leading_zeros"
+      - "test:tests/test_cli.py::test_main_help_with_target_lists_required_and_optional_params"
+
+  - id: OP-4
+    text: >
+      When a process dies mid-write, the developer can trust they never find a half-written cache file.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "src/adag/io.py"}
+    proofs:
+      - "test:tests/test_io_utils.py::test_atomic_write_text_leaves_target_untouched_when_rename_fails"
+      - "test:tests/test_step.py::test_empty_or_corrupt_cache_file_is_a_miss"

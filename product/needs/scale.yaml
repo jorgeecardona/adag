@@ -1,0 +1,60 @@
+who: developer running a pipeline over many items or many machines
+
+needs:
+
+  - id: SC-1
+    text: >
+      When a batch step crashes part way, the developer can rerun it and process only the items that were not saved.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/batch.md"}
+    proofs:
+      - "test:tests/test_batch.py::test_batch_step_resumes_after_crash"
+      - "test:tests/test_batch.py::test_process_batch_leaves_inflight_marker_on_exception"
+
+  - id: SC-2
+    text: >
+      When independent steps or fan-out branches can run at the same time, the developer can run them in parallel, with
+      a shared upstream step run once.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/async-parallel.md"}
+    proofs:
+      - "test:tests/test_parallel_execution.py::test_parallel_runs_independent_steps_concurrently"
+      - "test:tests/test_inflight_dedup.py::test_shared_upstream_runs_once_under_concurrent_fan_out"
+      - "test:tests/test_fan_out_concurrent.py::test_threaded_results_keep_the_order_of_over"
+
+  - id: SC-3
+    text: >
+      When steps are async, the developer can run them on an event loop with a per-step timeout, and a
+      cancelled run starts no downstream step.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/async-parallel.md"}
+    proofs:
+      - "test:tests/test_async.py::test_aexecute_resolves_an_async_step"
+      - "test:tests/test_async.py::test_step_timeout_raises_step_timeout"
+      - "test:tests/test_async.py::test_cancellation_unwinds_without_starting_downstream"
+
+  - id: SC-4
+    text: >
+      When fan-out branches run in separate worker processes, the developer can get each branch result back through
+      the cache, and a failed branch is reported by its key.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/dispatch.md"}
+    proofs:
+      - "test:tests/test_dispatch.py::test_subprocess_dispatcher_resolves_branches_in_workers"
+      - "test:tests/test_dispatch.py::test_branch_hash_is_stable_across_rederivation"
+
+  - id: SC-5
+    text: >
+      When the developer runs fan-out branches on a job scheduler (AWS Batch, Kubernetes, SLURM),
+      they can write only submit, status and cancel; retries, timeouts and cancel on Ctrl-C come from
+      adag.
+    sources:
+      - {kind: assumption, date: 2026-11-11, locator: "Fable dispatch verdict, 2026-11-11 session"}
+
+  - id: SC-6
+    text: >
+      When the developer keeps step results and item caches in SQLite, SQL or Redis, they can pass one
+      store to the Pipeline.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/issues/11-11-2026-cache-store-is-not-reachable-from-pipeline-or-batchstep.md"}

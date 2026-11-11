@@ -1,0 +1,79 @@
+who: developer building a cached data pipeline in Python
+
+needs:
+
+  - id: AD-1
+    text: >
+      When the developer runs a pipeline again with the same inputs and code, they can get the cached
+      result without running any step.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/caching.md"}
+    proofs:
+      - "test:tests/test_step.py::test_execute_uses_cache"
+      - "test:tests/test_step.py::test_execute_caches_result"
+      - "test:tests/test_pipeline_roundtrip.py::test_reconstructed_pipeline_reads_cache_written_by_original"
+
+  - id: AD-2
+    text: >
+      When the developer changes a step field, an input value, an input file, or the step's code,
+      they can see only that step and its downstream steps run again.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/caching.md"}
+    proofs:
+      - "test:tests/test_step.py::test_every_field_change_changes_the_key"
+      - "test:tests/test_step.py::test_hash_changes_with_input"
+      - "test:tests/test_file_source.py::test_file_source_hash_changes_with_content"
+      - "test:tests/test_pipeline_roundtrip.py::test_kind_steps_with_different_code_get_different_keys"
+
+  - id: AD-3
+    text: >
+      When the developer marks a field as Config (for example a worker count), they can change it without
+      invalidating the cache.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/caching.md"}
+    proofs:
+      - "test:tests/test_step.py::test_hash_config_excluded"
+
+  - id: AD-4
+    text: >
+      When a value cannot be hashed in a stable way, the developer can get an error that names the
+      field and suggests Config, instead of a silently wrong cache key.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/caching.md"}
+    proofs:
+      - "test:tests/test_step.py::test_unhashable_field_raises_with_config_hint"
+      - "test:tests/test_hashing.py::test_encode_value_never_collides"
+
+  - id: AD-5
+    text: >
+      When the developer wires a graph wrongly (an unwired input, a cycle, a type mismatch), they can get
+      the error when the pipeline is built, before any step runs.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/steps.md#errors-before-running"}
+    proofs:
+      - "test:tests/test_pipeline_validation.py::test_validate_raises_on_unwired_required_input"
+      - "test:tests/test_pipeline_validation.py::test_cycle_detection_raises_at_construction"
+      - "test:tests/test_step.py::test_validate_still_rejects_unrelated_types"
+      - "test:tests/test_batch.py::test_step_field_wired_again_as_input_raises"
+
+  - id: AD-6
+    text: >
+      When the developer needs one intermediate result, they can resolve that step alone and get the
+      value the full run used.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/steps.md"}
+    proofs:
+      - "test:tests/test_pipeline_resolve.py::test_resolve_returns_same_value_as_execute"
+      - "test:tests/test_pipeline_resolve.py::test_from_targets_multi_sink"
+
+  - id: AD-7
+    text: >
+      When the developer saves a pipeline and loads it in another process, they can read
+      the same cache entries from the loaded pipeline.
+    sources:
+      - {kind: secondary, date: 2026-11-11, locator: "docs/save-load.md"}
+    proofs:
+      - "test:tests/test_pipeline_roundtrip.py::test_step_hashes_survive_manifest_roundtrip"
+      - "test:tests/test_pipeline_roundtrip.py::test_reconstructed_pipeline_reads_cache_written_by_original"
