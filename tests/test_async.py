@@ -237,3 +237,38 @@ def test_pure_defaults_true_and_is_overridable_without_affecting_resolution():
 
     assert Generative.pure is False
     assert asyncio.run(Pipeline(Generative()()).aexecute()).value == 0  # impure still resolves fine
+
+
+def test_caller_schedules_levels_with_node_aresolve():
+    """A caller sorts the graph into levels itself and gathers ``aresolve`` per level.
+
+    ``StepResult.aresolve(context)`` is public: one shared ``ResolveContext`` memoizes every node,
+    so a later level reuses the earlier results and nothing runs twice.
+    """
+    calls: list[str] = []
+
+    @dataclass(frozen=True)
+    class Leaf(AsyncStep[Number]):
+        n: int
+
+        async def arun(self, n: int) -> Number:
+            calls.append(f"leaf{n}")
+            return Number(value=n)
+
+    @dataclass(frozen=True)
+    class Sum(AsyncStep[Number]):
+        async def arun(self, a: Number, b: Number) -> Number:
+            calls.append("sum")
+            return Number(value=a.value + b.value)
+
+    a, b = Leaf(n=1)(), Leaf(n=2)()
+    total = Sum()(a=a, b=b)
+    context = ResolveContext(cache_dir=None, params={})
+
+    async def run_levels() -> int:
+        await asyncio.gather(a.aresolve(context), b.aresolve(context))
+        (result,) = await asyncio.gather(total.aresolve(context))
+        return result.value
+
+    assert asyncio.run(run_levels()) == 3
+    assert sorted(calls) == ["leaf1", "leaf2", "sum"]

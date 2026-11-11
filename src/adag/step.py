@@ -646,10 +646,13 @@ class StepResult(Deferred[Out]):
         return resolved
 
     async def aresolve(self, context: ResolveContext) -> Out:
-        """Async mirror of ``resolve`` — same ``_check_cache``/``_finalize`` skeleton, but the two
-        genuinely-different lines ``await``: upstream resolution (``_aresolve_sources``) and the step
-        body (``context.async_executor``). So async steps run ON the event loop, and a cancelled
-        request unwinds through the awaits without starting further steps.
+        """Resolve this node on the event loop and return its result. Public API.
+
+        Use it to schedule async steps yourself, for example one ``asyncio.gather`` per
+        topological level inside an async request handler. Pass the same ``ResolveContext`` to
+        every call: it memoizes each node, so a shared upstream runs once and a later call reuses
+        earlier results. Upstream nodes are awaited, async step bodies run on the loop, and sync
+        bodies run unchanged. A cancelled task starts no further step.
         """
         cached = self._check_cache(context)
         if not isinstance(cached, _Miss):

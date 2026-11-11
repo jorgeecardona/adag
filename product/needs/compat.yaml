@@ -80,6 +80,8 @@ needs:
       as a documented public API.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_async.py::test_caller_schedules_levels_with_node_aresolve"
 
   - id: CO-8
     text: >
