@@ -14,11 +14,12 @@ Also runnable as ``python -m adag``.
 
 import argparse
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, get_args
+from typing import Any, cast, get_args
 
 from adag.deferred import InputParam, PipelineObserver
 from adag.fan_out import FanOutStep
@@ -189,7 +190,7 @@ def _fan_out_step(target: StepResult[Any], var: str) -> Any:
 
 
 def run_branch(
-    pipeline_path: Path, fan_out_var: str, key: str, param_assignments: list[str], cache_dir: Path
+    pipeline_path: Path, fan_out_var: str, key: str, params: dict[str, Any], cache_dir: Path
 ) -> Any:
     """Worker entry: resolve ONE fan-out branch into the shared cache.
 
@@ -217,16 +218,11 @@ def run_branch(
 
     sub: StepResult[Any] = fan_out.factory(original_key, value)
     pipeline: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir)
-    raw = _parse_assignments(param_assignments)
-    unknown = set(raw) - pipeline.input_names
+    unknown = set(params) - pipeline.input_names
     if unknown:
         raise ValueError(
             f"unknown param(s) {sorted(unknown)}. Expected: {sorted(pipeline.input_names)}"
         )
-    type_by_name = {param.name: _param_type(param) for param in pipeline.inputs}
-    params = {
-        key_name: _coerce(value_raw, type_by_name[key_name]) for key_name, value_raw in raw.items()
-    }
     return pipeline.resolve(sub, **params)
 
 
@@ -305,10 +301,19 @@ def _run_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_params_json(raw: str) -> dict[str, Any]:
+    """Parse the worker's ``--params-json`` object; JSON keeps each value's type."""
+    parsed: object = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise TypeError(f"--params-json must be a JSON object, got {type(parsed).__name__}")
+    return cast("dict[str, Any]", parsed)
+
+
 def _resolve_branch_command(args: argparse.Namespace) -> int:
     try:
+        params = _parse_params_json(args.params_json)
         result = run_branch(
-            Path(args.pipeline), args.fan_out, args.key, args.param, Path(args.cache_dir)
+            Path(args.pipeline), args.fan_out, args.key, params, Path(args.cache_dir)
         )
     except (FileNotFoundError, ImportError, KeyError, ValueError, TypeError) as error:
         print(f"error: {error}", file=sys.stderr)
@@ -372,11 +377,11 @@ def main(argv: list[str] | None = None) -> int:
         "--cache-dir", required=True, help="Shared cache directory (the rendezvous)"
     )
     branch_parser.add_argument(
-        "--param",
-        action="append",
-        default=[],
-        metavar="KEY=VALUE",
-        help="Pipeline parameter (repeatable)",
+        "--params-json",
+        dest="params_json",
+        default="{}",
+        metavar="JSON",
+        help="Pipeline parameters as one JSON object (keeps value types)",
     )
 
     args = parser.parse_args(argv)

@@ -6,6 +6,7 @@ hash, and the orchestrator loads them back — no result ever crosses the wire, 
 branch reference.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -118,3 +119,15 @@ def test_subprocess_dispatcher_resolves_branches_in_workers(
     again = pipeline.execute(dispatcher=SubprocessDispatcher())
     assert {key: record.value for key, record in again.items()} == {"a": 2, "b": 4, "c": 6}
     assert len(spawns) == 0
+
+
+def test_param_args_keep_value_types():
+    """A str "5" stays a str and an int 5 stays an int across the worker boundary."""
+    [flag, payload] = dispatch_module._param_args({"label": "5", "n": 5, "flag": True})
+    assert flag == "--params-json"
+    assert json.loads(payload) == {"label": "5", "n": 5, "flag": True}
+
+
+def test_param_args_reject_values_a_worker_cannot_receive():
+    with pytest.raises(TypeError, match="JSON-serializable"):
+        dispatch_module._param_args({"p": object()})

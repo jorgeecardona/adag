@@ -10,6 +10,7 @@ nothing but ``(module, fan_out_var, key, params, cache_dir)`` ever crosses it.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import time
@@ -42,11 +43,18 @@ class BranchExecutionError(RuntimeError):
 
 
 def _param_args(params: dict[str, Any]) -> list[str]:
-    """Render run params as repeated ``--param k=v`` CLI args for the worker."""
-    args: list[str] = []
-    for name, value in params.items():
-        args.extend(["--param", f"{name}={value}"])
-    return args
+    """Render run params as one ``--params-json`` arg, so the worker gets the same types.
+
+    Raises:
+        TypeError: a param value is not JSON-serializable, so it cannot reach a worker.
+    """
+    try:
+        payload = json.dumps(params, sort_keys=True)
+    except TypeError as error:
+        raise TypeError(
+            f"SubprocessDispatcher params must be JSON-serializable: {error}"
+        ) from error
+    return ["--params-json", payload]
 
 
 class SubprocessDispatcher:
