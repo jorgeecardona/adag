@@ -7,6 +7,7 @@ import pytest
 from pydantic import BaseModel
 
 from adag import BatchItem, BatchStep, FileSource, Pipeline, Step
+from adag.deprecation import AdagDeprecationWarning
 
 
 class ItemResult(BaseModel):
@@ -289,7 +290,7 @@ def test_step_field_wired_again_as_input_warns_and_runs(tmp_path: Path, source_f
             return BatchResult(items=results, total=len(results))
 
     source = SourceStep(data=FileSource(str(source_file)))
-    with pytest.warns(DeprecationWarning, match="both a Step field and an input"):
+    with pytest.warns(AdagDeprecationWarning, match="both a Step field and an input"):
         wired = TwiceBatch(source=source)(source=source(data=FileSource(str(source_file))))
     result = Pipeline(wired, cache_dir=tmp_path / "cache").execute()
     assert result.total == 3

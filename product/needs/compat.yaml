@@ -107,6 +107,8 @@ needs:
       changing warning filters, and it names the replacement and the removal version.
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
+    proofs:
+      - "test:tests/test_deprecation_visible.py::test_warning_is_shown_by_default_from_an_imported_module"
 
   - id: CO-11
     text: >

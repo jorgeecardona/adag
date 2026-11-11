@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from adag.config import Config
 from adag.deferred import InputParam
+from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import UnhashableValueError
 from adag.io import FileSource
 from adag.pipeline import Pipeline
@@ -778,7 +779,7 @@ def test_input_param_values_hash_by_value_not_repr(tmp_path: Path):
 def test_cached_step_subclass_warns_and_runs_in_a_pipeline():
     from adag import CachedStep
 
-    with pytest.warns(DeprecationWarning, match="subclass Step"):
+    with pytest.warns(AdagDeprecationWarning, match="Subclass Step"):
 
         @dataclass(frozen=True)
         class Old(CachedStep[CountResult]):

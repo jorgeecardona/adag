@@ -21,6 +21,7 @@ from typing import Any, TypeVar, get_origin
 
 from pydantic import BaseModel
 
+from adag.deprecation import AdagDeprecationWarning
 from adag.io import atomic_write_text
 from adag.step import Step
 
@@ -34,9 +35,10 @@ class CachedStep(Step[CT]):
         super().__init_subclass__(**kwargs)
         if any(get_origin(base) is CachedStep for base in getattr(cls, "__orig_bases__", [])):
             warnings.warn(
-                f"{cls.__name__}: CachedStep is deprecated; subclass Step[...] and override "
-                "save_result/load_result for a custom cache format.",
-                DeprecationWarning,
+                f"{cls.__name__}: CachedStep is deprecated and is removed in adag 1.0. Subclass "
+                "Step[...] instead; for a custom cache format override save_result/load_result "
+                "(docs/caching.md).",
+                AdagDeprecationWarning,
                 stacklevel=2,
             )
 

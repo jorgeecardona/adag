@@ -7,9 +7,12 @@ imports.
 import warnings
 from enum import StrEnum
 
+from adag.deprecation import AdagDeprecationWarning
+
 warnings.warn(
-    "adag.step_mode is deprecated; define your own StepMode enum",
-    DeprecationWarning,
+    "adag.step_mode is deprecated and is removed in adag 1.0. Define your own StepMode enum "
+    "instead: adag never reads it.",
+    AdagDeprecationWarning,
     stacklevel=2,
 )
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from structlog.testing import capture_logs
 
 from adag.deferred import NullObserver
+from adag.deprecation import AdagDeprecationWarning
 from adag.fan_out import FanOutStep
 from adag.observers import RunTreeObserver
 from adag.pipeline import Pipeline
@@ -222,7 +223,7 @@ def test_deprecated_domain_hooks_are_no_ops_that_warn_once() -> None:
         LoggingObserver().on_embedding([0.1])
         LoggingObserver().on_embedding([0.2])
         LoggingObserver().on_model_refused("m")
-    messages = [str(w.message) for w in caught if w.category is DeprecationWarning]
+    messages = [str(w.message) for w in caught if w.category is AdagDeprecationWarning]
     assert len(messages) == 2
     assert "on_embedding" in messages[0] and "on_model_refused" in messages[1]
 

@@ -25,6 +25,7 @@ from typing import Any, cast, get_args
 
 from adag.cache_store import store_from_url
 from adag.deferred import InputParam, PipelineObserver
+from adag.deprecation import AdagDeprecationWarning
 from adag.dispatch import EXIT_BAD_BRANCH, BranchReferenceError
 from adag.fan_out import FanOutStep
 from adag.observers import RunTreeObserver
@@ -277,9 +278,9 @@ def run_branch(
 def _coerce_legacy_assignments(pipeline: Pipeline[Any], items: list[str]) -> dict[str, Any]:
     """Turn 0.1-style ``KEY=VALUE`` strings into typed params. Deprecated: pass a dict."""
     warnings.warn(
-        "KEY=VALUE params (run_branch list form, resolve-branch --param) are deprecated; "
-        "pass a dict or --params-json",
-        DeprecationWarning,
+        "KEY=VALUE params (run_branch list form, resolve-branch --param) are deprecated and are "
+        "removed in adag 1.0. Pass a dict, or --params-json, instead.",
+        AdagDeprecationWarning,
         stacklevel=3,
     )
     raw = _parse_assignments(items)

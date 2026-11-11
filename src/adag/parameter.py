@@ -17,6 +17,7 @@ import warnings
 from typing import Any, TypeVar
 
 from adag.deferred import InputParam
+from adag.deprecation import AdagDeprecationWarning
 
 T = TypeVar("T")
 
@@ -30,9 +31,9 @@ class Parameter:
     def of(name: str, parameter_type: type[T], default: Any = _UNSET) -> InputParam[T]:
         """Return an ``InputParam`` with ``value_type=parameter_type`` and an optional default."""
         warnings.warn(
-            "Parameter.of is deprecated; use InputParam(name, value_type=T) or "
-            "InputParam.with_default(name, default)",
-            DeprecationWarning,
+            "Parameter.of is deprecated and is removed in adag 1.0. Use "
+            "InputParam(name, value_type=T) or InputParam.with_default(name, default) instead.",
+            AdagDeprecationWarning,
             stacklevel=2,
         )
         if default is _UNSET:

@@ -5,7 +5,7 @@ This module exports every public name of the package, including the lower-level 
 imported from here.
 """
 
-__version__ = "0.2.27"
+__version__ = "0.2.28"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -27,6 +27,7 @@ from adag.deferred import (
     current_observer,
     observing,
 )
+from adag.deprecation import AdagDeprecationWarning
 from adag.dir_source import DirSource
 from adag.dispatch import BranchPolicy, SubprocessDispatcher
 from adag.fan_out import FanOutBranchError, FanOutStep
@@ -42,6 +43,7 @@ from adag.visualization import SVG, SvgOptions, dag, render_pipeline_svg, walk
 
 __all__ = [
     "SVG",
+    "AdagDeprecationWarning",
     "AsyncExecutor",
     "AsyncStep",
     "BatchItem",
@@ -88,10 +90,15 @@ __all__ = [
     "walk",
 ]
 
+# name -> (module, attribute, replacement named in the warning)
 _DEPRECATED = {
-    "Parameter": ("adag.parameter", "Parameter"),
-    "StepMode": ("adag.step_mode", "StepMode"),
-    "BranchExecutionError": ("adag.dispatch", "BranchExecutionError"),
+    "Parameter": ("adag.parameter", "Parameter", "InputParam(name, value_type=T)"),
+    "StepMode": ("adag.step_mode", "StepMode", "your own enum (adag never reads it)"),
+    "BranchExecutionError": (
+        "adag.dispatch",
+        "BranchExecutionError",
+        "FanOutBranchError (branch failures are raised as that)",
+    ),
 }
 
 
@@ -99,13 +106,10 @@ def __getattr__(name: str) -> object:
     """Resolve deprecated top-level names on first use, so ``import adag`` does not warn."""
     if name in _DEPRECATED:
         import importlib
-        import warnings
 
-        module, attr = _DEPRECATED[name]
-        warnings.warn(
-            f"adag.{name} is deprecated; see the 0.3.0 migration notes",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        from adag.deprecation import warn_deprecated
+
+        module, attr, replacement = _DEPRECATED[name]
+        warn_deprecated(f"adag.{name}", replacement)
         return getattr(importlib.import_module(module), attr)
     raise AttributeError(f"module 'adag' has no attribute {name!r}")

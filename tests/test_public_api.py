@@ -5,6 +5,7 @@ It includes every top-level name of the first import (b62b906); see ``test_compa
 import adag
 
 EXPECTED = {
+    "AdagDeprecationWarning",
     "SVG",
     "AsyncStep",
     "BatchItem",

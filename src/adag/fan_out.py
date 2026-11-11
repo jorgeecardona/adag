@@ -34,6 +34,7 @@ from typing import Any, Generic, TypeVar
 import structlog
 
 from adag.deferred import BranchRef, InlineDispatcher, ResolveContext
+from adag.deprecation import AdagDeprecationWarning
 from adag.step import Step, StepResult
 
 logger = structlog.get_logger()
@@ -231,8 +232,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """
         warnings.warn(
             f"{type(context.dispatcher).__name__} has only dispatch(); implement "
-            "dispatch_all(branches, context). dispatch() support is removed in 1.0",
-            DeprecationWarning,
+            "dispatch_all(branches, context). dispatch() support is removed in adag 1.0.",
+            AdagDeprecationWarning,
             stacklevel=2,
         )
         dispatch: Any = getattr(context.dispatcher, "dispatch")  # noqa: B009

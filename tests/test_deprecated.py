@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 import adag
 from adag import InputParam, Pipeline, Step
+from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import hash_list, hash_scalar
 
 
@@ -26,9 +27,9 @@ class Echo(Step[Out]):
 
 
 def test_parameter_of_builds_a_typed_input_param_and_warns(tmp_path: Path) -> None:
-    with pytest.warns(DeprecationWarning, match="adag.Parameter"):
+    with pytest.warns(AdagDeprecationWarning, match="adag.Parameter"):
         param_cls: Any = adag.Parameter
-    with pytest.warns(DeprecationWarning, match="InputParam"):
+    with pytest.warns(AdagDeprecationWarning, match="InputParam"):
         code = param_cls.of("code", str)
     assert code == InputParam("code", value_type=str)
     result = Pipeline(Echo()(code=code), cache_dir=tmp_path).execute(code="007")
@@ -38,14 +39,14 @@ def test_parameter_of_builds_a_typed_input_param_and_warns(tmp_path: Path) -> No
 def test_parameter_of_with_default() -> None:
     from adag.parameter import Parameter
 
-    with pytest.warns(DeprecationWarning, match="InputParam"):
+    with pytest.warns(AdagDeprecationWarning, match="InputParam"):
         param = Parameter.of("threshold", float, default=0.5)
     assert param.has_default and param.default == 0.5 and param.value_type is float
 
 
 def test_step_mode_import_warns_and_has_three_values() -> None:
     sys.modules.pop("adag.step_mode", None)
-    with pytest.warns(DeprecationWarning, match="StepMode"):
+    with pytest.warns(AdagDeprecationWarning, match="StepMode"):
         module = importlib.import_module("adag.step_mode")
     assert [m.value for m in module.StepMode] == ["train", "eval", "inference"]
 
@@ -59,7 +60,9 @@ def test_branch_execution_error_still_raisable() -> None:
 
 def test_import_adag_does_not_warn(recwarn: pytest.WarningsRecorder) -> None:
     importlib.reload(adag)
-    assert not [w for w in recwarn if issubclass(w.category, DeprecationWarning)]
+    assert not [
+        w for w in recwarn if issubclass(w.category, (DeprecationWarning, AdagDeprecationWarning))
+    ]
 
 
 def test_hash_helpers_keep_first_release_bytes() -> None:

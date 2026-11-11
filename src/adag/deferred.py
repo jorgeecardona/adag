@@ -21,6 +21,8 @@ from pathlib import Path
 from threading import Event, Lock
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, get_args, get_origin
 
+from adag.deprecation import AdagDeprecationWarning
+
 if TYPE_CHECKING:
     from adag.cache_store import CacheStore
     from adag.step import Step, StepResult
@@ -123,9 +125,10 @@ def _warn_domain_hook(name: str) -> None:
         return
     _WARNED_DOMAIN_HOOKS.add(name)
     warnings.warn(
-        f"NullObserver.{name} is deprecated and does nothing; declare a typed hook instead "
+        f"NullObserver.{name} is deprecated, does nothing, and is removed in adag 1.0. "
+        "Declare a typed hook instead "
         '(see "Typed hooks for your own values" in docs/observers.md)',
-        DeprecationWarning,
+        AdagDeprecationWarning,
         stacklevel=3,
     )
 

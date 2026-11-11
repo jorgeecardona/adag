@@ -8,7 +8,7 @@ import importlib
 
 import pytest
 
-pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+pytestmark = pytest.mark.filterwarnings("ignore::adag.deprecation.AdagDeprecationWarning")
 
 TOP_LEVEL = [
     "BranchExecutionError",

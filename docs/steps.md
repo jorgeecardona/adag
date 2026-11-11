@@ -33,8 +33,9 @@ value=17
 
 Two errors and one warning can stop a graph before any step runs:
 
-- `DeprecationWarning`, when you call the step: a field holds a `Step` and the same name is also
-  wired as an input. Wire an upstream step once, as an input. This becomes a `TypeError` in 0.4.
+- `AdagDeprecationWarning`, when you call the step: a field holds a `Step` and the same name is
+  also wired as an input. Wire an upstream step once, as an input. This becomes a `TypeError` in
+  adag 1.0.
 - `CyclicPipelineError`, when you build the `Pipeline`: the graph has a cycle.
 - `UnboundInputError`, when you call `pipeline.validate()`: a `run()` argument is neither wired,
   a field, nor has a default. Without `validate()`, `execute()` fails with a `TypeError` from

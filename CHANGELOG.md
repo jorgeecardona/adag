@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `AdagDeprecationWarning`: every deprecated name and call form warns with it. It is a
+  `FutureWarning`, so scripts and notebooks see it without changing warning filters, and each
+  message names the replacement. Deprecated forms keep working until adag 1.0.
 - Python 3.12 support (`requires-python >=3.12`), tested in CI.
 - `Pipeline(metadata=...)`: caller data, any JSON value, saved in `pipeline.json` and read back
   by `from_directory`.
