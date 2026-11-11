@@ -51,3 +51,16 @@ def test_cli_example_runs(tmp_path: Path) -> None:
     )
     assert result.returncode == 0, result.stderr[-2000:]
     assert "total: Number(value=17)" in result.stdout
+
+
+def test_typed_observer_hook_reaches_both_call_sites(tmp_path: Path) -> None:
+    """The documented typed-hook pattern delivers from a helper and from a step's execute."""
+    result = subprocess.run(
+        [sys.executable, str(EXAMPLES_DIR / "typed_observer_hook.py")],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+        cwd=tmp_path,
+    )
+    assert "[0.7, 1.4]" in result.stdout

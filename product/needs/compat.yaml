@@ -71,6 +71,8 @@ needs:
     sources:
       - {kind: secondary, date: 2026-11-11, locator: "consumer usage census, 2026-11-11 (counts in docs/api-decisions.md; raw data kept private)"}
       - {kind: secondary, date: 2026-11-11, locator: "https://gitlab.com/cardona-oss/adag/-/issues/3"}
+    proofs:
+      - "test:tests/test_doc_examples.py::test_typed_observer_hook_reaches_both_call_sites"
 
   - id: CO-7
     text: >

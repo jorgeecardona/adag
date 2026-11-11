@@ -27,3 +27,36 @@ progress events (`step.saved`, `batch.*`, `item_cache.*`, `branch.*`).
 - Warnings and errors (a timed-out branch, a cache invariant violation) are always logged
   with structlog, so an observer cannot hide a problem.
 - Inside a step body, send your own event with `adag.deferred.emit("my.event", n=3)`.
+
+## Typed hooks for your own values
+
+Use a typed hook when your code consumes a value from a run (a score, a vector, a model name),
+instead of logging it. adag has no domain hooks of its own. Declare one yourself:
+
+1. A `runtime_checkable` `Protocol` with your method, here `on_score(score: float)`.
+2. One function that calls the method when the observer has it, and does nothing otherwise.
+3. An observer that implements the method. It subclasses `NullObserver` for the other hooks.
+
+Call the function from either place:
+
+- Inside a step, with `context.observer` (override `execute`, call `super().execute`).
+- From any helper a step calls, with `current_observer()`.
+
+```python
+--8<-- "docs/examples/typed_observer_hook.py"
+```
+
+```text
+[0.7, 1.4]
+```
+
+(output trimmed: log lines removed)
+
+A strict type checker sees `float` at both ends. A plain `NullObserver` or `LoggingObserver`
+keeps working, because the function skips an observer without the method.
+
+`on_event(event, fields)` stays untyped (`dict[str, Any]`): it carries progress events, not
+values a caller consumes.
+
+The deprecated `NullObserver.on_embedding` and `on_model_refused` do nothing. Replace each with a
+typed hook as above.

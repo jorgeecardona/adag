@@ -104,11 +104,11 @@ class NullObserver:
         pass
 
     def on_embedding(self, vector: list[float]) -> None:
-        """Deprecated no-op, kept for code that calls it. Use a typed hook (see Observers docs)."""
+        """Deprecated no-op, kept for code that calls it. Use a typed hook (docs/observers.md)."""
         _warn_domain_hook("on_embedding")
 
     def on_model_refused(self, model: str) -> None:
-        """Deprecated no-op, kept for code that calls it. Use a typed hook (see Observers docs)."""
+        """Deprecated no-op, kept for code that calls it. Use a typed hook (docs/observers.md)."""
         _warn_domain_hook("on_model_refused")
 
 
@@ -124,7 +124,7 @@ def _warn_domain_hook(name: str) -> None:
     _WARNED_DOMAIN_HOOKS.add(name)
     warnings.warn(
         f"NullObserver.{name} is deprecated and does nothing; declare a typed hook instead "
-        "(see the Observers docs)",
+        '(see "Typed hooks for your own values" in docs/observers.md)',
         DeprecationWarning,
         stacklevel=3,
     )
