@@ -45,20 +45,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Calling a step warns (`DeprecationWarning`) when an upstream step is both a field and an
-  input. Wire it once, as an input. It becomes a `TypeError` in 0.4.
+- Calling a step warns (`AdagDeprecationWarning`) when an upstream step is both a field and an
+  input. Wire it once, as an input. It becomes a `TypeError` in adag 1.0.
 - `SubprocessDispatcher` runs at most one process per CPU at a time (`max_concurrent=`), not
   one per branch. It waits `retry_delay_seconds`, not `poll_interval_seconds`, between attempts.
-- A custom dispatcher implements `dispatch_all(branches, context)` (all branches of one fan-out)
-  instead of `dispatch(branch, sub, context)`.
+- A custom dispatcher implements `dispatch_all(branches, context)` (all branches of one fan-out).
+  A dispatcher with only the old `dispatch(branch, sub, context)` still works, with a warning.
 - Dispatching a fan-out whose keys have the same text (`1` and `"1"`) raises `ValueError`.
 - `NullObserver` now silences a whole run. Progress logs (cache writes, batch progress,
   dispatch) go through the new `on_event` observer hook; warnings and errors still log.
 
-### Removed
+### Restored
 
-- `Step.produces`, `Step.accepts` and `Step.accepts_from`. Nothing checked them.
-- `BranchExecutionError`. Branch failures arrive as `FanOutBranchError`.
+The 0.2 releases removed names that existing code still uses. They are back, and every name
+the first release exported imports again, except `BatchDispatcher` (use `RemoteDispatcher` with a
+`JobBackend`) and `StepOutput` (nothing returned one). Deprecated ones warn and work until 1.0.
+
+- The top-level exports removed in 0.2.5: executors, dispatchers, `Deferred`, `ResolveContext`,
+  `Progress`, `BranchRef`, `current_observer`, `observing`, `walk`, `render_pipeline_svg`.
+- `Step.produces`, `Step.accepts` and `Step.accepts_from`.
+- `CachedStep` as a working class, with its direct `output_path`, `save`, `load`, `validate`,
+  `is_cached` and `is_partial` methods (deprecated; see `save_result`/`load_result`).
+- `hash_scalar` and `hash_list`, with the same bytes as the first release.
+- Deprecated: `Parameter`, `StepMode`, `BranchExecutionError`, `NullObserver.on_embedding` and
+  `on_model_refused`, `run_branch` with a `KEY=VALUE` list, `resolve-branch --param`.
+- `ResolveContext` and `BranchPolicy` keep their first-release positional field order.
 
 ## [0.2.5] - 2026-11-11
 
