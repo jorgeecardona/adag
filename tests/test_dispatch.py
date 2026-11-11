@@ -14,8 +14,9 @@ from typing import Any
 import pytest
 
 import adag.dispatch as dispatch_module
-from adag.cli import load_pipeline_module
+from adag.cli import load_pipeline_module, main, run_branch
 from adag.dispatch import (
+    EXIT_BAD_BRANCH,
     SubprocessDispatcher,
 )
 from adag.pipeline import Pipeline
@@ -131,3 +132,81 @@ def test_param_args_keep_value_types():
 def test_param_args_reject_values_a_worker_cannot_receive():
     with pytest.raises(TypeError, match="JSON-serializable"):
         dispatch_module._param_args({"p": object()})
+
+
+def test_worker_exits_2_on_hash_mismatch(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    """A worker that derives a different branch hash refuses to write a result."""
+    path = _write_pipeline(tmp_path)
+    code = main(
+        [
+            "resolve-branch",
+            str(path),
+            "--fan-out",
+            "per_key",
+            "--key",
+            "a",
+            "--cache-dir",
+            str(tmp_path / "cache"),
+            "--expect-hash",
+            "000000000000",
+        ]
+    )
+    assert code == EXIT_BAD_BRANCH
+    assert "hash mismatch" in capsys.readouterr().err
+    assert not (tmp_path / "cache").exists() or not any((tmp_path / "cache").iterdir())
+
+
+def test_worker_exits_2_on_unknown_key(tmp_path: Path):
+    path = _write_pipeline(tmp_path)
+    args = ["resolve-branch", str(path), "--fan-out", "per_key", "--key", "zzz"]
+    assert main([*args, "--cache-dir", str(tmp_path / "cache")]) == EXIT_BAD_BRANCH
+
+
+def test_worker_accepts_a_module_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A worker can import the pipeline by dotted module name instead of a file path."""
+    package = tmp_path / "mypkg"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "pipe.py").write_text(PIPELINE_SOURCE)
+    monkeypatch.syspath_prepend(str(tmp_path))  # pyright: ignore[reportUnknownMemberType]
+
+    module = load_pipeline_module("mypkg.pipe")
+    fan: Any = module.per_key.step
+    expected = fan.factory("b", fan.over["b"]).content_hash()
+
+    result = run_branch("mypkg.pipe", "per_key", "b", {}, tmp_path / "cache", expect_hash=expected)
+    assert result.value == 4
+
+
+def test_missing_module_name_is_file_not_found():
+    with pytest.raises(FileNotFoundError):
+        load_pipeline_module("no_such_pkg_xyz.pipe")
+
+
+def test_fan_out_rejects_keys_with_the_same_text(tmp_path: Path):
+    """Keys 1 and "1" would reach the same worker branch, so dispatch refuses them."""
+    from dataclasses import dataclass
+
+    from pydantic import BaseModel
+
+    from adag import FanOutStep, Step
+
+    class Out(BaseModel):
+        n: int
+
+    @dataclass(frozen=True)
+    class Make(Step[Out]):
+        n: int
+
+        def run(self, n: int) -> Out:
+            return Out(n=n)
+
+    fan = FanOutStep(
+        over={1: 1, "1": 2},
+        factory=lambda key, value: Make(n=value)(),
+        pipeline_module="x",
+        fan_out_var="fan",
+    )()
+    pipeline: Pipeline[Any] = Pipeline(fan, cache_dir=tmp_path / "cache")
+    with pytest.raises(ValueError, match="same text"):
+        pipeline.execute(dispatcher=SubprocessDispatcher())

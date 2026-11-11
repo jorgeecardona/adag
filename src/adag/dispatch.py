@@ -34,6 +34,14 @@ class BranchPolicy:
     poll_interval_seconds: float = 5.0
 
 
+EXIT_BAD_BRANCH = 2
+"""Worker exit code for a bad branch reference or a hash mismatch. Never retried."""
+
+
+class BranchReferenceError(LookupError):
+    """The worker cannot find the branch, or derives a different hash than the orchestrator."""
+
+
 class BranchExecutionError(RuntimeError):
     """A single branch's worker failed (nonzero exit, timeout, or job FAILED)."""
 
@@ -91,6 +99,8 @@ class SubprocessDispatcher:
             "--cache-dir",
             str(cache_dir),
             *_param_args(context.params),
+            "--expect-hash",
+            branch.branch_hash,
         ]
         attempts = self.policy.max_retries + 1
         detail = ""
@@ -125,6 +135,8 @@ class SubprocessDispatcher:
                     completed.stderr.strip()[-500:]
                     or f"exit code {completed.returncode}, no result in cache"
                 )
+                if completed.returncode == EXIT_BAD_BRANCH:
+                    break  # a bad reference or hash mismatch fails the same way every time
             if attempt + 1 < attempts:
                 time.sleep(self.policy.poll_interval_seconds)  # backoff between attempts
         raise BranchExecutionError(branch.key, detail)

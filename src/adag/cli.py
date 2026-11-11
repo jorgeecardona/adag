@@ -13,6 +13,7 @@ Also runnable as ``python -m adag``.
 """
 
 import argparse
+import importlib
 import importlib.util
 import json
 import re
@@ -22,27 +23,43 @@ from types import ModuleType
 from typing import Any, cast, get_args
 
 from adag.deferred import InputParam, PipelineObserver
+from adag.dispatch import EXIT_BAD_BRANCH, BranchReferenceError
 from adag.fan_out import FanOutStep
 from adag.observers import RunTreeObserver
 from adag.pipeline import Pipeline
 from adag.step import StepResult
 
+_MODULE_NAME = re.compile(r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*")
 
-def load_pipeline_module(pipeline_path: Path) -> ModuleType:
-    """Import a pipeline file by path and return the executed module.
 
-    The file's own directory is added to ``sys.path`` so it can import sibling
-    modules. The module name is derived from the absolute path so two files
-    with the same stem don't collide in ``sys.modules``.
+def load_pipeline_module(pipeline: Path | str) -> ModuleType:
+    """Import a pipeline by file path or by module name, and return the module.
+
+    A path to an existing file is loaded from that file. Its directory is added to
+    ``sys.path`` so it can import sibling modules, and its module name is derived from the
+    absolute path so two files with the same stem do not collide in ``sys.modules``.
+
+    Anything else is imported as a module name (``pkg.pipeline``). Use a module name for
+    remote workers: a file path from the orchestrator machine does not exist in a container.
+
+    Raises:
+        FileNotFoundError: ``pipeline`` is neither a file nor an importable module.
     """
-    resolved = pipeline_path.resolve()
+    resolved = Path(pipeline).resolve()
     if not resolved.is_file():
-        raise FileNotFoundError(f"pipeline file not found: {pipeline_path}")
+        name = str(pipeline)
+        if _MODULE_NAME.fullmatch(name):
+            try:
+                return importlib.import_module(name)
+            except ModuleNotFoundError as error:
+                if error.name is None or not name.startswith(error.name):
+                    raise  # the module exists but one of its own imports is missing
+        raise FileNotFoundError(f"pipeline file or module not found: {pipeline}")
 
     module_name = "adag_pipeline_" + re.sub(r"\W", "_", str(resolved))
     spec = importlib.util.spec_from_file_location(module_name, resolved)
     if spec is None or spec.loader is None:
-        raise ImportError(f"could not load pipeline file: {pipeline_path}")
+        raise ImportError(f"could not load pipeline file: {pipeline}")
 
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
@@ -192,40 +209,60 @@ def _fan_out_step(target: StepResult[Any], var: str) -> Any:
 
 
 def run_branch(
-    pipeline_path: Path, fan_out_var: str, key: str, params: dict[str, Any], cache_dir: Path
+    pipeline: Path | str,
+    fan_out_var: str,
+    key: str,
+    params: dict[str, Any],
+    cache_dir: Path,
+    expect_hash: str | None = None,
 ) -> Any:
     """Worker entry: resolve ONE fan-out branch into the shared cache.
 
-    Re-imports the pipeline file, finds the ``FanOutStep`` bound to ``fan_out_var``,
-    looks up its own ``over[key]`` (so the value never had to cross the wire),
-    re-derives the branch via ``factory(key, value)``, and resolves it under a
-    plain in-process context. ``StepResult.resolve`` writes the result to
-    ``cache_dir`` keyed by the branch content hash — the rendezvous the
-    orchestrator polls. Raises ``KeyError``/``TypeError``/``ValueError`` on bad input.
+    Re-imports the pipeline, finds the ``FanOutStep`` bound to ``fan_out_var``, looks up its
+    own ``over[key]`` (so the value never had to cross the wire), re-derives the branch via
+    ``factory(key, value)``, and resolves it under a plain in-process context.
+    ``StepResult.resolve`` writes the result to ``cache_dir`` under the branch content hash,
+    which the orchestrator reads back.
+
+    Raises:
+        BranchReferenceError: the fan-out or key is not in the pipeline, or the re-derived
+            branch hash is not ``expect_hash`` (the worker runs different code or params than
+            the orchestrator). A retry cannot fix either.
+        ValueError: a param is not an input of the branch.
     """
-    module = load_pipeline_module(pipeline_path)
+    module = load_pipeline_module(pipeline)
     targets = discover_targets(module)
     if fan_out_var not in targets:
-        raise KeyError(f"fan-out target {fan_out_var!r} not found. Available: {sorted(targets)}")
+        raise BranchReferenceError(
+            f"fan-out target {fan_out_var!r} not found. Available: {sorted(targets)}"
+        )
 
     fan_out = _fan_out_step(targets[fan_out_var], fan_out_var)
     matches = [
         (original, value) for original, value in fan_out.over.items() if str(original) == key
     ]
     if not matches:
-        raise KeyError(
-            f"branch key {key!r} not in fan-out {fan_out_var!r}. Keys: {sorted(str(branch_key) for branch_key in fan_out.over)}"
+        keys = sorted(str(branch_key) for branch_key in fan_out.over)
+        raise BranchReferenceError(
+            f"branch key {key!r} not in fan-out {fan_out_var!r}. Keys: {keys}"
         )
     original_key, value = matches[0]
 
     sub: StepResult[Any] = fan_out.factory(original_key, value)
-    pipeline: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir)
-    unknown = set(params) - pipeline.input_names
+    pipeline_obj: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir)
+    unknown = set(params) - pipeline_obj.input_names
     if unknown:
         raise ValueError(
-            f"unknown param(s) {sorted(unknown)}. Expected: {sorted(pipeline.input_names)}"
+            f"unknown param(s) {sorted(unknown)}. Expected: {sorted(pipeline_obj.input_names)}"
         )
-    return pipeline.resolve(sub, **params)
+    if expect_hash is not None:
+        actual = sub.content_hash(params=params)
+        if actual != expect_hash:
+            raise BranchReferenceError(
+                f"branch {key!r} hash mismatch: orchestrator expects {expect_hash}, worker "
+                f"derived {actual}. The worker runs different code or params."
+            )
+    return pipeline_obj.resolve(sub, **params)
 
 
 def _format_targets(targets: dict[str, StepResult[Any]]) -> str:
@@ -315,8 +352,16 @@ def _resolve_branch_command(args: argparse.Namespace) -> int:
     try:
         params = _parse_params_json(args.params_json)
         result = run_branch(
-            Path(args.pipeline), args.fan_out, args.key, params, Path(args.cache_dir)
+            args.pipeline,
+            args.fan_out,
+            args.key,
+            params,
+            Path(args.cache_dir),
+            expect_hash=args.expect_hash,
         )
+    except BranchReferenceError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return EXIT_BAD_BRANCH
     except (FileNotFoundError, ImportError, KeyError, ValueError, TypeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -366,7 +411,9 @@ def main(argv: list[str] | None = None) -> int:
     branch_parser = subparsers.add_parser(
         "resolve-branch", help="Worker entry: resolve one fan-out branch into the shared cache"
     )
-    branch_parser.add_argument("pipeline", help="Path to the pipeline .py file")
+    branch_parser.add_argument(
+        "pipeline", help="Path to the pipeline .py file, or its module name (pkg.pipeline)"
+    )
     branch_parser.add_argument(
         "--fan-out",
         dest="fan_out",
@@ -384,6 +431,13 @@ def main(argv: list[str] | None = None) -> int:
         default="{}",
         metavar="JSON",
         help="Pipeline parameters as one JSON object (keeps value types)",
+    )
+    branch_parser.add_argument(
+        "--expect-hash",
+        dest="expect_hash",
+        default=None,
+        metavar="HASH",
+        help="Exit 2 if the re-derived branch hash differs from HASH",
     )
 
     args = parser.parse_args(argv)

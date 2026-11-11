@@ -171,6 +171,15 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                 "set them when building the fan-out for distributed dispatch."
             )
 
+        seen: dict[str, K] = {}
+        for key in self.over:
+            if str(key) in seen:
+                raise ValueError(
+                    f"FanOutStep keys {seen[str(key)]!r} and {key!r} have the same text "
+                    f"{str(key)!r}; a worker finds its branch by that text, so keys must differ."
+                )
+            seen[str(key)] = key
+
         prepared: list[tuple[K, StepResult[V], BranchRef]] = []
         for key, value in self.over.items():
             context.observer.on_fan_out_branch(str(key))
