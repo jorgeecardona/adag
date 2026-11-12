@@ -29,3 +29,13 @@ needs:
     proofs:
       - "test:tests/test_path_results.py::test_lossy_round_trip_warns_on_first_save"
       - "test:tests/test_path_results.py::test_faithful_round_trip_does_not_warn"
+
+  - id: FX-4
+    text: >
+      When the developer puts an upstream node in a step field, they can get an error at wiring
+      time that says to pass it as a call input, and no advice that would drop the edge.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/10"}
+    proofs:
+      - "test:tests/test_step.py::test_step_result_field_is_rejected_when_wired"
+      - "test:tests/test_step.py::test_unhashable_graph_node_does_not_suggest_config"

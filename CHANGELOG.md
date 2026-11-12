@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A step whose `load_result` gives back less than `run` produced (for example a field marked
   `exclude=True`) now logs `step.load_result_differs` on the first save. Downstream gets the
   reloaded value, so the data was dropped silently. The Caching page now says so.
+- A `StepResult` held in a step field raises `TypeError` when the step is called, and says to
+  pass it as a call input. It failed later, in hashing, with advice to use `Config(...)`, which
+  would have removed the edge from the graph. Hashing errors no longer suggest `Config(...)` for
+  a graph node.
 
 ### Changed
 

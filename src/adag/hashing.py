@@ -112,7 +112,8 @@ def encode_value(value: Any, where: str = "value") -> bytes:
 
     Raises:
         UnhashableValueError: ``value`` has no stable encoding. ``where`` names it in
-            the message. Wrap execution-only values in ``Config(...)``.
+            the message. Wrap execution-only values in ``Config(...)``; pass a graph node
+            (a ``StepResult``) as a call input instead.
     """
     if value is None:
         return _frame(b"N", b"")
@@ -158,10 +159,16 @@ def _encode_container(value: Any, where: str) -> bytes:
     if isinstance(value, (set, frozenset)):
         members = cast("set[Any] | frozenset[Any]", value)
         return _frame(b"Z", b"".join(sorted(encode_value(v, f"{where}{{}}") for v in members)))
+    # A graph node (StepResult, InputParam, any Deferred) is an edge, not a value. Config(...)
+    # would hide the edge from the graph, so do not suggest it for one.
+    if callable(getattr(value, "resolve", None)):
+        advice = "It is a graph node: pass it as a call input, step(name=node), not as a field."
+    else:
+        advice = "Wrap execution-only values in Config(...)."
     raise UnhashableValueError(
         f"{where} has type {type(value).__name__}, which the cache key cannot hash. "
         "Supported: None, bool, int, float, str, bytes, Enum, Path, UUID, type, BaseModel, "
-        "and list / tuple / dict / set of those. Wrap execution-only values in Config(...)."
+        f"and list / tuple / dict / set of those. {advice}"
     )
 
 

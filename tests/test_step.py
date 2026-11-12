@@ -788,3 +788,42 @@ def test_cached_step_subclass_warns_and_runs_in_a_pipeline():
 
     assert Old.result_type is CountResult
     assert Pipeline(Old()()).execute().count == 1
+
+
+def test_step_result_field_is_rejected_when_wired():
+    """A StepResult in a field fails at wiring, saying to pass it as a call input (#10)."""
+
+    @dataclass(frozen=True)
+    class Upstream(Step[CountResult]):
+        def run(self) -> CountResult:
+            return CountResult(count=1)
+
+    @dataclass(frozen=True)
+    class Downstream(Step[CountResult]):
+        dataset: object = None
+
+        def run(self, dataset: CountResult) -> CountResult:
+            return dataset
+
+    with pytest.raises(TypeError, match="pass it as a call input"):
+        Downstream(dataset=Upstream()())()
+
+
+def test_unhashable_graph_node_does_not_suggest_config():
+    """Hashing a StepResult field names the call-input fix, not Config (#10)."""
+
+    @dataclass(frozen=True)
+    class Upstream(Step[CountResult]):
+        def run(self) -> CountResult:
+            return CountResult(count=1)
+
+    @dataclass(frozen=True)
+    class Downstream(Step[CountResult]):
+        dataset: object = None
+
+        def run(self) -> CountResult:
+            return CountResult(count=0)
+
+    with pytest.raises(UnhashableValueError, match="call input") as info:
+        Downstream(dataset=Upstream()()).content_hash()
+    assert "Config" not in str(info.value)

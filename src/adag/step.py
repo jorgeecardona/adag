@@ -301,8 +301,18 @@ class Step(Generic[Out]):
         the field copy is hashed but never run, and the input value is what ``run()`` gets. The
         first release documented this pattern, so it still works. It becomes a ``TypeError`` in
         adag 1.0. Wire the upstream step once, as an input.
+
+        Raises:
+            TypeError: a field holds a ``StepResult``. A field is part of the key, not an edge;
+                pass the upstream node as a call input instead.
         """
         for f in dataclasses.fields(self):
+            if isinstance(getattr(self, f.name), StepResult):
+                raise TypeError(
+                    f"{type(self).__name__}.{f.name} holds a StepResult. A field is hashed into "
+                    f"the cache key, not wired as an edge: pass it as a call input, "
+                    f"{type(self).__name__}(...)({f.name}=node)."
+                )
             if f.name in kwargs and isinstance(getattr(self, f.name), Step):
                 warnings.warn(
                     f"{type(self).__name__}.{f.name} is both a Step field and an input. "
