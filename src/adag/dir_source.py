@@ -1,14 +1,10 @@
-"""DirSource — a Deferred leaf node hashed by the contents of a directory.
+"""DirSource: a Deferred leaf hashed by the contents of a directory.
 
-Sibling of ``FileSource`` for cases where a Step's input is a folder of
-files (e.g. a folder of accumulating note suggestions). Hashing the
-folder content means adding, removing, or editing any file in the folder
-invalidates the downstream cache automatically — the same property
-``FileSource`` gives for a single file.
+A sibling of ``FileSource`` for a step whose input is a folder of files. Adding, removing or
+editing a file in the folder changes the hash, so the downstream cache recomputes.
 
-Resolve semantics: returns the folder Path as a string. Steps load the
-files themselves via their own glob/parse logic; ``DirSource`` is only
-responsible for content-aware cache keying.
+``resolve`` returns the folder path as a string. The step reads the files itself. ``DirSource``
+only keys the cache by content.
 """
 
 from __future__ import annotations
@@ -27,13 +23,12 @@ class DirSource(Deferred[str]):
 
     Hashed by the SHA-256 of a deterministic stream of
     ``(relative_path, file_hash)`` pairs across every file matching
-    ``pattern`` inside the folder (recursive). If the folder doesn't
+    ``pattern`` inside the folder. If the folder doesn't
     exist, the hash returns ``None``, blocking any downstream step that
     depends on it.
 
-    ``pattern`` defaults to ``"*.jsonl"`` — the common case for a folder
-    of JSONL suggestion / overlay / config files. Pass another glob (e.g.
-    ``"**/*.json"``) for nested layouts.
+    ``pattern`` defaults to ``"*.jsonl"``, which is not recursive. Pass another glob (for
+    example ``"**/*.json"``) for nested folders.
     """
 
     path: str

@@ -1,4 +1,4 @@
-"""ItemCache — per-item cache for expensive batch operations.
+"""ItemCache: per-item cache for expensive batch operations.
 
 Designed for LLM calls where each item costs money. Saves results
 per-item so that a crash at item 1500/2000 only loses the last batch,
@@ -7,25 +7,25 @@ not the first 1500.
 The ItemCache gets its cache directory from the Pipeline that creates it.
 
 Storage is delegated to a ``CacheStore`` (the pluggable key->text backend) so the same per-item cache can
-live on the local filesystem (default), in Redis/Valkey (shared, for a deployed service), or anywhere else —
+live on the local filesystem (default), in Redis/Valkey (shared, for a deployed service), or anywhere else,
 without ItemCache knowing or caring. ItemCache owns only the higher-level concerns, expressed PURELY as
 key->text operations:
 
-1. **Schema-version stamp** — every saved value carries the schema's
+1. **Schema-version stamp**: every saved value carries the schema's
    ``model_json_schema()`` digest. On load, a mismatch is reported and the
    entry is treated as stale (forces re-processing). Prevents silent
    corruption when a schema field is added/renamed/retyped and old caches
    would otherwise deserialize wrong.
 
-2. **In-flight WAL** — ``mark_inflight(key)`` writes a ``<key>.inflight``
+2. **In-flight WAL**: ``mark_inflight(key)`` writes a ``<key>.inflight``
    sentinel (just another store key) before processing starts.
    ``clear_inflight(key)`` removes it after success. ``inflight_keys()``
    lists any sentinels left behind by a SIGTERM-killed process so callers
    can surface them in resume logs.
 
 The default ``FileSystemCacheStore`` is rooted at ``<cache_dir>/.items`` and keys are ``<namespace>/<key>``,
-so the on-disk layout (``<cache_dir>/.items/<namespace>/<key>.json``) is byte-for-byte what it has always
-been — existing caches load unchanged.
+so the on-disk layout (``<cache_dir>/.items/<namespace>/<key>.json``) is byte-for-byte the layout of the first release,
+so existing caches load unchanged.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ class ItemCache(Generic[R]):
     """Per-item cache for expensive batch operations.
 
     Items are stored as individual JSON values keyed by a content hash.
-    This survives parameter changes — only the item's own identity matters.
+    This survives parameter changes: only the item's own identity matters.
 
     Usage::
 
@@ -114,7 +114,7 @@ class ItemCache(Generic[R]):
         """Check if an item is cached."""
         return self.store.exists(self._item_key(item_key))
 
-    # Alias — "has" reads more naturally for cache operations.
+    # Alias: "has" reads more naturally for cache operations.
     has = exists
 
     def list_keys(self) -> set[str]:
@@ -199,7 +199,7 @@ class ItemCache(Generic[R]):
                     f"schema_version mismatch for {item_key}: stored={stored_version} expected={expected}"
                 )
             return self.schema.model_validate(raw[_DATA_FIELD])
-        # Legacy path — older caches stored the Pydantic JSON directly.
+        # Legacy path: older caches stored the Pydantic JSON directly.
         return self.schema.model_validate(raw)
 
     def partition(self, keys: list[str]) -> tuple[dict[str, R], list[int]]:
@@ -245,7 +245,7 @@ class ItemCache(Generic[R]):
     def collect(self, keys: list[str], *, allow_missing: bool = False) -> list[R]:
         """Load all items by keys.
 
-        Default behavior: raises ``ValueError`` if any key is missing — the
+        Default behavior: raises ``ValueError`` if any key is missing, the
         downstream step probably can't proceed without a complete result set.
 
         With ``allow_missing=True``: silently skip missing keys and return

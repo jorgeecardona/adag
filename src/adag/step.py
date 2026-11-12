@@ -1,22 +1,18 @@
-"""Step[Out] and StepResult[Out] — the core of the DAG engine.
+"""Step and StepResult: the two core types of the graph.
 
-Step: base class for all pipeline steps. Configuration lives on frozen
-dataclass fields. Inputs flow through __call__() which returns a StepResult.
+``Step`` is the base class of every step. Its dataclass fields are configuration. Calling a
+step wires its inputs and returns a ``StepResult``.
 
-StepResult: a Deferred that resolves by running a Step. Carries the step
-instance and its input sources. On resolve(), checks the disk cache (if the
-step has result_type), resolves upstream sources, runs the step, and caches.
+``StepResult`` is one node of the graph. Resolving it loads the cached result when there is
+one. Otherwise it resolves the inputs, runs the step and saves the result.
 
     @dataclass(frozen=True)
     class Tokenizer(Step[TokenizedText]):
-        result_type = TokenizedText
         max_length: int = 512
 
-        def run(self, text: str) -> TokenizedText:
-            ...
+        def run(self, text: str, max_length: int) -> TokenizedText: ...
 
-    tokenizer = Tokenizer(max_length=256)
-    result = tokenizer(text=text_param)   # StepResult
+    result = Tokenizer(max_length=256)(text=text_param)  # a StepResult
 """
 
 from __future__ import annotations
@@ -114,7 +110,7 @@ def _serialize_step_field(value: Any) -> tuple[bool, Any]:
     Returns ``(True, json_value)`` for fields that belong in the step's
     persisted spec, or ``(False, None)`` for fields that are runtime state
     (Step instances pointing at upstream deps, tokenizers, HTTP clients,
-    weights — anything owned by ``save_artifacts`` overrides on the
+    weights: anything owned by ``save_artifacts`` overrides on the
     subclass).
 
     Supported config types: scalars, ``None``, ``Path``, ``UUID``, ``Enum``,
@@ -173,32 +169,27 @@ def _overrides(cls: type, name: str) -> bool:
 
 @dataclasses.dataclass(frozen=True, eq=False)
 class Step(Generic[Out]):
-    """A step in the DAG — a frozen dataclass; subclasses add config fields and run().
+    """Base class of every step: a frozen dataclass with config fields and a ``run()`` method.
 
-    Frozen so a step's identity (its ``content_hash`` / cache key) can't change after
-    construction. The base sets ``eq=False`` (identity equality), which steps like
-    ``FanOutStep`` rely on for distinct-instance semantics; a subclass that wants
-    field-based equality just declares ``@dataclass(frozen=True)`` (eq=True by default).
-    Being a dataclass lets the engine read ``dataclasses.fields(self)`` directly.
+    Fields are part of the cache key, except ``Config`` fields. adag passes every field to
+    ``run()`` by name, together with the wired inputs.
 
     Class attributes:
-        kind: step identifier for serialization (e.g. "adag/tokenizer/v1").
-        label / description: human-readable text for visualization.
-        result_type: set to a ``BaseModel`` subclass to enable disk caching.
-        cache_key: pinned cache key that overrides the computed content hash.
-        pure: whether the body is a deterministic function of its declared inputs.
-        timeout_s: wall-clock budget (seconds) for the async resolve path; ``None`` = unbounded.
+        kind: a stable name for the step. It replaces the class name in the key and in
+            ``step.json``.
+        label, description: text for the graph drawing.
+        result_type: the ``BaseModel`` the result is cached as. Inferred from ``Step[X]``.
+        cache_key: a fixed key that replaces the computed hash.
+        strict_content_hash: set to ``False`` to skip fields the key cannot encode.
+        pure: ``False`` records that a rerun would not give the same value (a model call, a
+            clock read). adag still caches the step and never reads ``pure``.
+        timeout_s: seconds allowed for the async body under ``aexecute`` or ``aresolve``. A longer
+            run raises ``StepTimeout``. ``execute()`` ignores it, and it cannot stop a blocking
+            sync body. Use a ``SubprocessDispatcher`` when you need a hard limit.
+        produces, accepts: optional port names for graph editors. See ``accepts_from``.
 
-    ``pure`` is PROVENANCE only — it is orthogonal to caching and never gates it. An impure step
-    (an LLM draw, a clock/UUID read, an external service) is still cached by input-hash to freeze
-    one result for cost and reproducibility; ``pure`` only records whether re-running would
-    reproduce that value, so a consumer can tell a never-stale pure cache from a deliberately
-    refreshable generative one. A seeded RNG counts as pure; an unseeded one does not.
-
-    ``timeout_s`` bounds the awaitable body on the async path only: ``aresolve`` wraps it in
-    ``asyncio.wait_for`` and raises ``StepTimeout`` on overrun, so a stuck step fails as a clean
-    node error instead of hanging the host. It cannot interrupt synchronous CPU offloaded to a
-    worker thread — run that through a killable ``SubprocessDispatcher`` if you need a hard limit.
+    Equality is by identity (``eq=False``), which ``FanOutStep`` relies on. A subclass declared
+    with ``@dataclass(frozen=True)`` compares by fields.
     """
 
     kind: ClassVar[str] = ""
@@ -333,7 +324,7 @@ class Step(Generic[Out]):
         Override in a synchronous step. Deliberately NOT ``@abstractmethod``: an
         ``AsyncStep`` (implements ``arun``) and a ``FanOutStep`` (driven via ``execute``)
         have no synchronous ``run``, and marking it abstract would make them
-        un-instantiable. The default raise instead guards the real misuse cases — a sync
+        un-instantiable. The default raise instead guards the real misuse cases, a sync
         step that forgot ``run``, or a sync resolve of an async step.
         """
         del kwargs
@@ -345,7 +336,7 @@ class Step(Generic[Out]):
     def execute(self, context: ResolveContext, /, **kwargs: Any) -> Out:
         """Framework entry point. Override if the step needs per-call state
         (e.g. BatchStep needs context.cache_dir for its ItemCache). Most
-        steps don't — the default binds the run's observer as the ambient
+        steps don't: the default binds the run's observer as the ambient
         ``current_observer()`` (so step internals, incl. worker threads and
         asyncio tasks, can emit observer hooks) and delegates to run().
         """
@@ -359,29 +350,25 @@ class Step(Generic[Out]):
         return self.run(**kwargs)
 
     async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> Out:
-        """Async framework entry point — the awaitable mirror of ``execute``. Override for per-call state;
+        """Async framework entry point: the awaitable mirror of ``execute``. Override for per-call state;
         the default delegates to ``arun``.
         """
         del context
         return await self.arun(**kwargs)
 
     def content_hash(self) -> str | None:
-        """Compute a stable content hash identifying this step's configuration.
+        """Return the step's own hash (class, code and fields), or ``None`` when a field blocks it.
 
-        Identity:
-          - If `kind` is set (SerializableStep subclasses), the kind string is the identity.
-          - Otherwise, the class name + class source hash — so code changes invalidate the cache.
+        Identity is ``kind`` when set, else the class name. The class source is hashed in both cases,
+        so a code edit changes the hash. Returns ``cache_key`` unchanged when the class sets it.
 
-        Fields:
-          - `Config` — skipped (runtime-only values, not identity).
-          - `FileSource` — hashed by file content; a missing file blocks the hash (`None`).
-          - Nested `Step` — recursed; a blocked nested hash blocks the parent.
-          - Other values — encoded by ``adag.hashing.encode_value`` (scalars, Enum, Path,
-            UUID, type, BaseModel, and list / tuple / dict / set of those).
-          - Anything else — raises ``UnhashableValueError``. Set
-            ``strict_content_hash = False`` to skip such fields instead.
+        - ``Config`` fields: skipped.
+        - ``FileSource`` fields: hashed by file content. A missing file blocks the hash.
+        - A field that holds a ``Step``: hashed by that step's hash.
+        - Other values: encoded by ``adag.hashing.encode_value``.
 
-        Subclasses only override this if they need a fundamentally different identity strategy.
+        Raises:
+            UnhashableValueError: a field has no stable encoding and ``strict_content_hash`` is True.
         """
         pinned = type(self).cache_key
         if pinned is not None:
@@ -470,7 +457,7 @@ class Step(Generic[Out]):
         Default implementation captures the dataclass fields that ``_serialize_step_field``
         recognises (scalars, Path, UUID, Enum, BaseModel, composites thereof).
         Fields representing runtime state (Step instances, tokenizers, HF clients,
-        model handles) are skipped — those subclasses override this method, call
+        model handles) are skipped: those subclasses override this method, call
         ``super().save_artifacts(path)``, then write their own state files
         (safetensors, tokenizer files, etc.) next to step.json.
 
@@ -498,17 +485,17 @@ class Step(Generic[Out]):
 
 
 class AsyncStep(Step[Out]):
-    """A step whose body AWAITS I/O — a DB session, an HTTP/LLM call. Implement ``arun`` (async) instead of
+    """A step whose body awaits I/O (a DB session, an HTTP/LLM call). Implement ``arun`` (async) instead of
     ``run`` (sync), and resolve it through ``Pipeline.aexecute`` / ``StepResult.aresolve``.
 
     An AsyncStep has no synchronous body: it does not override ``run``, so the synchronous path
-    (``execute``/``resolve``) hits ``Step.run``'s default, which raises a clear message — a sync
+    (``execute``/``resolve``) hits ``Step.run``'s default, which raises a clear message: a sync
     resolve cannot await an async body. Sync steps are unaffected: their inherited ``arun`` just
     runs ``run``, so a graph can freely MIX sync and async steps and resolve the whole thing with
     ``aexecute`` (each sync step runs inline, each async step is awaited).
 
-    Per-request resources (e.g. a SQLAlchemy ``AsyncSession``) flow in like any other input — wire an
-    ``InputParam`` and pass it to ``aexecute``; nothing special is needed on the context.
+    Per-request resources (e.g. a SQLAlchemy ``AsyncSession``) flow in like any other input: wire an
+    ``InputParam`` and pass it to ``aexecute``. Nothing special is needed on the context.
     """
 
     @abstractmethod
@@ -532,7 +519,7 @@ KEY_RECORD_PREFIX = ".keys/"
 
 
 class _Miss:
-    """Sentinel for a cache/memo miss — deliberately not ``None``, because a step may
+    """Sentinel for a cache/memo miss, deliberately not ``None``: a step may
     legitimately return ``None`` and that must not read as 'recompute me'.
     """
 
@@ -559,7 +546,7 @@ class StepResult(Deferred[Out]):
         self._validate()
 
     def _validate(self) -> None:
-        """Runtime type check at wiring time. Best-effort — skips if hints fail. An ``AsyncStep``'s input
+        """Runtime type check at wiring time. Best-effort: skips if hints fail. An ``AsyncStep``'s input
         types live on ``arun`` (it has no synchronous ``run``), so validate against the step's real body.
         """
         target = type(self.step).arun if isinstance(self.step, AsyncStep) else type(self.step).run
@@ -567,7 +554,7 @@ class StepResult(Deferred[Out]):
             run_hints = get_type_hints(target)
         except Exception as exc:
             # Best-effort: a forward ref that can't resolve (missing import, stringized
-            # annotation) means we can't type-check the wiring — log it rather than fail
+            # annotation) means we can't type-check the wiring. Log it rather than fail
             # silently, then skip (wiring still works; this is a guard, not a gate).
             logger.debug(
                 "step.validate.hints_unavailable", step=type(self.step).__name__, error=str(exc)
@@ -601,7 +588,7 @@ class StepResult(Deferred[Out]):
         lookup, ``on_step_start``, and the disk-cache hit path. Returns the resolved value
         on a memo/cache hit, or ``_CACHE_MISS`` if the step still has to run.
 
-        Disk IO is synchronous on both paths — it is not the bottleneck and keeps the cache
+        Disk IO is synchronous on both paths. It is not the bottleneck and keeps the cache
         format byte-identical. ``context._lock`` guards the memo dict so the parallel
         executor's concurrent nodes are safe regardless of the GIL.
         """
@@ -615,7 +602,7 @@ class StepResult(Deferred[Out]):
         step_name = type(self.step).__name__
         # Announce entry BEFORE the recursive hash/cache check, so progress shows the instant
         # a step is reached. Firing on_step_start before source resolution also brackets every
-        # child's start/finish inside this step's — that nesting is what the RunTreeObserver
+        # child's start/finish inside this step's. That nesting is what the RunTreeObserver
         # turns back into the execution tree.
         context.observer.on_step_start(step_name)
 
@@ -685,17 +672,17 @@ class StepResult(Deferred[Out]):
         """Resolve upstream sources, run the step, cache if applicable.
 
         Memoizes by ``id(self)`` so multiple downstream consumers of the SAME ``StepResult``
-        share one computed result within a ``Pipeline.execute`` — critical for non-cached
+        share one computed result within a ``Pipeline.execute``. This is critical for non-cached
         steps returning non-serializable objects (e.g. model handles), where consumers must
         see the same instance, not two re-executions. The cache/memo/observer skeleton lives
         in ``_check_cache``/``_finalize`` (shared with ``aresolve``); only the two lines that
-        genuinely differ — upstream resolution and the step body — stay here, run inline.
+        genuinely differ (upstream resolution and the step body) stay here, run inline.
 
         In-flight dedup makes that guarantee hold under CONCURRENCY too: the memo only
         collapses resolutions that do not overlap in time, so N branch workers reaching one
         shared upstream at once would each miss the memo and run the body N times. Here the
         first thread to miss the memo claims ownership (an ``Event`` in ``context._inflight``);
-        concurrent threads find that Event, wait on it, then loop — a success left the value in
+        concurrent threads find that Event, wait on it, then loop: a success left the value in
         the memo (returned), a failure removed the marker so they re-claim and resolve it
         themselves. Uncontended (single-threaded) there is never a waiter, so behaviour and
         cost are unchanged bar creating one Event that is set immediately.
@@ -1129,7 +1116,7 @@ def _as_store(where: Path | CacheStore) -> CacheStore:
 
 # Defined after StepResult so the self-reference resolves. With
 # from __future__ import annotations, all annotations in this module
-# are lazy strings — _SourceValue is looked up at type-check time.
+# are lazy strings: _SourceValue is looked up at type-check time.
 _SourceValue: TypeAlias = (
     StepResult[Any] | InputParam[Any] | FileSource | Config[Any] | str | int | float | bool | None
 )

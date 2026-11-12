@@ -1,13 +1,13 @@
 """Filesystem I/O for the DAG: leaf Deferreds that read, helpers that write.
 
-Read leaves (content-addressable Deferreds — each hashes by the file's bytes
-so caches invalidate when the file changes; a missing file produces ``None``,
-blocking downstream steps that depend on the source):
+Read leaves (content-addressable Deferreds: each hashes by the file's bytes so caches
+invalidate when the file changes; a missing file hashes to ``None``, which blocks the key of a
+step that holds the source in a field):
 
-  - ``FileSource(path)`` → ``Deferred[str]`` — the file's complete text.
-  - ``LinesSource(path)`` → ``Deferred[list[str]]`` — raw line-by-line (blank
+  - ``FileSource(path)`` → ``Deferred[str]``: the file's complete text.
+  - ``LinesSource(path)`` → ``Deferred[list[str]]``: raw line-by-line (blank
     lines preserved; line endings stripped, as per ``str.splitlines()``).
-  - ``JSONLSource(path, record_type=Record)`` → ``Deferred[list[Record]]`` —
+  - ``JSONLSource(path, record_type=Record)`` → ``Deferred[list[Record]]``:
     each non-blank line parsed as JSON and validated against the Pydantic
     record type. ``record_type`` is required: typing is the whole point of
     this leaf, and a "raw dicts" variant would erase the per-line schema.
@@ -18,8 +18,8 @@ Write helpers (atomic via temp-file + ``os.replace``; readers see either the
 complete previous content or the complete new content, never a partial
 write):
 
-  - ``atomic_writer(path)`` — context manager yielding a text-mode handle.
-  - ``atomic_write_text(path, text)`` — one-shot wrapper for short strings.
+  - ``atomic_writer(path)``: context manager yielding a text-mode handle.
+  - ``atomic_write_text(path, text)``: one-shot wrapper for short strings.
 
 The atomic-write idiom is used by every cache and manifest in this package
 (``ItemCache``, ``Pipeline.save``, ``Step._save``, ``WriteJSONL``) so that a
@@ -42,7 +42,7 @@ from pydantic import BaseModel
 from adag.deferred import Deferred, ResolveContext
 from adag.hashing import file_hash
 
-# Read side — content-addressable leaf Deferreds
+# Read side: content-addressable leaf Deferreds
 
 
 def _existing_path_hash(path: str, source: str) -> str | None:
@@ -83,7 +83,7 @@ class FileSource(Deferred[str]):
 class LinesSource(Deferred[list[str]]):
     """Reads the file as a list of lines (raw, line endings stripped).
 
-    Blank lines are preserved — this is the literal contents of the file split
+    Blank lines are preserved: this is the literal contents of the file split
     on newlines, equivalent to ``Path(path).read_text().splitlines()``. Use
     ``JSONLSource`` if you want blanks skipped and each line parsed.
     """
@@ -106,7 +106,7 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
     """Reads a JSONL file and validates each non-blank line against ``record_type``.
 
     ``record_type`` is required (not optional). The Pydantic class is what
-    gives this leaf its precise output type — making it optional would force
+    gives this leaf its precise output type. Making it optional would force
     a ``list[T] | list[Any]`` return signature and erase the typing benefit.
     If you want untyped lines, use ``LinesSource`` and call ``json.loads`` in
     a downstream Step.
@@ -117,7 +117,7 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
         records: list[ReportEntry] = source.resolve(context)
 
     A line that fails to parse or validate raises ``ValueError`` with the file
-    path and line number — the original error is chained via ``raise … from``.
+    path and line number: the original error is chained via ``raise … from``.
     Blank lines are skipped silently.
     """
 
@@ -141,7 +141,7 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
         return records
 
 
-# Write side — crash-safe atomic writes
+# Write side: crash-safe atomic writes
 
 
 @contextmanager
@@ -151,7 +151,7 @@ def atomic_writer(path: Path) -> Generator[TextIO]:
     On normal context exit, the bytes are flushed, fsynced, and the temp file
     is renamed over ``path`` in a single inode operation. If the caller's
     block raises (or the process is killed before the rename), the temp file
-    is unlinked and ``path`` is left untouched — readers continue to see the
+    is unlinked and ``path`` is left untouched, readers continue to see the
     previous content.
 
     The unique tempfile name (from ``tempfile.mkstemp``) also makes concurrent

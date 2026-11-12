@@ -1,4 +1,4 @@
-"""Config wrapper — execution parameters excluded from the content hash.
+"""Config wrapper: execution parameters excluded from the content hash.
 
 Use for parameters that change how a step runs but not what it produces:
 concurrency, batch size, timeout, device, tracker, etc.
@@ -18,9 +18,9 @@ class Config(Generic[T]):
 
         @dataclass(frozen=True)
         class FindCandidates(Step[Candidates]):
-            model: str = "my-model"                      # hashed — affects output
-            concurrency: Config[int] = Config(20)       # NOT hashed — execution only
-            batch_size: Config[int] = Config(256)       # NOT hashed — execution only
+            model: str = "my-model"                      # hashed, affects output
+            concurrency: Config[int] = Config(20)       # NOT hashed, execution only
+            batch_size: Config[int] = Config(256)       # NOT hashed, execution only
             tracker: Config[Tracker | None] = Config(None)
 
     In ``run()``, the value is unwrapped automatically::
@@ -29,7 +29,7 @@ class Config(Generic[T]):
             ...
 
     Generic over ``T`` so you can wrap anything an execution-time knob
-    can hold — primitives, objects, optional handles. The framework's
+    can hold (primitives, objects, optional handles). The framework's
     ``content_hash()`` skips ``Config`` fields entirely, so the wrapped
     type's hashability doesn't matter.
     """
@@ -60,7 +60,7 @@ class Config(Generic[T]):
             return hash(self.value)
         except TypeError:
             # Unhashable wrapped value (mutable container, custom class
-            # without __hash__). Fall back to identity — Config is mostly
+            # without __hash__). Fall back to identity. Config is mostly
             # used as a frozen-dataclass field where two instances
             # holding equivalent values are constructed once at the call
             # site, so identity-hash is sufficient.

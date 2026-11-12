@@ -1,11 +1,10 @@
 """adag: a cached, content-addressed DAG engine for Python data pipelines.
 
 This module exports every public name of the package, including the lower-level pieces
-(executors, dispatchers, ``ResolveContext``, ``walk``) that consumers of the internal package
-imported from here.
+(executors, dispatchers, ``ResolveContext``, ``walk``).
 """
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep

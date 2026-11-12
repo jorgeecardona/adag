@@ -1,10 +1,10 @@
-"""SerializableStep — a Step that can be saved to and loaded from disk.
+"""SerializableStep: a Step that ``Pipeline.save`` writes and ``Pipeline.from_directory`` rebuilds.
 
-Steps that need serialization inherit from SerializableStep and declare `kind`.
-For steps with a spec, pass the spec type to load_spec() in from_directory() —
-the TypeVar ensures the return type is inferred correctly without ClassVar overrides.
+Subclass ``SerializableStep`` and set ``kind``. Override ``from_directory`` only when the step
+has a required field other than ``spec``. Then pass the spec type to ``load_spec()``: the
+TypeVar infers the return type without ClassVar overrides.
 
-Example — step with spec:
+Example, a step with a spec:
 
     class TokenizerSpec(BaseModel):
         model_name: str
@@ -12,7 +12,7 @@ Example — step with spec:
 
     @dataclass(frozen=True)
     class Tokenizer(SerializableStep[TokenizedInput]):
-        kind = "adag/tokenizer/v1"
+        kind = "example/tokenizer/v1"
 
         spec: TokenizerSpec
         tokenizer: PreTrainedTokenizerBase
@@ -27,11 +27,11 @@ Example — step with spec:
             tokenizer = load_tokenizer(path)
             return cls(spec=spec, tokenizer=tokenizer)
 
-Example — step without spec (state only):
+Example, a step without a spec (state only):
 
     @dataclass(frozen=True)
     class EmbeddingIndex(SerializableStep[SearchResult]):
-        kind = "adag/embedding_index/v1"
+        kind = "example/embedding_index/v1"
 
         index: faiss.Index
 
@@ -106,7 +106,7 @@ class SerializableStep(Step[Out]):
 
         Atomic via ``atomic_write_text`` so a crash during ``Pipeline.save``
         leaves either the previous step.json intact or the complete new
-        one — readers (`from_directory`, `load_spec`) never see a partial
+        one: readers (`from_directory`, `load_spec`) never see a partial
         JSON.
         """
         type(self)._check_loadable()

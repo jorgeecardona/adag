@@ -1,4 +1,4 @@
-"""Deferred[T] — a value that doesn't exist yet, resolved at execution time.
+"""Deferred[T]: a value that doesn't exist yet, resolved at execution time.
 
 The core abstraction of the DAG engine. All values in the graph are Deferred:
 parameters, file sources, and step results.
@@ -61,16 +61,12 @@ class Progress:
 class PipelineObserver(Protocol):
     """Hooks a pipeline run calls so you can watch it: logs, timing, progress.
 
-    Extension: when a step needs to expose a different kind of internal,
-    add a new ``on_<thing>`` method here with plain-value arguments and a
-    no-op default on ``NullObserver``. Existing observers ignore it
-    automatically — provided they inherit ``NullObserver``.
+    ``StepResult.resolve`` calls ``on_step_start`` before it resolves a step's inputs, and
+    ``on_step_cached`` or ``on_step_finished`` after. A child's hooks fall between its parent's
+    start and finish. ``RunTreeObserver`` builds its tree from that order.
 
-    Lifecycle hooks (on_step_start / on_step_cached / on_step_finished) are
-    emitted by ``StepResult.resolve`` for every step it reaches, so an observer
-    can watch the whole DAG run, not just step-internal values. The depth-first
-    resolve order brackets each child's start/finished inside its parent's,
-    which is how ``RunTreeObserver`` reconstructs the execution tree.
+    Subclass ``NullObserver`` and override the hooks you need. For a value of your own (a score,
+    a vector), declare a typed hook: see "Typed hooks for your own values" in docs/observers.md.
     """
 
     def on_step_start(self, step: str) -> None: ...
@@ -87,7 +83,7 @@ class PipelineObserver(Protocol):
 
 
 class NullObserver:
-    """Silent observer — every hook is a no-op. Use it to turn the per-step
+    """Silent observer: every hook is a no-op. Use it to turn the per-step
     logging off. Concrete observers inherit this and override only the hooks
     they care about, so new hooks never break an existing observer.
     """
@@ -194,25 +190,25 @@ class Executor(Protocol):
     values, and must return the step's result. The default ``LocalExecutor`` runs
     it in-process. A remote executor would instead dispatch the step (by its
     content hash) to another process or machine, wait for the result to land in
-    the shared cache, and return it — without the graph knowing the difference.
+    the shared cache, and return it, without the graph knowing the difference.
     """
 
     def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any: ...
 
 
 class LocalExecutor:
-    """Runs each step in-process. The default — identical to the pre-seam behaviour."""
+    """Runs each step in this process. The default."""
 
     def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any:
         return step.execute(context, **inputs)
 
 
 class AsyncExecutor(Protocol):
-    """The async counterpart of ``Executor`` — decides *where* a step runs on the ASYNC resolve path
+    """The async counterpart of ``Executor``: decides *where* a step runs on the ASYNC resolve path
     (``StepResult.aresolve`` / ``Pipeline.aexecute``). Carried on ``ResolveContext.async_executor``.
 
     Mirrors ``Executor`` exactly except ``run`` is awaitable, so a step body that ``await``s I/O (a DB
-    session, an HTTP/LLM call) runs ON the event loop — no thread offload, so the event loop stays
+    session, an HTTP/LLM call) runs ON the event loop, no thread offload, so the event loop stays
     responsive and cancellation propagates through the awaits. The default ``LocalAsyncExecutor`` runs the
     step in-process; a remote async executor would dispatch by content hash and await the result.
     """
@@ -223,7 +219,7 @@ class AsyncExecutor(Protocol):
 
 
 class LocalAsyncExecutor:
-    """Awaits each step's async body in-process — the default async executor. The mirror of
+    """Awaits each step's async body in-process, the default async executor. The mirror of
     ``LocalExecutor`` for the ``aresolve`` path.
     """
 
@@ -239,8 +235,8 @@ class BranchRef:
     ``fan_out_var``, looks up its own ``over[key]`` (so the value never has to
     serialize), calls ``factory(key, value)`` to rebuild the branch sub-DAG (so
     the closure never serializes either), and resolves it. ``branch_hash`` is the
-    branch ``StepResult``'s content hash — the cache key the worker writes to and
-    the orchestrator polls/loads from. ``params`` are the run's ``InputParam``
+    branch ``StepResult``'s content hash: the cache key the worker writes to and
+    the main process polls/loads from. ``params`` are the run's ``InputParam``
     values, which the worker needs to resolve to the same hash.
     """
 
@@ -284,43 +280,17 @@ class InlineDispatcher:
 
 @dataclass(frozen=True)
 class ResolveContext:
-    """Execution context passed through the Deferred graph during resolution.
+    """The state of one run: where results are cached, the params, the observer and the memo.
 
-    cache_dir is the on-disk location where step results are read/written for
-    cross-run reuse. ``store`` replaces it with any ``CacheStore`` (SQLite, SQL, Redis) for
-    step results and item caches. With neither, every resolve recomputes.
+    Build one per run and pass it to every ``resolve``, ``aresolve`` or ``aresolve_all`` call.
 
-    observer is an instrumentation hook (see ``PipelineObserver``). On a bare
-    context it defaults to the silent ``NullObserver``; ``Pipeline.execute``
-    installs ``LoggingObserver`` (per-step logging) unless a caller passes
-    another — e.g. ``NullObserver`` for silence, ``RunTreeObserver``, or the
-    inference ``EmbeddingObserver``.
-
-    ``_resolved`` memoizes the resolved result of every ``StepResult`` reached, as
-    ``id(node) -> (node, value)``,
-    during a single ``Pipeline.execute`` call. Without it, a non-cached step
-    (``Step`` subclass that returns a non-serializable object — e.g. a model
-    model wrapper) would be re-executed once per downstream consumer, and each
-    consumer would receive a *different* instance — breaking shared-state
-    contracts. With it, the first consumer runs the step, every subsequent
-    consumer gets the same object by identity.
-
-    ``_lock`` guards every ``_resolved`` access. The parallel executor resolves a
-    whole level in a thread pool, so concurrent nodes mutate this dict; a lock is
-    correct regardless of the GIL (the free-threaded 3.13 build removes the
-    atomicity the lock-free path used to lean on). Uncontended acquire is ~100 ns,
-    negligible against running a step.
-
-    ``_inflight`` is the in-flight registry: while one thread runs a ``StepResult``'s
-    body, its ``id`` maps to an ``Event`` other threads wait on instead of re-running
-    the same body. It collapses concurrent resolution of one SHARED node to a single
-    run (the memo only collapses resolutions that do not overlap in time). The owner
-    removes the entry and sets the Event in a ``finally``, so a body that raises
-    releases its waiters (which then re-resolve) rather than hanging them. Also
-    guarded by ``_lock``.
-
-    ``_ainflight`` is the same registry for ``aresolve``, with a future per node, so tasks
-    gathered on one loop wait on the loop instead of blocking it on a thread ``Event``.
+    - ``cache_dir``: files for step results. ``store`` replaces it with any ``CacheStore``. With
+      neither, nothing is cached.
+    - ``params``: the ``InputParam`` values of the run.
+    - ``observer``: ``NullObserver`` by default here. ``Pipeline.execute`` passes
+      ``LoggingObserver`` unless you give another.
+    - The memo: each node resolves once per context, so every downstream step gets the same
+      object. Threads or tasks that reach one node at the same time run its body once.
     """
 
     cache_dir: Path | None = None
@@ -332,9 +302,19 @@ class ResolveContext:
     dispatcher: BranchDispatcher = field(default_factory=InlineDispatcher)
     # Last, so positional ResolveContext(cache_dir, params, on_progress, ...) from 0.1 still binds.
     store: CacheStore | None = None
+    # The memo: ``id(node) -> (node, value)``. Without it a step that returns a non-serializable
+    # object (a model handle) would run once per consumer, and each consumer would get a
+    # different instance.
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
+    # While one thread runs a node's body, its id maps to an Event that other threads wait on.
+    # The owner removes the entry and sets the Event in a ``finally``, so a body that raises
+    # releases its waiters, which then resolve the node again.
     _inflight: dict[int, Event] = field(default_factory=_empty_inflight, repr=False, compare=False)
+    # Guards every read and write of the two dicts above. A level of nodes resolves in a thread
+    # pool, and the free-threaded build gives no atomicity for free.
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+    # The in-flight registry for ``aresolve``: a future per node, so gathered tasks wait on the
+    # loop instead of blocking it on a thread Event.
     _ainflight: dict[int, asyncio.Future[None]] = field(
         default_factory=_empty_ainflight, repr=False, compare=False
     )
@@ -365,7 +345,7 @@ class Deferred(Generic[T]):
         for parent in getattr(cls, "__orig_bases__", []):
             origin = get_origin(parent)
             if origin is Deferred:
-                # Direct Deferred[ConcreteType] base — auto-detect.
+                # Direct Deferred[ConcreteType] base: auto-detect.
                 args = get_args(parent)
                 if args and isinstance(args[0], type) and "deferred_type" not in cls.__dict__:
                     cls.deferred_type = args[0]
@@ -391,7 +371,7 @@ class Deferred(Generic[T]):
         raise NotImplementedError
 
     async def aresolve(self, context: ResolveContext) -> T:
-        """Async resolution. The default delegates to the synchronous ``resolve`` — correct for LEAF
+        """Async resolution. The default delegates to the synchronous ``resolve``, correct for LEAF
         Deferreds whose resolution does no awaitable work (``InputParam`` reads ``context.params``,
         ``FileSource`` reads bytes). ``StepResult`` overrides this to await async step bodies and resolve
         upstreams on the event loop, so an existing sync graph runs unchanged on the async path.

@@ -1,6 +1,6 @@
 """Deprecated: ``StepMode`` (TRAIN, EVAL, INFERENCE). Define your own enum. Removed in 1.0.
 
-adag never reads a step's mode. This enum is kept so code ported from the internal package
+adag never reads a step's mode. This enum is kept so code written for the first release
 imports.
 """
 

@@ -77,8 +77,8 @@ class CacheStore(Protocol):
 class FileSystemCacheStore:
     """Stores one text file per key under ``root``. The default.
 
-    Keys may contain ``/`` to nest into sub-directories. Writes are atomic (temp file + rename), matching the
-    current ItemCache on-disk semantics so nothing changes for local runs.
+    Keys may contain ``/`` to nest into sub-directories. Writes are atomic (temp file, then
+    rename).
     """
 
     def __init__(self, root: str | Path) -> None:
@@ -362,7 +362,7 @@ class SqlCacheStore:
 
 
 def store_from_url(url: str) -> CacheStore:
-    """Open a ``CacheStore`` from a URL, so a remote worker can reach the orchestrator's store.
+    """Open a ``CacheStore`` from a URL, so a remote worker can reach the main process's store.
 
     - ``file:///path`` or a plain path: ``FileSystemCacheStore``.
     - ``sqlite:///relative.db`` or ``sqlite:////absolute.db``: ``SqliteCacheStore`` (stdlib).

@@ -72,7 +72,7 @@ EXIT_BAD_BRANCH = 2
 
 
 class BranchReferenceError(LookupError):
-    """The worker cannot find the branch, or derives a different hash than the orchestrator."""
+    """The worker cannot find the branch, or derives a different hash than the main process."""
 
 
 @dataclass(frozen=True)

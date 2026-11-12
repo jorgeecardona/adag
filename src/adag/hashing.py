@@ -25,7 +25,7 @@ class FileFingerprint:
     (cheap stand-in for re-reading). Inode + device are part of the identity
     because mtime resolution on many filesystems is 1s, and an atomic-replace
     inside the same second produces a new inode but identical (path, mtime,
-    size) — without st_ino the cache would return the stale hash. Frozen ⇒
+    size): without st_ino the cache would return the stale hash. Frozen ⇒
     hashable ⇒ usable as a dict key.
     """
 
@@ -44,7 +44,7 @@ _file_hash_cache: dict[FileFingerprint, str] = {}
 # runtime, but inspect.getsource() re-reads AND re-tokenizes the source file on
 # every call. content_hash() requests this once per step instance and the same
 # step class appears many times across a graph (e.g. one per refinement cycle),
-# so without this cache a deep DAG re-tokenizes source thousands of times — the
+# so without this cache a deep DAG re-tokenizes source thousands of times, the
 # dominant cost of the silent startup before the first step logs. Keyed by the
 # class object (redefining a class yields a new object → fresh entry).
 _class_source_hash_cache: dict[type, bytes | None] = {}

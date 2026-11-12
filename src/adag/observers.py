@@ -1,19 +1,15 @@
 """Concrete PipelineObserver implementations.
 
-The protocol and the no-op NullObserver live in adag.deferred (the core
-value abstraction, which stays logging-free). Observers that *do* something —
-log the lifecycle, render the run as a tree — live here.
+The protocol and the no-op NullObserver live in adag.deferred. Observers that do something
+(log the lifecycle, render the run as a tree) live here.
 
-LoggingObserver is the one Pipeline.execute installs by default, so per-step
-logging happens in exactly one place. RunTreeObserver reconstructs the execution
-as an indented tree purely from the lifecycle event stream: StepResult.resolve
-emits on_step_start before resolving a step's sources and on_step_finished after
-the step runs, so every child's start/finished is bracketed inside its parent's.
-A per-thread stack tracks the current parent; a cache hit (on_step_cached) closes
-a step with no children. The stack is thread-local so concurrent execution
-(``Pipeline.execute(parallel=True)``) doesn't interleave one thread's start with
-another's finish — each worker thread brackets its own steps, and roots merge under
-a lock. Sequential execution is one thread, so the tree is identical to before.
+LoggingObserver is the one Pipeline.execute installs by default. RunTreeObserver builds an
+indented tree of the run from the lifecycle events: StepResult.resolve calls on_step_start
+before it resolves a step's inputs and on_step_finished after the step runs, so every
+child's start and finish fall inside its parent's. A per-thread stack tracks the current
+parent, and a cache hit (on_step_cached) closes a step with no children. Under
+``Pipeline.execute(parallel=True)`` each worker thread brackets its own steps, and roots merge
+under a lock.
 """
 
 from __future__ import annotations
@@ -33,8 +29,8 @@ class LoggingObserver(NullObserver):
     """The default observer (installed by ``Pipeline.execute``): logs each step's
     lifecycle as a structlog event.
 
-    This is the single place per-step logging happens — ``resolve`` emits the
-    events, this turns them into log lines. To make one event louder or quieter,
+    This is the single place per-step logging happens. ``resolve`` emits the
+    events and this turns them into log lines. To make one event louder or quieter,
     change its level here (one place). For full silence, pass ``NullObserver``.
     """
 
@@ -52,7 +48,7 @@ class LoggingObserver(NullObserver):
 
 
 def _empty_children() -> list[RunNode]:
-    """Typed default for ``RunNode.children`` — pyright can't infer ``list[RunNode]`` from bare ``list``."""
+    """Typed default for ``RunNode.children``: pyright can't infer ``list[RunNode]`` from bare ``list``."""
     return []
 
 
@@ -69,7 +65,7 @@ class RunNode:
 class _ThreadRunState(threading.local):
     """Per-thread tree-building state. ``threading.local`` re-runs ``__init__`` for each
     thread that touches it, so every worker thread under parallel execution starts with its
-    own empty stack and no pending label — a shared stack would interleave concurrent steps.
+    own empty stack and no pending label, a shared stack would interleave concurrent steps.
     """
 
     def __init__(self) -> None:
@@ -78,14 +74,12 @@ class _ThreadRunState(threading.local):
 
 
 class RunTreeObserver(NullObserver):
-    """Builds an indented tree of a single pipeline run, annotated with timing
-    and cache-hit markers. Render it with ``render_tree()`` after ``execute()``.
+    """Builds an indented tree of a single pipeline run, annotated with timing and cache-hit markers.
 
-    Not reusable across runs — one observer per execute(), like the inference
-    EmbeddingObserver. Concurrency-safe: per-thread stacks keep each worker's
-    start/finish bracketing consistent, and roots merge under a lock. Under
-    parallel execution the tree is flat (level-scheduled execution has no
-    recursion to nest); sequential execution nests exactly as before.
+    Render it with ``render_tree()`` after ``execute()``. Use one observer per ``execute()``: it
+    is not reusable across runs. It is safe under threads: per-thread stacks keep each worker's
+    bracketing consistent, and roots merge under a lock. Under ``parallel=True`` the tree is flat,
+    because level-scheduled execution has no recursion to nest.
     """
 
     def __init__(self) -> None:

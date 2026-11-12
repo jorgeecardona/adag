@@ -1,10 +1,10 @@
-"""DAG visualization — walk the Deferred graph and render as SVG.
+"""DAG visualization: walk the Deferred graph and render it as SVG.
 
 tokens = tokenizer(text=FileSource("data.txt"))
 embeddings = encoder(tokens=tokens)
 
-dag(embeddings)             # returns SVG string
-dag(embeddings, path="out.svg")  # saves to file
+dag(embeddings)                  # returns an SVG object; str() gives the text
+dag(embeddings, path="out.svg")  # saves to a file
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class Node:
 
     `name` is the node's unique KEY (edges reference it, layout positions by it). `title`, when set, is the
     human display label; empty → the renderer derives one from `name`. A Step may expose a per-INSTANCE label
-    via a `node_label` attribute — walk() then uses it as both name (uniquified on collision) and title — so
+    via a `node_label` attribute (walk() then uses it as both name and title; the name gets a suffix on collision) so
     two instances of the SAME Step class render as two distinct boxes instead of collapsing into one.
     """
 
@@ -161,11 +161,10 @@ def _node_name_and_kind(deferred: Deferred[Any]) -> tuple[str, str] | None:
 def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
     """Walk any Deferred backward and return the full dependency graph.
 
-    Step nodes are identified by INSTANCE (`id(step)`), not class name: a shared upstream (the same instance
-    reached on two paths) is still ONE node, but two DISTINCT instances of the same class — e.g. a parent
-    cluster and a child cluster — are two nodes. Each instance's box label is its `node_label` attribute when
-    present, else the class name; the key is uniquified (`Name#2`) only when two instances would otherwise
-    collide, so single-instance-per-class graphs are unchanged.
+    Step nodes are identified by instance (``id(step)``), not class name. A shared upstream (the
+    same instance reached on two paths) is one node. Two distinct instances of the same class are
+    two nodes. Each node's label is its ``node_label`` attribute when present, else the class name.
+    The key gets a suffix (``Name#2``) only when two instances would otherwise collide.
     """
     nodes: dict[str, Node] = {}
     edges: list[Edge] = []
@@ -219,7 +218,12 @@ def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
 
 
 def compute_state(node: Node, cache_dir: Path | None) -> str:
-    """Return cache state for a node: CACHED, PENDING, BLOCKED, or SOURCE."""
+    """Return the state a node is drawn with: ``CACHED``, ``PENDING``, ``BLOCKED`` or ``SOURCE``.
+
+    ``SOURCE`` is an ``InputParam`` or a file. ``BLOCKED`` is a step with no hash, for example a
+    ``FileSource`` field whose file is missing. Without ``cache_dir`` every step is ``PENDING``.
+    The key is computed with ``InputParam`` defaults, not with the values of a run.
+    """
     if node.step is None:
         return "SOURCE"
     if cache_dir is None:
@@ -307,10 +311,10 @@ def dag(
     """Render the DAG as SVG.
 
     Args:
-        output: Any Deferred — walks backward to discover the full graph.
+        output: Any Deferred: walks backward to discover the full graph.
         cache_dir: Cache directory (for cached/pending state coloring).
         path: Save SVG to this path.
-        prefix: Strip from step names for shorter labels (e.g. "IFS").
+        prefix: Text removed from the start of step names in titles.
         options: Theme, and whether to embed the stylesheet, paint a background
             or draw the per-step parameters.
     """
@@ -579,14 +583,14 @@ def _compute_layout(
         assert final_step_name is not None
         edge_list.append((final_step_name, "__output__"))
 
-    # Per-level max box height — the row's vertical footprint.
+    # Per-level max box height, the row's vertical footprint.
     level_height: dict[int, float] = {}
     for lvl in range(max_level_val + 1):
         heights = [node_size(name)[1] for name in all_names if level.get(name) == lvl]
         level_height[lvl] = max(heights) if heights else small_height
 
     # Edges that pass THROUGH a level need room, and room is area (height x width).
-    # Adding only height stretches those edges without separating them — parallel
+    # Adding only height stretches those edges without separating them, parallel
     # through-edges stay stacked no matter how tall the gap. So split the budget:
     # a capped vertical gap here for a little breathing room, plus extra horizontal
     # spacing below (driven by the busiest level) so the through-edges get real
@@ -966,7 +970,7 @@ def _optimize_quintic(
     for i in range(n_eval + 1):
         t = i / n_eval
         samples.append((t**2, t**3, t**4, t**5, y1 + total_dy * t))
-    # A curve never penalizes overlap with its own endpoints' boxes — drop them
+    # A curve never penalizes overlap with its own endpoints' boxes, drop them
     # once instead of re-checking the name per sample per evaluation.
     obstacles = [
         (left, top, right, bottom)
@@ -976,7 +980,7 @@ def _optimize_quintic(
 
     def cost(a2: float, a3: float, bound: float) -> float:
         """Cost = curvature + box-overlap penalty. Both terms only accumulate,
-        so the running total is monotonic — once it reaches ``bound`` (the best
+        so the running total is monotonic, once it reaches ``bound`` (the best
         cost found so far) the candidate cannot win, and we stop early. The
         returned value is then a lower bound ≥ ``bound``, which is all the
         caller's ``< best_cost`` comparison needs.
@@ -1037,7 +1041,7 @@ def _edge_tail_parts(
     """Build the SVG path commands for an edge tail: the full routed quintic, straight to the arrow base.
 
     The quintic is constructed with a vertical entry tangent (``x'(1) = 0``), so it already arrives at
-    ``(x2, arrow_base_y)`` perpendicular to the target box. Drawing the whole curve keeps that tangent —
+    ``(x2, arrow_base_y)`` perpendicular to the target box. Drawing the whole curve keeps that tangent, so
     the join is continuous by construction. (The earlier truncate-and-stub approach discarded the curve's
     own vertical final approach and replaced it with a hard corner, which is what kinked the line.)
     """

@@ -1,4 +1,4 @@
-"""``adag`` — run a DAG pipeline file from the console.
+"""``adag``: run a DAG pipeline file from the console.
 
 The pipeline file is a plain Python module that wires steps into one or more
 module-level ``StepResult`` targets (the same files you already write). The
@@ -43,7 +43,7 @@ def load_pipeline_module(pipeline: Path | str) -> ModuleType:
     absolute path so two files with the same stem do not collide in ``sys.modules``.
 
     Anything else is imported as a module name (``pkg.pipeline``). Use a module name for
-    remote workers: a file path from the orchestrator machine does not exist in a container.
+    remote workers: a file path on the main process's machine does not exist in a container.
 
     Raises:
         FileNotFoundError: ``pipeline`` is neither a file nor an importable module.
@@ -77,7 +77,7 @@ def discover_targets(module: ModuleType) -> dict[str, StepResult[Any]]:
     """Map each public module-level ``StepResult`` to its variable name.
 
     Variables starting with ``_`` are skipped, and only ``StepResult`` values
-    are targets — bare ``InputParam``s and plain values are ignored.
+    are targets: bare ``InputParam``s and plain values are ignored.
     """
     targets: dict[str, StepResult[Any]] = {}
     for name, value in vars(module).items():
@@ -226,12 +226,12 @@ def run_branch(
     own ``over[key]`` (so the value never had to cross the wire), re-derives the branch via
     ``factory(key, value)``, and resolves it under a plain in-process context.
     ``StepResult.resolve`` writes the result to ``cache_dir`` (or the store at ``store_url``)
-    under the branch content hash, which the orchestrator reads back.
+    under the branch content hash, which the main process reads back.
 
     Raises:
         BranchReferenceError: the fan-out or key is not in the pipeline, or the re-derived
             branch hash is not ``expect_hash`` (the worker runs different code or params than
-            the orchestrator). A retry cannot fix either.
+            the main process). A retry cannot fix either.
         ValueError: a param is not an input of the branch.
 
     ``params`` as a list of ``KEY=VALUE`` strings is the 0.1 form. It still works, coerced to each
@@ -269,7 +269,7 @@ def run_branch(
         actual = sub.content_hash(params=params)
         if actual != expect_hash:
             raise BranchReferenceError(
-                f"branch {key!r} hash mismatch: orchestrator expects {expect_hash}, worker "
+                f"branch {key!r} hash mismatch: main process expects {expect_hash}, worker "
                 f"derived {actual}. The worker runs different code or params."
             )
     return pipeline_obj.resolve(sub, **params)

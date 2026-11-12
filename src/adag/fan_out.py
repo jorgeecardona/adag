@@ -1,23 +1,20 @@
-"""FanOutStep — declarative per-key sub-pipeline iteration.
+"""FanOutStep: one sub-graph per key of a dict.
 
-Apply a sub-pipeline factory to each value in a dict, collecting the resolved
-results into a dict keyed by the same keys. The factory is closed over the
-parent scope so it can reference shared upstream Steps (a catalog, a lookup
-sources, etc.) — the per-branch sub-DAG resolves under the same Pipeline
-context, so per-item caches are shared across the parent and every fan-out
-branch.
+``FanOutStep`` applies a factory to each value of a dict and returns a dict of the results
+with the same keys. The factory can use shared upstream steps from the parent scope. Each
+branch resolves under the same ``ResolveContext`` as the parent pipeline, so per-item caches
+are shared between the parent and every branch.
 
 Example::
 
-    per_op_notes = FanOutStep(
-        over={"ground_acs": ground_cfg, "cabin_safety": cabin_cfg},
-        factory=lambda key, value: _op_branch(key, value).notes_regenerated,
+    sizes = FanOutStep(
+        over={"intro": "Hello.", "body": "A longer paragraph."},
+        factory=lambda key, text: Measure(text=text)(),
     )()
 
-The factory MUST return a ``StepResult[V]`` (i.e. the result of calling a
-configured Step). ``FanOutStep.run()`` is not the entry point — execution
-flows through ``execute(context, ...)`` so each sub-DAG can resolve under
-the same ``ResolveContext`` that drives the parent pipeline.
+The factory must return a ``StepResult[V]``, the result of calling a configured step.
+``FanOutStep.run()`` is not the entry point: execution goes through ``execute(context, ...)``
+so each sub-graph resolves under the same ``ResolveContext`` that drives the parent pipeline.
 """
 
 from __future__ import annotations
@@ -80,7 +77,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     factory: Callable[[K, Any], StepResult[V]]
     # Concurrency of the in-process (InlineDispatcher) path. None (default) keeps the
     # historical sequential branch-by-branch resolution. An int resolves branches in a
-    # ThreadPoolExecutor of that size — a win when each branch is I/O-bound (an LLM/HTTP
+    # ThreadPoolExecutor of that size, a win when each branch is I/O-bound (an LLM/HTTP
     # call). Shared upstreams stay safe under it: ResolveContext's in-flight dedup runs a
     # shared node's body once even when many branch workers reach it at the same instant.
     # Ignored by a non-inline dispatcher, which has its own concurrency.
@@ -105,7 +102,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         behaviour) or concurrently in a thread pool when it is set. With a real dispatcher,
         branches are dispatched to workers and rejoined through the shared cache by content hash.
         """
-        del kwargs  # FanOutStep does not take wired inputs — closure over factory does.
+        del kwargs  # FanOutStep does not take wired inputs, closure over factory does.
         if isinstance(context.dispatcher, InlineDispatcher):
             if self.max_workers is None:
                 return self._resolve_branches_sequentially(context)
@@ -142,8 +139,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """Resolve every branch in a thread pool, each worker inside a COPIED context so ambient
         ContextVars (the usage observer, ``current_observer``) propagate across the thread boundary.
 
-        A branch raising propagates out of ``future.result()`` — same as the sequential path, where a
-        branch raising aborts ``execute`` — rather than being collected like the distributed path. The
+        A branch raising propagates out of ``future.result()``, the same as on the sequential path,
+        where a branch raising aborts ``execute``. It is not collected, as it is on the dispatcher path. The
         pool's ``__exit__`` waits for the in-flight branches before the exception unwinds.
         """
         if not self.over:
@@ -228,7 +225,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     ) -> dict[K, V]:
         """Run a dispatcher that has only the pre-0.2.11 ``dispatch(branch, sub, context)``.
 
-        One thread per branch, as before. Deprecated: implement ``dispatch_all``.
+        Runs one thread per branch. Deprecated: implement ``dispatch_all``.
         """
         warnings.warn(
             f"{type(context.dispatcher).__name__} has only dispatch(); implement "
@@ -263,7 +260,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         resulting ``StepResult.content_hash()`` into our own digest.
         Keys are included so reordering / renaming branches invalidates
         the cache; values only contribute via the sub-DAG hash they
-        produce — that's what actually matters for correctness.
+        produce. That is what matters for correctness.
 
         Returns None when a branch's hash is blocked (e.g. unsatisfied
         upstream FileSource), so the parent pipeline behaves like any

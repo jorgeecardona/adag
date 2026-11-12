@@ -1,4 +1,4 @@
-"""Pipeline — wraps a Deferred graph and provides execute().
+"""Pipeline: wraps a Deferred graph and provides execute().
 
 A Pipeline is constructed from a StepResult (the final output of a DAG).
 Executing the pipeline resolves the full graph with parameters and caching.
@@ -11,7 +11,7 @@ Executing the pipeline resolves the full graph with parameters and caching.
     result = pipeline.execute(text="hello world")
 
 When cache_dir is None (the default for from_directory), step results are
-neither read from nor written to disk — every execute() runs the full DAG.
+neither read from nor written to disk. Every execute() runs the full DAG.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ logger = structlog.get_logger()
 R = TypeVar("R", bound=BaseModel)
 # `Out` is the type produced by the canonical output step; `pipeline.execute()`
 # returns this. Defaulting to `Any` (PEP 696) keeps unannotated callers
-# unchanged — `Pipeline` without a type arg behaves exactly as before — while
+# unchanged (`Pipeline` without a type arg gives `Any`) while
 # `Pipeline(my_typed_step_result)` flows the typed result into execute()'s
 # return.
 Out = TypeVar("Out", default=Any)
@@ -112,12 +112,13 @@ class Pipeline(Generic[Out]):
         Args:
             output: the canonical terminal node of the DAG. ``execute()``
                 without an argument resolves this.
-            cache_dir: on-disk cache base; None disables caching.
+            cache_dir: directory for step results. With neither ``cache_dir`` nor ``store``,
+                nothing is cached.
             store: a ``CacheStore`` for step results and ``BatchStep`` item caches, used
                 instead of files under ``cache_dir``.
             on_progress: optional progress callback (passed to ``ResolveContext``).
-            kind: pipeline kind tag (e.g. ``"hierarchical/v1"``) used by
-                ``save()`` and the pipeline registry.
+            kind: a tag for the pipeline, for example ``"report/v1"``. ``save()`` writes it to
+                ``pipeline.json``.
             metadata: caller data saved with the pipeline: any JSON value (a string, a number, a
                 list, a dict). ``save()`` writes it to ``pipeline.json`` and ``from_directory()``
                 reads it back into ``pipeline.metadata``. adag never reads it otherwise.
@@ -167,8 +168,8 @@ class Pipeline(Generic[Out]):
         result plus a separate audit / dedup artifact). Pass them all
         here and the Pipeline discovers the union of their sub-graphs.
         The first target is treated as the canonical ``output`` so a
-        zero-arg ``execute()`` still has a single thing to return —
-        downstream callers use ``resolve(target)`` to pick any of them.
+        zero-arg ``execute()`` still has a single thing to return.
+        Downstream callers use ``resolve(target)`` to pick any of them.
         """
         if not targets:
             raise ValueError("Pipeline.from_targets requires at least one target.")
@@ -192,7 +193,7 @@ class Pipeline(Generic[Out]):
         """Walk the Deferred graph backward to collect all steps and parameters.
 
         ``visiting`` is the current DFS path (StepResult ids). Re-entering a node already
-        on the path means a cycle — we raise CyclicPipelineError instead of letting the
+        on the path means a cycle, we raise CyclicPipelineError instead of letting the
         recursion blow up as an opaque RecursionError deep in resolve(). Steps are appended
         after their sources, so ``self._steps`` ends up in dependency (topological) order.
         """
@@ -213,17 +214,19 @@ class Pipeline(Generic[Out]):
 
     @property
     def steps(self) -> list[Step[Any]]:
-        """All steps in dependency (topological) order — every step appears after the steps
-        it depends on, guaranteed by the post-order discovery walk in ``_discover``.
+        """All steps in dependency (topological) order.
+
+        Every step appears after the steps it depends on. The post-order discovery walk in
+        ``_discover`` guarantees it.
         """
         return list(self._steps)
 
     def topological_order(self) -> list[Step[Any]]:
         """Steps in a guaranteed topological order (each step after its dependencies).
 
-        A named contract (delegates to ``steps``) so consumers that depend on the ordering
-        — deterministic execution, left-to-right layered layout, level grouping — rely on
-        this rather than on the ``steps`` discovery detail.
+        A named contract (delegates to ``steps``). Consumers that depend on the ordering
+        (deterministic execution, left-to-right layered layout, level grouping) rely on this
+        rather than on the ``steps`` discovery detail.
         """
         return self.steps
 
@@ -232,7 +235,7 @@ class Pipeline(Generic[Out]):
         dependency. Steps within a level are mutually independent, so a concurrent executor
         can run a whole level in parallel; level i+1 starts once level i is resolved.
 
-        Pure analysis — no execution change. The foundation for opt-in parallel execution
+        Pure analysis: no execution change. The foundation for opt-in parallel execution
         (run each level's steps together) and for correct left-to-right layered layout.
         """
         # step -> upstream steps, walked from the targets by StepResult id (no cached map).
@@ -277,16 +280,16 @@ class Pipeline(Generic[Out]):
         Steps within a level are independent, so they run concurrently; the next level
         starts only once this one is fully resolved. ``resolve`` memoises by ``id`` and
         every node's upstreams are resolved in earlier levels, so each node finds its inputs
-        already in ``context._resolved`` and just runs its own step — no recursion, no step
+        already in ``context._resolved`` and just runs its own step, no recursion, no step
         run twice.
 
         Each StepResult is resolved exactly once (in its level), with upstream keys written
         in earlier levels and only read here. ``context._lock`` (see ResolveContext) guards
-        every ``_resolved`` read/write, so concurrent nodes are safe regardless of the GIL —
-        not reliant on CPython dict-op atomicity, which the free-threaded build removes.
+        every ``_resolved`` read/write, so concurrent nodes are safe regardless of the GIL. It
+        does not rely on CPython dict-op atomicity, which the free-threaded build removes.
 
-        Each node runs inside a COPIED context (``copy_context().run``) so ambient ContextVars —
-        the usage observer, ``current_observer`` — propagate into the level workers, which a raw
+        Each node runs inside a copied context (``copy_context().run``), so ambient ContextVars
+        (the usage observer, ``current_observer``) propagate into the level workers, which a raw
         ThreadPoolExecutor submit would not inherit.
         """
         for level in self._stepresult_levels():
@@ -319,7 +322,7 @@ class Pipeline(Generic[Out]):
         input can validate it up front and reject with a 4xx instead of crashing
         mid-resolution. Raises ``UnboundInputError`` naming the step and the unbound params.
 
-        Walks the target StepResults directly (visited by id — the same node identity
+        Walks the target StepResults directly (visited by id, the same node identity
         ``resolve()`` uses) rather than caching a derived step->sources map.
         """
         seen: set[int] = set()
@@ -336,7 +339,7 @@ class Pipeline(Generic[Out]):
 
     def _check_inputs_bound(self, node: StepResult[Any]) -> None:
         """Raise UnboundInputError if ``node.step`` has a required ``run()`` parameter that is
-        neither a wired source nor one of its dataclass fields — both feed ``run()`` (see
+        neither a wired source nor one of its dataclass fields, both feed ``run()`` (see
         ``StepResult._merge_step_defaults``), so either satisfies the parameter.
         """
         field_names = {field.name for field in dataclasses.fields(node.step)}
@@ -365,9 +368,9 @@ class Pipeline(Generic[Out]):
     def input_names(self) -> set[str]:
         """Names of every InputParam this pipeline expects from execute(**kwargs).
 
-        Public alternative to reaching into ``_inputs`` from outside the package
-        — callers that branch on "does this pipeline accept a `threshold` kwarg"
-        should use this so the private list shape stays free to evolve.
+        Public alternative to reaching into ``_inputs`` from outside the package. Callers that
+        branch on "does this pipeline accept a `threshold` kwarg" should use this, so the
+        private list shape stays free to evolve.
         """
         return {p.name for p in self._inputs}
 
@@ -376,7 +379,7 @@ class Pipeline(Generic[Out]):
         """Every InputParam this pipeline expects, in discovery order.
 
         Public accessor for callers (e.g. the CLI) that need each param's name,
-        type, and default — not just the names from ``input_names`` — to build
+        type, and default (not just the names from ``input_names``) to build
         help text or coerce string arguments.
         """
         return list(self._inputs)
@@ -406,31 +409,23 @@ class Pipeline(Generic[Out]):
         max_workers: int | None = None,
         **params: Any,
     ) -> Out:
-        """Execute the full DAG with parameters.
+        """Run the graph and return the result of ``output``.
 
-        ``observer`` is an optional instrumentation hook (see
-        ``PipelineObserver``). Defaulting to ``None`` materialises a
-        ``LoggingObserver`` (per-step lifecycle logging); pass ``NullObserver``
-        for silence. Reserved as a kwarg here — pipelines must not define an
-        ``InputParam`` named ``observer``.
+        Args:
+            observer: receives the run's hooks. Default: ``LoggingObserver``. Pass ``NullObserver``
+                for silence.
+            executor: where each step runs. Default: ``LocalExecutor`` (this process).
+            dispatcher: where fan-out branches run. Default: ``InlineDispatcher`` (this process).
+                Pass a ``SubprocessDispatcher`` or a ``RemoteDispatcher`` to run them elsewhere.
+            parallel: run the independent steps of each level on a thread pool. Use it for steps
+                that block on I/O. ``RunTreeObserver`` then shows a flat tree.
+            max_workers: thread pool size for ``parallel``. Default: one thread per step of the level.
+            **params: one value per ``InputParam``.
 
-        ``executor`` decides *where* each step runs (see ``Executor``).
-        Defaulting to ``None`` materialises a ``LocalExecutor`` — every step
-        runs in-process, exactly as before. Also reserved.
+        The five keyword names above are reserved: do not use them as ``InputParam`` names.
 
-        ``dispatcher`` decides *how* a fan-out branch is resolved (see
-        ``BranchDispatcher``). Defaulting to ``None`` materialises an
-        ``InlineDispatcher`` — branches resolve in-process, exactly as before.
-        Pass a ``SubprocessDispatcher`` to run branches in worker processes, or a
-        ``RemoteDispatcher`` to run them on a job scheduler. Also reserved.
-
-        ``parallel`` runs each topological level's steps concurrently in a
-        thread pool (``max_workers``, default one per level) — a win for
-        I/O-bound DAGs (DuckDB, LLM, HTTP steps). Independent steps within a
-        level run together; level i+1 starts once level i is resolved. Default
-        ``False`` keeps the sequential recursive path. ``RunTreeObserver`` is
-        concurrency-safe (per-thread stacks); under ``parallel`` its tree is
-        flat because level-scheduled execution has no recursion to nest.
+        Raises:
+            ValueError: a required ``InputParam`` has no value.
         """
         missing = [p.name for p in self._inputs if p.name not in params and not p.has_default]
         if missing:
@@ -457,17 +452,15 @@ class Pipeline(Generic[Out]):
         async_executor: AsyncExecutor | None = None,
         **params: Any,
     ) -> Out:
-        """Async mirror of ``execute`` — resolve the full DAG, awaiting async step bodies on the event loop.
+        """Run the graph on the running event loop and return the result of ``output``.
 
-        Use this when steps await I/O (a DB ``AsyncSession``, an HTTP/LLM call): each ``AsyncStep`` runs ON
-        the loop (no thread offload, so the loop stays responsive), sync steps run inline, and cancelling
-        the awaiting task unwinds the resolution without starting further steps. ``cache_dir=None`` (the
-        Pipeline default) keeps every run cache-free — the right mode for per-request resolution.
+        ``AsyncStep`` bodies are awaited on the loop. Sync step bodies also run on the loop and block
+        it while they run. One step body runs at a time (``aresolve_all`` with ``max_concurrency=1``),
+        so a shared resource such as one database session is never used by two steps at once.
+        Cancelling the task starts no further step.
 
-        ``observer`` / ``async_executor`` are reserved kwargs (a pipeline must not define ``InputParam``s by
-        those names), mirroring ``execute``'s ``observer`` / ``executor``. There is no ``parallel`` flag:
-        async concurrency is the event loop's job, and the default ``aresolve`` is sequential so a single
-        shared per-request resource (one ``AsyncSession``) is never used concurrently.
+        ``observer`` and ``async_executor`` are reserved: do not use them as ``InputParam`` names.
+        There is no ``dispatcher``: fan-out branches run in this process.
         """
         missing = [p.name for p in self._inputs if p.name not in params and not p.has_default]
         if missing:
@@ -492,36 +485,18 @@ class Pipeline(Generic[Out]):
         dispatcher: BranchDispatcher | None = None,
         **params: Any,
     ) -> R:
-        """Resolve an intermediate node of this pipeline's DAG.
+        """Resolve one node of this pipeline and return its result, from the cache when it is there.
 
-        Use this when you already executed the full pipeline and want a
-        cached intermediate result (e.g. the schedule produced by an
-        upstream ``SampleEvents`` step) without re-implementing the
-        Deferred wiring or calling ``step.run(...)`` directly. Both of
-        those alternatives skip the pipeline cache and can return a
-        *different* output than the one downstream steps consumed —
-        silently corrupting cross-step consistency when step code has
-        changed since the cache was written.
-
-        Why this matters: the per-step content_hash invalidates a step's
-        cache when its inputs change. But if you call ``step.run()``
-        outside the pipeline, you're computing a fresh result with the
-        *current* code against the *current* inputs, which can disagree
-        with what the cached pipeline used. This method routes through
-        the same ``StepResult.resolve`` path the pipeline uses so the
-        cached result is returned verbatim.
+        Use it to read an intermediate result after ``execute()``. Do not call ``step.run()`` for
+        that: it skips the cache and can return a value that differs from the one downstream steps
+        used.
 
         Args:
-            target: the ``StepResult`` of the intermediate node you want
-                (the same object you wired into ``Pipeline(...)``).
-            **params: any ``InputParam`` values the sub-DAG depends on,
-                same shape as ``execute(**params)``.
-
-        Returns:
-            The resolved result of ``target``, cache-hit when available.
+            target: a node of this pipeline (the object you wired).
+            **params: the ``InputParam`` values, as for ``execute``.
 
         Raises:
-            ValueError: if ``target`` is not part of this pipeline's DAG.
+            ValueError: ``target`` is not part of this pipeline, or a required param is missing.
         """
         # `_steps` already contains every step reachable from any registered
         # target after _discover ran, so this check covers multi-target
@@ -531,7 +506,7 @@ class Pipeline(Generic[Out]):
                 f"target step {type(target.step).__name__} is not part of this pipeline's DAG"
             )
         # Missing-param check is the same as execute() but scoped to the
-        # InputParams reachable from `target`. We don't bother pruning —
+        # InputParams reachable from `target`. We don't bother pruning:
         # an extra missing-param check is cheap and avoids surprises.
         missing = [p.name for p in self._inputs if p.name not in params and not p.has_default]
         if missing:
@@ -611,7 +586,7 @@ class Pipeline(Generic[Out]):
         Reads pipeline.json, loads each step via its class in `step_registry` (keyed by kind),
         replays the edge list to rebuild the DAG, and wraps the terminal StepResult.
 
-        cache_dir defaults to None — loaded pipelines do **not** write step results
+        cache_dir defaults to None: loaded pipelines do **not** write step results
         back to disk. Pass cache_dir=Path(path) (or another writable location) when
         you want the cross-run cache for training or notebook iteration.
         """
