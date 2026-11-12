@@ -118,6 +118,15 @@ def test_invalid_entry_is_a_miss_and_recomputes(tmp_path: Path) -> None:
     assert CALLS["partitions"] == 2
 
 
+def test_is_cached_agrees_with_the_resolver_on_an_invalid_entry(tmp_path: Path) -> None:
+    """An entry that load_result rejects is not cached for is_cached either (#5)."""
+    node = Partitions()(n=InputParam[int]("n"))
+    first = Pipeline(node, cache_dir=tmp_path).execute(n=1)
+    assert node.is_cached(tmp_path, params={"n": 1})
+    first.joinpath("part-2.txt").unlink()
+    assert not node.is_cached(tmp_path, params={"n": 1})
+
+
 def test_store_only_run_raises_before_the_body(tmp_path: Path) -> None:
     pipeline = Pipeline(Records()(n=InputParam[int]("n")), store=MemoryCacheStore())
     with pytest.raises(ValueError, match="cache_dir"):

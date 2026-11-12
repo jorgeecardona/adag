@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `FileSource`, `LinesSource` or `JSONLSource` on a directory (an empty path included) raises
   an error that names the source and the path. It raised a bare `IsADirectoryError` from inside
   hashing.
+- `StepResult.is_cached` for a step with `save_result`/`load_result` calls `load_result`, so an
+  entry it rejects is not cached, the same answer the resolver gives. It checked only that the
+  files existed.
 
 ### Changed
 

@@ -10,3 +10,12 @@ needs:
       - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/6"}
     proofs:
       - "test:tests/test_file_source.py::test_file_source_on_a_directory_names_the_source"
+
+  - id: FX-2
+    text: >
+      When the developer asks whether a node is cached, they can get the same answer the resolver
+      acts on, including for a step that caches to a path.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/5"}
+    proofs:
+      - "test:tests/test_path_results.py::test_is_cached_agrees_with_the_resolver_on_an_invalid_entry"

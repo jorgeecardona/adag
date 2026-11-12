@@ -744,17 +744,12 @@ class StepResult(Deferred[Out]):
         """Return True when a complete, valid result for this node is in ``where``.
 
         ``where`` is a cache directory or a ``CacheStore``. For a step that overrides
-        ``save_result``, ``where`` must be a directory, and only the result and its ``.done``
-        marker are checked (no load), so the check stays cheap.
+        ``save_result``, ``where`` must be a directory, and the check calls ``load_result``: an
+        entry that ``load_result`` rejects is not cached, the same answer the resolver gives.
+        This makes the check as costly as one load for such a step.
         """
         if self.step.caches_to_path():
-            key = self.content_hash(params=params)
-            root = _path_root(where, self.step)
-            return (
-                key is not None
-                and root.joinpath(key + ".done").exists()
-                and root.joinpath(key).exists()
-            )
+            return self._try_load_path(_path_root(where, self.step), params) is not None
         return self._try_load(where, params=params) is not None
 
     def _result_dir(self, context: ResolveContext) -> Path | None:
