@@ -89,3 +89,16 @@ def test_waiter_cancellation_propagates() -> None:
         assert (await owner).value == 1
 
     asyncio.run(main())
+
+
+def test_memo_entry_for_another_node_with_the_same_id_is_a_miss() -> None:
+    """A context that outlives its graph cannot return one node's result for another."""
+    CALLS.clear()
+    node = Shared()()
+    other = Shared()()
+    context = ResolveContext(observer=NullObserver())
+    # Simulate id reuse: an entry under node's id that belongs to a different node.
+    context._resolved[id(node)] = (other, Num(value=99))
+    assert asyncio.run(node.aresolve(context)).value == 1
+    assert node.resolve(context).value == 1
+    assert CALLS == ["shared"]

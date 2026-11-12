@@ -13,3 +13,12 @@ needs:
       - "test:tests/test_async_dedup.py::test_shared_upstream_runs_once_under_gather"
       - "test:tests/test_async_dedup.py::test_failed_owner_releases_the_waiter"
       - "test:tests/test_async_dedup.py::test_waiter_cancellation_propagates"
+
+  - id: AS-2
+    text: >
+      When the developer keeps one ResolveContext across several graphs, they can get each node's
+      own result, never another node's.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/9"}
+    proofs:
+      - "test:tests/test_async_dedup.py::test_memo_entry_for_another_node_with_the_same_id_is_a_miss"

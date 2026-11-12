@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The per-run memo keeps each node with its result. A `ResolveContext` reused after its graph
+  was freed could hand one node's result to a new node that got the same `id()`.
 - Two `aresolve` calls gathered on one context ran a shared upstream step twice. The first task
   now claims the node and the others wait for it, as the threaded path already did.
 - `dag(..., cache_dir=)` draws pipeline-cached steps as cached. It read the step hash, which the

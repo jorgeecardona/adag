@@ -585,6 +585,17 @@ class StepResult(Deferred[Out]):
                         f"but {type(self.step).__name__} expects {expected_name} for '{name}'"
                     )
 
+    def _memo_get(self, context: ResolveContext) -> Out | _Miss:
+        """This node's memoized result in ``context``, or ``_CACHE_MISS``. Hold ``_lock``.
+
+        Entries are ``(node, value)`` keyed by ``id(node)``. Holding the node keeps its id from
+        being reused while the entry exists, and the identity check rejects a stale entry.
+        """
+        entry = context._resolved.get(id(self))
+        if entry is not None and entry[0] is self:
+            return entry[1]
+        return _CACHE_MISS
+
     def _check_cache(self, context: ResolveContext) -> Out | _Miss:
         """The shared, synchronous *front* of ``resolve``/``aresolve``: per-execute memo
         lookup, ``on_step_start``, and the disk-cache hit path. Returns the resolved value
@@ -594,11 +605,12 @@ class StepResult(Deferred[Out]):
         format byte-identical. ``context._lock`` guards the memo dict so the parallel
         executor's concurrent nodes are safe regardless of the GIL.
         """
-        # Per-execute memoization. id() is safe because StepResult instances live for the
-        # lifetime of the Pipeline.execute call.
+        # Per-execute memoization, by id(). The memo holds the node too (see _memo_get), so a
+        # context that outlives its graph cannot hand one node's result to another.
         with context._lock:
-            if id(self) in context._resolved:
-                return context._resolved[id(self)]
+            memo = self._memo_get(context)
+        if not isinstance(memo, _Miss):
+            return memo
 
         step_name = type(self.step).__name__
         # Announce entry BEFORE the recursive hash/cache check, so progress shows the instant
@@ -616,7 +628,7 @@ class StepResult(Deferred[Out]):
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
             with context._lock:
-                context._resolved[id(self)] = loaded
+                context._resolved[id(self)] = (self, loaded)
             context.observer.on_step_cached(step_name)
             return loaded
 
@@ -643,7 +655,7 @@ class StepResult(Deferred[Out]):
                 emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
                 self._write_key_record(context)
         with context._lock:
-            context._resolved[id(self)] = result
+            context._resolved[id(self)] = (self, result)
         return result
 
     def _write_key_record(self, context: ResolveContext) -> None:
@@ -690,8 +702,9 @@ class StepResult(Deferred[Out]):
         """
         while True:
             with context._lock:
-                if id(self) in context._resolved:
-                    return context._resolved[id(self)]
+                memo = self._memo_get(context)
+                if not isinstance(memo, _Miss):
+                    return memo
                 in_flight = context._inflight.get(id(self))
                 if in_flight is None:
                     own_event = Event()
@@ -754,8 +767,9 @@ class StepResult(Deferred[Out]):
         """
         while True:
             with context._lock:
-                if id(self) in context._resolved:
-                    return context._resolved[id(self)]
+                memo = self._memo_get(context)
+                if not isinstance(memo, _Miss):
+                    return memo
                 in_flight = context._ainflight.get(id(self))
                 if in_flight is None:
                     own = asyncio.get_running_loop().create_future()

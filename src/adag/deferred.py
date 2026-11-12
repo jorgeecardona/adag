@@ -296,7 +296,8 @@ class ResolveContext:
     another — e.g. ``NullObserver`` for silence, ``RunTreeObserver``, or the
     inference ``EmbeddingObserver``.
 
-    ``_resolved`` memoizes the resolved result of every ``StepResult`` reached
+    ``_resolved`` memoizes the resolved result of every ``StepResult`` reached, as
+    ``id(node) -> (node, value)``,
     during a single ``Pipeline.execute`` call. Without it, a non-cached step
     (``Step`` subclass that returns a non-serializable object — e.g. a model
     model wrapper) would be re-executed once per downstream consumer, and each
