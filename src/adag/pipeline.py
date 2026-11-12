@@ -23,7 +23,7 @@ import json
 import math
 import os
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from pathlib import Path
@@ -66,6 +66,14 @@ R = TypeVar("R", bound=BaseModel)
 Out = TypeVar("Out", default=Any)
 
 
+type JsonValue = bool | int | float | str | Sequence[JsonValue] | Mapping[str, JsonValue] | None
+"""A value ``json.dumps`` accepts: the type of ``Pipeline.metadata``.
+
+``Sequence`` and ``Mapping`` (not ``list`` and ``dict``) so a ``dict[str, int]`` is accepted under
+strict type checking. Narrow it (``isinstance``) before you use a part of it.
+"""
+
+
 class CyclicPipelineError(ValueError):
     """Raised at construction when the Deferred graph contains a cycle (a step transitively depends on itself)."""
 
@@ -97,7 +105,7 @@ class Pipeline(Generic[Out]):
         kind: str | None = None,
         extra_targets: list[StepResult[Any]] | None = None,
         store: CacheStore | None = None,
-        metadata: Any = None,
+        metadata: JsonValue = None,
     ) -> None:
         """Wrap a Deferred graph.
 
@@ -131,7 +139,7 @@ class Pipeline(Generic[Out]):
                 json.dumps(metadata)
             except (TypeError, ValueError) as exc:
                 raise TypeError(f"Pipeline metadata must be a JSON value: {exc}") from exc
-        self.metadata: Any = metadata
+        self.metadata: JsonValue = metadata
 
         self._steps: list[Step[Any]] = []
         self._inputs: list[InputParam[Any]] = []
@@ -151,7 +159,7 @@ class Pipeline(Generic[Out]):
         *,
         kind: str | None = None,
         store: CacheStore | None = None,
-        metadata: Any = None,
+        metadata: JsonValue = None,
     ) -> Pipeline[Any]:
         """Build a Pipeline that covers multiple terminal nodes.
 

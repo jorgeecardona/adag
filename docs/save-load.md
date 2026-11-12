@@ -47,3 +47,7 @@ Pipeline.from_directory(folder, step_registry).metadata  # {"fitted_on": "2026-1
 
 `save()` writes it to `pipeline.json` under `"metadata"`. adag does not read it for anything else.
 A value that is not JSON raises `TypeError` when the `Pipeline` is built.
+
+`pipeline.metadata` is typed `adag.JsonValue`, not `Any`. A type checker accepts any JSON-shaped
+value going in, and asks you to narrow it (for example `isinstance(meta, dict)`) before you index
+it.

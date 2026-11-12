@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `adag.JsonValue`: the type of `Pipeline(metadata=...)` and `pipeline.metadata`, instead of
+  `Any`. A strict type checker now asks you to narrow the loaded value before you use it.
 - `aresolve_all(targets, context, max_concurrency=)`: resolve several nodes level by level inside
   your own event loop, with one memo, equal keys run once, and a bound on running step bodies.
   `Pipeline.aexecute` now uses it.

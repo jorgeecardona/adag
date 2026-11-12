@@ -150,3 +150,12 @@ needs:
       - "test:tests/test_visualization.py::test_dag_helper_renders_inline_in_a_notebook"
       - "test:tests/test_visualization.py::test_render_graph_svg_is_public_and_old_name_still_works"
       - "test:tests/test_visualization.py::test_compute_state_sees_a_pipeline_cached_node"
+
+  - id: CO-15
+    text: >
+      When the developer reads pipeline metadata back under strict type checking, they can get a
+      JSON value type instead of Any, so the checker asks them to narrow it.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/4"}
+    proofs:
+      - "test:tests/test_metadata_typing.py::test_metadata_accepts_a_dict_and_must_be_narrowed"
