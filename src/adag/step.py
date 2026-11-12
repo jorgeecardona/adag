@@ -527,6 +527,10 @@ def _overrides_content_hash(cls: type) -> bool:
     return False
 
 
+KEY_RECORD_PREFIX = ".keys/"
+"""Store key prefix of the key records written after each save: ``.keys/<key>.json``."""
+
+
 class _Miss:
     """Sentinel for a cache/memo miss — deliberately not ``None``, because a step may
     legitimately return ``None`` and that must not read as 'recompute me'.
@@ -631,14 +635,39 @@ class StepResult(Deferred[Out]):
             if cache_dir is not None:
                 result = self._save_path(result, cache_dir, context.params)
                 emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
+                self._write_key_record(context)
         else:
             store = context.result_store()
             if store is not None and self.step.result_model() is not None:
                 self._save(result, store, params=context.params)
                 emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
+                self._write_key_record(context)
         with context._lock:
             context._resolved[id(self)] = result
         return result
+
+    def _write_key_record(self, context: ResolveContext) -> None:
+        """Write this node's key explanation to ``.keys/<key>.json`` in the result store.
+
+        The record lets a later release compare a new key with the one a result was saved
+        under. A failed write never fails the run: it emits ``step.key_record.failed``.
+        """
+        store = context.result_store()
+        key = self.content_hash(params=context.params)
+        if store is None or key is None:
+            return
+        try:
+            from adag import __version__  # late: adag/__init__ imports this module
+
+            record = {
+                "record_version": 1,
+                "adag_version": __version__,
+                "saved_at": datetime.now(UTC).isoformat(),
+                **self.explain_key(context.params).to_dict(),
+            }
+            store.set(f"{KEY_RECORD_PREFIX}{key}.json", json.dumps(record, indent=1))
+        except Exception as exc:
+            emit("step.key_record.failed", step=type(self.step).__name__, key=key, error=str(exc))
 
     def resolve(self, context: ResolveContext) -> Out:
         """Resolve upstream sources, run the step, cache if applicable.

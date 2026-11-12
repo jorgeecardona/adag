@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- After each save, adag writes a key record `.keys/<key>.json` (the `explain_key` output, about
+  1 to 2 KB) next to the result. Code that lists every file in a cache directory now also sees
+  `.keys/`.
 - `StepResult.explain_key(params)` and `Pipeline.explain_keys(params)` list every component of
   a cache key, so you can see why a node recomputed. See Caching, "Why did a node recompute".
 - `adag.hashing.KEY_FORMAT` (now 2): the version of the cache key bytes. A release that changes

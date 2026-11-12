@@ -19,13 +19,13 @@ instead of files under `cache_dir`.
 greeting ana
 greeting bo
 greeting cy
-7 keys in cache.db
+9 keys in cache.db
 ```
 
 The second run greets only `cy`: `ana` and `bo` are read from the store.
 
-The 7 keys: 3 items (`greet/<key>.json`), and a result `<key>` plus a `<key>.done` marker for
-each of the 2 runs.
+The 9 keys: 3 items (`greet/<key>.json`), and for each of the 2 runs a result `<key>`, its
+`<key>.done` marker, and its key record `.keys/<key>.json` (see [Caching](caching.md)).
 
 ## Open a store from a URL
 

@@ -77,6 +77,10 @@ Scale  key=9ba856cd8cc6  format=2
 
 Each result is `<cache_dir>/<key>` (JSON) plus `<key>.done`, written after the result. A
 result without its `.done` file, an empty file, or a file that does not parse is a miss.
+After each save adag also writes a key record, `.keys/<key>.json`: the node's `explain_key`
+output as JSON, with the adag version and the time. It is about 1 to 2 KB, holds field values
+cut to 80 characters (never `Config` fields), and a failed write never fails the run. A later
+release will use it to compare a new key with the one a result was saved under.
 With `store=`, the same two keys go to the store (see [Cache stores](cache-stores.md)).
 
 ## Results that are not one JSON document

@@ -195,7 +195,7 @@ def test_empty_or_corrupt_cache_file_is_a_miss(tmp_path: Path, bad_content: str)
     graph = AddStep(a=3, b=4)(a=3, b=4)
     pipeline = Pipeline(graph, cache_dir=tmp_path)
     pipeline.execute()
-    [output] = [f for f in tmp_path.rglob("*") if f.is_file() and f.suffix != ".done"]
+    [output] = [f for f in tmp_path.glob("*") if f.is_file() and f.suffix != ".done"]
     output.write_text(bad_content)
 
     assert not graph.is_cached(tmp_path)

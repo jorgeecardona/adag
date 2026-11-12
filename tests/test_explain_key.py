@@ -1,8 +1,11 @@
 """``explain_key``: every component of a cache key, and the same key the cache uses."""
 
+import json
 from pathlib import Path
 
-from adag import ComponentKind, FileSource, KeyExplanation, Pipeline
+from adag import ComponentKind, FileSource, KeyExplanation, NullObserver, Pipeline
+from adag.cache_store import MemoryCacheStore
+from adag.step import KEY_RECORD_PREFIX
 from test_key_golden import (
     Down,
     Labelled,
@@ -77,3 +80,34 @@ def test_dict_round_trip_and_text_form() -> None:
 def test_pipeline_explains_every_node_upstream_first() -> None:
     explanations = Pipeline(_graph()).explain_keys({"p": 5})
     assert [e.step for e in explanations] == ["Plain", "Down"]
+
+
+class _FailingKeyStore(MemoryCacheStore):
+    def set(self, key: str, value: str) -> None:
+        if key.startswith(KEY_RECORD_PREFIX):
+            raise OSError("disk full")
+        super().set(key, value)
+
+
+def test_key_record_round_trips_in_a_directory(tmp_path: Path) -> None:
+    node = _graph()
+    Pipeline(node, cache_dir=tmp_path).execute(p=5, observer=NullObserver())
+    key = node.content_hash(params={"p": 5})
+    record = json.loads((tmp_path / ".keys" / f"{key}.json").read_text())
+    assert record["record_version"] == 1
+    assert KeyExplanation.from_dict(record) == node.explain_key({"p": 5})
+
+
+def test_key_record_round_trips_in_a_store() -> None:
+    store = MemoryCacheStore()
+    node = Plain()()
+    Pipeline(node, store=store).execute(observer=NullObserver())
+    raw = store.get(f"{KEY_RECORD_PREFIX}{node.content_hash()}.json")
+    assert raw is not None
+    assert KeyExplanation.from_dict(json.loads(raw)) == node.explain_key()
+
+
+def test_failed_key_record_does_not_fail_the_run() -> None:
+    node = Plain(a=7)()
+    result = Pipeline(node, store=_FailingKeyStore()).execute(observer=NullObserver())
+    assert result.value == 7

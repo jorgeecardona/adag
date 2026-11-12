@@ -24,3 +24,14 @@ needs:
       - "test:tests/test_explain_key.py::test_explanation_key_equals_content_hash"
       - "test:tests/test_explain_key.py::test_changing_one_field_changes_only_that_component"
       - "test:tests/test_explain_key.py::test_missing_file_blocks_the_key_and_names_the_field"
+
+  - id: KY-3
+    text: >
+      When a result is saved, the developer can find a record of the key's components next to
+      it, so a later run can show which component changed.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/8"}
+    proofs:
+      - "test:tests/test_explain_key.py::test_key_record_round_trips_in_a_directory"
+      - "test:tests/test_explain_key.py::test_key_record_round_trips_in_a_store"
+      - "test:tests/test_explain_key.py::test_failed_key_record_does_not_fail_the_run"
