@@ -675,7 +675,7 @@ class StepResult(Deferred[Out]):
                 "record_version": 1,
                 "adag_version": __version__,
                 "saved_at": datetime.now(UTC).isoformat(),
-                **self.explain_key(context.params).to_dict(),
+                **self.explain_key(context.params).redacted().to_dict(),
             }
             store.set(f"{KEY_RECORD_PREFIX}{key}.json", json.dumps(record, indent=1))
         except Exception as exc:

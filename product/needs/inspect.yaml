@@ -35,3 +35,4 @@ needs:
       - "test:tests/test_explain_key.py::test_key_record_round_trips_in_a_directory"
       - "test:tests/test_explain_key.py::test_key_record_round_trips_in_a_store"
       - "test:tests/test_explain_key.py::test_failed_key_record_does_not_fail_the_run"
+      - "test:tests/test_explain_key.py::test_key_record_never_holds_a_config_value"

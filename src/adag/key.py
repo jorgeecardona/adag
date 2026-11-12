@@ -7,7 +7,7 @@ built from the same components, so an explanation and its key cannot disagree.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -85,6 +85,21 @@ class KeyExplanation:
     blocked_by: str | None
     key_format: int
     components: tuple[KeyComponent, ...]
+
+    def redacted(self) -> KeyExplanation:
+        """A copy with the value of every ``SKIPPED`` component removed.
+
+        A skipped component is not in the key, and its value can be a client, a path or a
+        secret (a ``Config`` field). The key record is written to disk or to a shared store, so
+        it keeps only the name.
+        """
+        return replace(
+            self,
+            components=tuple(
+                replace(c, value="") if c.kind is ComponentKind.SKIPPED else c
+                for c in self.components
+            ),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """The JSON form, as written to the key record."""

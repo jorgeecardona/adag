@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from adag import ComponentKind, FileSource, KeyExplanation, NullObserver, Pipeline
+from adag import ComponentKind, Config, FileSource, KeyExplanation, NullObserver, Pipeline
 from adag.cache_store import MemoryCacheStore
 from adag.step import KEY_RECORD_PREFIX
 from test_key_golden import (
@@ -111,3 +111,17 @@ def test_failed_key_record_does_not_fail_the_run() -> None:
     node = Plain(a=7)()
     result = Pipeline(node, store=_FailingKeyStore()).execute(observer=NullObserver())
     assert result.value == 7
+
+
+def test_key_record_never_holds_a_config_value(tmp_path: Path) -> None:
+    """A Config field can hold a client or a secret; the record goes to disk or a shared store."""
+    node = WithConfig(workers=Config(1234567))()
+    Pipeline(node, cache_dir=tmp_path).execute(observer=NullObserver())
+    key = node.content_hash()
+    text = (tmp_path / ".keys" / f"{key}.json").read_text()
+    assert "1234567" not in text
+    saved = KeyExplanation.from_dict(json.loads(text))
+    skipped = [c for c in saved.components if c.kind is ComponentKind.SKIPPED]
+    assert [(c.name, c.value) for c in skipped] == [("workers", "")]
+    assert saved == node.explain_key().redacted()
+    assert saved.key == node.explain_key().key
