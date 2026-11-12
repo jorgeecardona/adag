@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Tests pin the cache key format. A future release changes keys only on purpose, and says
+  so here.
 - Calling a step warns (`AdagDeprecationWarning`) when an upstream step is both a field and an
   input. Wire it once, as an input. It becomes a `TypeError` in adag 1.0.
 - `SubprocessDispatcher` runs at most one process per CPU at a time (`max_concurrent=`), not
