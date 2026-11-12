@@ -22,3 +22,18 @@ needs:
       - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/9"}
     proofs:
       - "test:tests/test_async_dedup.py::test_memo_entry_for_another_node_with_the_same_id_is_a_miss"
+
+  - id: AS-3
+    text: >
+      When the developer resolves several async targets inside their own event loop, they can do
+      it with one call that runs level by level, shares one memo, and bounds how many step bodies
+      run at once.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/9"}
+    proofs:
+      - "test:tests/test_aresolve_all.py::test_results_follow_target_order_and_shared_node_runs_once"
+      - "test:tests/test_aresolve_all.py::test_nodes_with_equal_keys_run_once"
+      - "test:tests/test_aresolve_all.py::test_max_concurrency_bounds_running_bodies"
+      - "test:tests/test_aresolve_all.py::test_first_failure_cancels_the_level_and_keeps_its_type"
+      - "test:tests/test_aresolve_all.py::test_cached_target_does_not_run_its_upstream"

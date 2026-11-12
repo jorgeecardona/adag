@@ -16,13 +16,14 @@ neither read from nor written to disk — every execute() runs the full DAG.
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import inspect
 import json
 import math
 import os
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from pathlib import Path
@@ -47,6 +48,7 @@ from adag.deferred import (
     ResolveContext,
     observing,
 )
+from adag.hashing import UnhashableValueError
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
 from adag.key import KeyExplanation
@@ -256,43 +258,8 @@ class Pipeline(Generic[Out]):
         return levels
 
     def _stepresult_levels(self) -> list[list[StepResult[Any]]]:
-        """The graph's StepResult nodes grouped into dependency levels (Kahn over node ids).
-
-        The StepResult-identity twin of ``topological_levels`` (which groups deduped Steps):
-        the concurrent executor resolves nodes, not steps, so it levels by ``id``.
-        """
-        upstreams: dict[int, list[StepResult[Any]]] = {}
-        downstreams: defaultdict[int, list[StepResult[Any]]] = defaultdict(list)
-        nodes: dict[int, StepResult[Any]] = {}
-        seen: set[int] = set()
-        stack: list[StepResult[Any]] = list(self._targets)
-        while stack:
-            node = stack.pop()
-            if id(node) in seen:
-                continue
-            seen.add(id(node))
-            nodes[id(node)] = node
-            sources: list[StepResult[Any]] = []
-            for source in node.sources.values():
-                if isinstance(source, StepResult):
-                    sources.append(source)
-                    downstreams[id(source)].append(node)
-                    stack.append(source)
-            upstreams[id(node)] = sources
-
-        in_degree = {node_id: len(sources) for node_id, sources in upstreams.items()}
-        current = [nodes[node_id] for node_id, degree in in_degree.items() if degree == 0]
-        levels: list[list[StepResult[Any]]] = []
-        while current:
-            levels.append(current)
-            following: list[StepResult[Any]] = []
-            for node in current:
-                for dependent in downstreams[id(node)]:
-                    in_degree[id(dependent)] -= 1
-                    if in_degree[id(dependent)] == 0:
-                        following.append(dependent)
-            current = following
-        return levels
+        """The graph's StepResult nodes grouped into dependency levels (Kahn over node ids)."""
+        return _node_levels(self._targets)
 
     def _resolve_levels_concurrently(
         self, context: ResolveContext, max_workers: int | None
@@ -506,8 +473,7 @@ class Pipeline(Generic[Out]):
             observer=observer or LoggingObserver(),
             async_executor=async_executor or LocalAsyncExecutor(),
         )
-        with observing(context.observer):
-            return await self.output.aresolve(context)
+        return (await aresolve_all([self.output], context, max_concurrency=1))[0]
 
     def resolve(
         self,
@@ -740,3 +706,149 @@ class Pipeline(Generic[Out]):
         steps = [type(s).__name__ for s in self._steps]
         inputs = [p.name for p in self._inputs]
         return f"Pipeline(steps={steps}, inputs={inputs}, cache_dir={self.cache_dir})"
+
+
+def _node_levels(
+    targets: Sequence[StepResult[Any]],
+    stop_at: Callable[[StepResult[Any]], bool] | None = None,
+) -> list[list[StepResult[Any]]]:
+    """The StepResult nodes upstream of ``targets``, grouped into dependency levels.
+
+    Kahn's algorithm over node ids. The StepResult twin of ``Pipeline.topological_levels``
+    (which groups deduplicated Steps): resolution works on nodes, so it levels by ``id``. A
+    node for which ``stop_at`` returns True is kept, but its upstream nodes are not walked.
+    """
+    upstreams: dict[int, list[StepResult[Any]]] = {}
+    downstreams: defaultdict[int, list[StepResult[Any]]] = defaultdict(list)
+    nodes: dict[int, StepResult[Any]] = {}
+    seen: set[int] = set()
+    stack: list[StepResult[Any]] = list(targets)
+    while stack:
+        node = stack.pop()
+        if id(node) in seen:
+            continue
+        seen.add(id(node))
+        nodes[id(node)] = node
+        sources: list[StepResult[Any]] = []
+        if stop_at is None or not stop_at(node):
+            for source in node.sources.values():
+                if isinstance(source, StepResult):
+                    sources.append(source)
+                    downstreams[id(source)].append(node)
+                    stack.append(source)
+        upstreams[id(node)] = sources
+
+    in_degree = {node_id: len(sources) for node_id, sources in upstreams.items()}
+    current = [nodes[node_id] for node_id, degree in in_degree.items() if degree == 0]
+    levels: list[list[StepResult[Any]]] = []
+    while current:
+        levels.append(current)
+        following: list[StepResult[Any]] = []
+        for node in current:
+            for dependent in downstreams[id(node)]:
+                in_degree[id(dependent)] -= 1
+                if in_degree[id(dependent)] == 0:
+                    following.append(dependent)
+        current = following
+    return levels
+
+
+def _key_or_none(node: StepResult[Any], context: ResolveContext) -> str | None:
+    """``node``'s cache key, or None when it has none or cannot be hashed.
+
+    A run without a cache may pass params the key cannot encode (a database session), so a
+    hashing error here only means "no key", never a failure.
+    """
+    try:
+        return node.content_hash(params=context.params)
+    except UnhashableValueError:
+        return None
+
+
+def _has_cache_entry(node: StepResult[Any], context: ResolveContext) -> bool:
+    """Whether a saved result marker exists for ``node``. Checks files only, loads nothing."""
+    key = _key_or_none(node, context)
+    if key is None:
+        return False
+    if node.step.caches_to_path():
+        return context.cache_dir is not None and context.cache_dir.joinpath(key + ".done").exists()
+    store = context.result_store()
+    if store is None or node.step.result_model() is None:
+        return False
+    return store.exists(key + ".done")
+
+
+async def aresolve_all(
+    targets: Sequence[StepResult[Any]],
+    context: ResolveContext,
+    *,
+    max_concurrency: int | None = None,
+) -> list[Any]:
+    """Resolve ``targets`` level by level on the running loop; results in ``targets`` order.
+
+    Use it inside your own event loop (a request handler, a script) instead of sorting the graph
+    and gathering ``aresolve`` per level yourself. ``context`` holds the params, observer, cache
+    and the memo shared by every node.
+
+    - Each level's nodes run together with ``asyncio.gather``; the next level starts when this
+      one is done. A node with a saved result is not expanded: its upstream nodes do not run.
+    - Nodes in one level with the same cache key run once.
+    - ``max_concurrency`` bounds how many step bodies run at once. ``None`` runs a whole level.
+    - The first failure cancels the rest of its level and is raised as it is (no
+      ``ExceptionGroup``).
+    - Sync step bodies and cache reads run on the loop and block it while they run.
+    - ``FanOutStep`` branches are resolved inside the step, so ``max_concurrency`` does not
+      bound them.
+
+    Args:
+        targets: the nodes to resolve.
+        context: shared by every node; build one per run.
+        max_concurrency: the most step bodies running at the same time.
+    """
+    semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
+
+    async def run(node: StepResult[Any]) -> Any:
+        if semaphore is None:
+            return await node.aresolve(context)
+        async with semaphore:
+            return await node.aresolve(context)
+
+    with observing(context.observer):
+        for level in _node_levels(targets, lambda n: _has_cache_entry(n, context)):
+            leaders: list[StepResult[Any]] = []
+            followers: dict[int, list[StepResult[Any]]] = defaultdict(list)
+            leader_by_key: dict[str, StepResult[Any]] = {}
+            for node in level:
+                key = _key_or_none(node, context)
+                leader = leader_by_key.get(key) if key is not None else None
+                if leader is None:
+                    leaders.append(node)
+                    if key is not None:
+                        leader_by_key[key] = node
+                else:
+                    followers[id(leader)].append(node)
+            tasks = [asyncio.create_task(run(node)) for node in leaders]
+            try:
+                values = await _gather_first_failure(tasks)
+            finally:
+                for task in tasks:
+                    task.cancel()
+            for leader, value in zip(leaders, values, strict=True):
+                with context._lock:
+                    for follower in followers[id(leader)]:
+                        context._resolved[id(follower)] = (follower, value)
+        return [await target.aresolve(context) for target in targets]
+
+
+async def _gather_first_failure(tasks: list[asyncio.Task[Any]]) -> list[Any]:
+    """Await ``tasks``; on the first failure cancel the others and raise that exception."""
+    if not tasks:
+        return []
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    failures = [e for t in tasks if t in done and (e := t.exception()) is not None]
+    if failures:
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        raise failures[0]
+    return [task.result() for task in tasks]

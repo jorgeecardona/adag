@@ -54,6 +54,7 @@ EXPECTED = {
     "observing",
     "render_pipeline_svg",
     "walk",
+    "aresolve_all",
 }
 
 

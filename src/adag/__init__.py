@@ -5,7 +5,7 @@ This module exports every public name of the package, including the lower-level 
 imported from here.
 """
 
-__version__ = "0.2.40"
+__version__ = "0.2.41"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -36,7 +36,7 @@ from adag.io import FileSource, JSONLSource, LinesSource
 from adag.item_cache import ItemCache
 from adag.key import ComponentKind, KeyComponent, KeyExplanation
 from adag.observers import LoggingObserver, RunTreeObserver
-from adag.pipeline import CyclicPipelineError, Pipeline, UnboundInputError
+from adag.pipeline import CyclicPipelineError, Pipeline, UnboundInputError, aresolve_all
 from adag.serializable import SerializableStep
 from adag.sinks import WriteJSONL
 from adag.step import AsyncStep, Step, StepResult, StepTimeout
@@ -87,6 +87,7 @@ __all__ = [
     "UnboundInputError",
     "UnhashableValueError",
     "WriteJSONL",
+    "aresolve_all",
     "current_observer",
     "dag",
     "observing",

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `aresolve_all(targets, context, max_concurrency=)`: resolve several nodes level by level inside
+  your own event loop, with one memo, equal keys run once, and a bound on running step bodies.
+  `Pipeline.aexecute` now uses it.
 - After each save, adag writes a key record `.keys/<key>.json` (the `explain_key` output, about
   1 to 2 KB) next to the result. Code that lists every file in a cache directory now also sees
   `.keys/`.
