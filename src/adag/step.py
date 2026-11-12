@@ -46,6 +46,7 @@ from adag.config import Config
 from adag.deferred import Deferred, InputParam, Progress, ResolveContext, emit, observing
 from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import (
+    KEY_FORMAT,
     UnhashableValueError,
     class_source_hash,
     encode_value,
@@ -54,7 +55,7 @@ from adag.hashing import (
     is_tuple,
 )
 from adag.io import FileSource, atomic_write_text
-from adag.key import ComponentKind
+from adag.key import ComponentKind, KeyComponent, KeyExplanation
 
 logger = structlog.get_logger()
 
@@ -516,6 +517,16 @@ class AsyncStep(Step[Out]):
         ...
 
 
+def _overrides_content_hash(cls: type) -> bool:
+    """Whether a step class, or a base below ``Step``, defines its own ``content_hash``."""
+    for klass in cls.__mro__:
+        if klass is Step:
+            return False
+        if "content_hash" in vars(klass):
+            return True
+    return False
+
+
 class _Miss:
     """Sentinel for a cache/memo miss — deliberately not ``None``, because a step may
     legitimately return ``None`` and that must not read as 'recompute me'.
@@ -762,6 +773,54 @@ class StepResult(Deferred[Out]):
                 return None
             h.update(chunk)
         return h.hexdigest()[:12]
+
+    def explain_key(self, params: dict[str, Any] | None = None) -> KeyExplanation:
+        """List every component of this node's cache key.
+
+        Use it when a node recomputes and you do not know why. The components are the step's
+        identity, code digest and fields, then one per input. The key is built from the same
+        components, so ``explain_key(p).key == content_hash(p)``.
+
+        Args:
+            params: the run's params, as passed to ``execute``.
+        """
+        step = self.step
+        components: list[KeyComponent] = []
+        blocked_by: str | None = None
+        pinned = type(step).cache_key
+        if pinned is not None:
+            components.append(KeyComponent.build(ComponentKind.PINNED, "", pinned, pinned.encode()))
+        elif _overrides_content_hash(type(step)):
+            # A subclass with its own content_hash: its parts are not visible to adag.
+            own = step.content_hash()
+            chunk = None if own is None else own.encode()
+            components.append(KeyComponent.build(ComponentKind.IDENTITY, "", own, chunk))
+            if own is None:
+                blocked_by = "content_hash"
+        else:
+            for kind, name, value, chunk in step._key_chunks():
+                components.append(KeyComponent.build(kind, name, value, chunk))
+                if chunk is None and blocked_by is None:
+                    blocked_by = name or kind.value
+        for kind, name, value, chunk in self._key_chunks(params):
+            if kind is ComponentKind.IDENTITY:
+                continue  # the step's own key: already listed component by component above
+            shown: Any = value
+            if isinstance(value, StepResult):
+                upstream: StepResult[Any] = value  # pyright: ignore[reportUnknownVariableType]
+                shown = f"{type(upstream.step).__name__} {upstream.content_hash(params=params)}"
+            components.append(KeyComponent.build(kind, name, shown, chunk))
+            if chunk is None and blocked_by is None:
+                blocked_by = name or kind.value
+        label = getattr(step, "node_label", None) or None
+        return KeyExplanation(
+            step=type(step).__name__,
+            label=label,
+            key=self.content_hash(params=params),
+            blocked_by=blocked_by,
+            key_format=KEY_FORMAT,
+            components=tuple(components),
+        )
 
     def _key_chunks(
         self, params: dict[str, Any] | None

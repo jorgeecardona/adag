@@ -12,3 +12,15 @@ needs:
     proofs:
       - "test:tests/test_key_golden.py::test_step_keys_are_pinned"
       - "test:tests/test_key_golden.py::test_node_keys_are_pinned"
+
+  - id: KY-2
+    text: >
+      When a node recomputes unexpectedly, the developer can list the components of its cache key
+      and see which one changed.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/8"}
+    proofs:
+      - "test:tests/test_explain_key.py::test_explanation_key_equals_content_hash"
+      - "test:tests/test_explain_key.py::test_changing_one_field_changes_only_that_component"
+      - "test:tests/test_explain_key.py::test_missing_file_blocks_the_key_and_names_the_field"

@@ -49,6 +49,7 @@ from adag.deferred import (
 )
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
+from adag.key import KeyExplanation
 from adag.observers import LoggingObserver
 from adag.step import Step, StepResult, _serialize_step_field
 
@@ -321,6 +322,16 @@ class Pipeline(Generic[Out]):
                 futures = [pool.submit(copy_context().run, node.resolve, context) for node in level]
                 for future in as_completed(futures):
                     future.result()
+
+    def explain_keys(self, params: dict[str, Any] | None = None) -> tuple[KeyExplanation, ...]:
+        """Explain the cache key of every node, upstream nodes first.
+
+        Args:
+            params: the run's params, as passed to ``execute``.
+        """
+        return tuple(
+            node.explain_key(params) for level in self._stepresult_levels() for node in level
+        )
 
     def validate(self) -> None:
         """Validate the graph before ``execute()``: every step's required run() input is bound.

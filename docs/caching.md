@@ -47,6 +47,32 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
   `load_result` (see below).
 - Keys are 12 hex characters (48 bits) of SHA-256.
 
+## Why did a node recompute
+
+Call `explain_key(params)` on the node. It lists each component of the key, in the order adag
+hashes them, with a 12-hex digest per component. Run it before and after a change: the
+component whose digest differs is the cause.
+
+```python
+--8<-- "docs/examples/explain_key.py"
+```
+
+```text
+Scale  key=9ba856cd8cc6  format=2
+  identity  -        Scale         88caac9df9ad
+  code      -        663765373931  3c5791a5408e
+  field     factor   2             01e6dab02f90
+  skipped   workers  Config(4)     -
+  param     x        3             412a6e3e02d7
+```
+
+- An `upstream` component shows the upstream step and its key. Explain that node next to follow
+  a change up the graph.
+- `skipped` lists what is not in the key: `Config` fields and `node_label`.
+- A missing input file blocks the key: `key` is `None` and `blocked_by` names the field.
+- `format` is `adag.hashing.KEY_FORMAT`. A release that changes every key bumps it.
+- `Pipeline.explain_keys(params)` explains every node, upstream nodes first.
+
 ## On disk
 
 Each result is `<cache_dir>/<key>` (JSON) plus `<key>.done`, written after the result. A
