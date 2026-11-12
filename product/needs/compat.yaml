@@ -159,3 +159,13 @@ needs:
       - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/4"}
     proofs:
       - "test:tests/test_metadata_typing.py::test_metadata_accepts_a_dict_and_must_be_narrowed"
+
+  - id: CO-16
+    text: >
+      When the developer wants a graph drawn differently from the default, they can change each
+      node's display data through public names and render it, without private imports.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/11"}
+    proofs:
+      - "test:tests/test_visualization.py::test_custom_rendering_through_public_names"
+      - "test:tests/test_compat_b62b906.py::test_deep_name_resolves"

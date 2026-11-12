@@ -5,7 +5,7 @@ This module exports every public name of the package, including the lower-level 
 imported from here.
 """
 
-__version__ = "0.2.42"
+__version__ = "0.2.43"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -46,7 +46,19 @@ from adag.pipeline import (
 from adag.serializable import SerializableStep
 from adag.sinks import WriteJSONL
 from adag.step import AsyncStep, Step, StepResult, StepTimeout
-from adag.visualization import SVG, SvgOptions, dag, render_pipeline_svg, walk
+from adag.visualization import (
+    SVG,
+    Edge,
+    Node,
+    NodeMetadata,
+    SvgOptions,
+    compute_state,
+    dag,
+    node_metadata,
+    render_graph_svg,
+    render_pipeline_svg,
+    walk,
+)
 
 __all__ = [
     "SVG",
@@ -64,6 +76,7 @@ __all__ = [
     "CyclicPipelineError",
     "Deferred",
     "DirSource",
+    "Edge",
     "Executor",
     "FanOutBranchError",
     "FanOutStep",
@@ -79,6 +92,8 @@ __all__ = [
     "LocalAsyncExecutor",
     "LocalExecutor",
     "LoggingObserver",
+    "Node",
+    "NodeMetadata",
     "NullObserver",
     "Pipeline",
     "PipelineObserver",
@@ -95,9 +110,12 @@ __all__ = [
     "UnhashableValueError",
     "WriteJSONL",
     "aresolve_all",
+    "compute_state",
     "current_observer",
     "dag",
+    "node_metadata",
     "observing",
+    "render_graph_svg",
     "render_pipeline_svg",
     "walk",
 ]

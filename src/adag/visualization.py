@@ -1271,6 +1271,24 @@ def _walk_to_metadata(
     return result
 
 
+def node_metadata(
+    nodes: list[Node], *, cache_dir: Path | None = None, prefix: str = ""
+) -> list[NodeMetadata]:
+    """Return the display data for each node from ``walk``, in the same order.
+
+    Use it to draw a pipeline your own way: walk the graph, change the ``NodeMetadata`` you want
+    (``dataclasses.replace`` a title, a description or the params), then pass the list to
+    ``render_graph_svg``. ``dag`` does the same with no changes.
+
+    Args:
+        nodes: the nodes returned by ``walk``.
+        cache_dir: colour each step by its cache state, as ``dag(..., cache_dir=)`` does.
+        prefix: strip this from step names in the titles.
+    """
+    by_name = _walk_to_metadata(nodes, cache_dir=cache_dir, prefix=prefix)
+    return [by_name[node.name] for node in nodes]
+
+
 def _render_svg(
     output: Deferred[Any],
     graph_nodes: list[Node],

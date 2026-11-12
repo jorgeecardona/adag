@@ -81,6 +81,11 @@ DEEP = [
     ("adag.deferred", "NullObserver.on_model_refused"),
     ("adag.deferred", "InlineDispatcher.dispatch"),
     ("adag.dispatch", "SubprocessDispatcher.dispatch"),
+    ("adag.visualization", "_render_graph_svg"),
+    ("adag.visualization", "_node_name_and_kind"),
+    ("adag.visualization", "_walk_to_metadata"),
+    ("adag.visualization", "NodeMetadata"),
+    ("adag.visualization", "compute_state"),
 ]
 
 # Gone on purpose: BatchDispatcher (AWS-only, its worker script was never public; use

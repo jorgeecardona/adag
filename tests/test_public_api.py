@@ -56,6 +56,12 @@ EXPECTED = {
     "walk",
     "aresolve_all",
     "JsonValue",
+    "Edge",
+    "Node",
+    "NodeMetadata",
+    "compute_state",
+    "node_metadata",
+    "render_graph_svg",
 }
 
 

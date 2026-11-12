@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Custom graph drawing has a public API: `node_metadata(nodes)` returns what `dag` would draw;
+  replace any `NodeMetadata` and pass the list to `render_graph_svg`. `Node`, `Edge`,
+  `NodeMetadata`, `compute_state`, `node_metadata` and `render_graph_svg` import from `adag`.
+  The old private names keep working until 1.0.
 - `adag.JsonValue`: the type of `Pipeline(metadata=...)` and `pipeline.metadata`, instead of
   `Any`. A strict type checker now asks you to narrow the loaded value before you use it.
 - `aresolve_all(targets, context, max_concurrency=)`: resolve several nodes level by level inside

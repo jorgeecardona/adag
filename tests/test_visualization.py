@@ -357,3 +357,19 @@ def test_compute_state_sees_a_pipeline_cached_node(tmp_path: Path) -> None:
     assert {compute_state(n, tmp_path) for n in nodes if n.step is not None} == {"PENDING"}
     Pipeline(output, cache_dir=tmp_path).execute()
     assert {compute_state(n, tmp_path) for n in nodes if n.step is not None} == {"CACHED"}
+
+
+def test_custom_rendering_through_public_names() -> None:
+    """Walk, replace one node's metadata, render: the new title is in the SVG."""
+    import dataclasses
+
+    from adag import node_metadata, render_graph_svg, walk
+
+    nodes, edges = walk(MiddleStep()(source=LeafStep()(x=InputParam[int]("x"))))
+    metadata = node_metadata(nodes)
+    assert [m.name for m in metadata] == [n.name for n in nodes]
+    changed = [
+        dataclasses.replace(m, title="My custom title") if m.kind == "step" else m for m in metadata
+    ]
+    svg = render_graph_svg(changed, [(e.source, e.target) for e in edges])
+    assert "My custom title" in svg
