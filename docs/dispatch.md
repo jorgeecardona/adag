@@ -4,6 +4,26 @@ A dispatcher decides where fan-out branches run. Workers write each result to th
 under the branch content hash, and the main process reads it back by that hash. Only the job
 description (`BranchJob`) crosses to the worker.
 
+```mermaid
+sequenceDiagram
+    participant M as Main process
+    participant D as Dispatcher
+    participant B as JobBackend
+    participant W as Worker
+    participant C as Cache (cache_dir or store)
+    M->>D: dispatch_all(branches)
+    D->>C: is the branch result saved?
+    Note over D,C: saved branches are loaded. Nothing is submitted for them.
+    D->>B: submit(BranchJob) for each missing branch
+    B->>W: start adag resolve-branch
+    W->>C: write the result under the branch hash
+    loop every poll_interval_seconds
+        D->>B: status(job ids)
+    end
+    D->>C: read each result by its hash
+    D-->>M: results by key
+```
+
 ## Run branches in local processes
 
 `SubprocessDispatcher` runs each branch in a new Python process, at most one per CPU at a time.

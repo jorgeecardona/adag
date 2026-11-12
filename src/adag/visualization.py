@@ -80,6 +80,7 @@ _STYLESHEET_LIGHT = """
 .dag-arrow { fill: #90a4ae; }
 .dag-node--step { fill: #fff8e1; stroke: #ffc107; }
 .dag-node--leaf { fill: #e8eaf6; stroke: #9fa8da; }
+.dag-node--step.is-cached, .dag-node--leaf.is-cached { fill: #e8f5e9; stroke: #66bb6a; }
 .dag-node--step.is-blocked, .dag-node--leaf.is-blocked { fill: #ffebee; stroke: #ef5350; }
 .dag-node--param { fill: #f3e5f5; stroke: #ce93d8; }
 .dag-node--file { fill: #efebe9; stroke: #bcaaa4; }
@@ -98,6 +99,7 @@ _STYLESHEET_DARK = """
 .dag-arrow { fill: #6b7683; }
 .dag-node--step { fill: #2a2317; stroke: #b58900; }
 .dag-node--leaf { fill: #1e2030; stroke: #6b74a8; }
+.dag-node--step.is-cached, .dag-node--leaf.is-cached { fill: #16261a; stroke: #4f9a5b; }
 .dag-node--step.is-blocked, .dag-node--leaf.is-blocked { fill: #2d1a1c; stroke: #d05a5a; }
 .dag-node--param { fill: #271c2b; stroke: #9a63a6; }
 .dag-node--file { fill: #241f1d; stroke: #8a7466; }

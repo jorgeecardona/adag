@@ -13,6 +13,26 @@ A step runs again only when its cache key changes.
 So a change to any of these recomputes that step and everything downstream. Nothing else
 recomputes.
 
+```mermaid
+flowchart LR
+    cls["Class name or kind"] --> key
+    body["Class body source"] --> key
+    fields["Fields, except Config"] --> key
+    up["Upstream cache keys"] --> key
+    inputs["InputParam values"] --> key
+    files["FileSource content"] --> key
+    key(["Cache key: 12 hex characters"]) --> saved{"Result saved under this key?"}
+    saved -- yes --> load["Load it. The step does not run."]
+    saved -- no --> run["Run the step. Save the result under the key."]
+```
+
+Example: a pipeline with four steps ran once. Then `Clean.case` changed. `Clean` and its
+downstream step `Report` are pending (yellow). `Load` and `Count` stay cached (green).
+
+![Graph after one field changed: Clean and Report pending, Load and Count cached](assets/graph_states.svg)
+
+The image comes from `dag(...)` on [`docs/examples/graph_states.py`](https://gitlab.com/cardona-oss/adag/-/blob/main/docs/examples/graph_states.py).
+
 ## Keep a field out of the key: Config
 
 Wrap execution-only settings (worker counts, clients, timeouts) in `Config`. `run()` receives

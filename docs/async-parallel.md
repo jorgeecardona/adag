@@ -17,6 +17,25 @@ Use `AsyncStep` when a step awaits I/O, and `parallel=True` when independent ste
 - `execute(parallel=True, max_workers=N)`: run independent steps on a thread pool.
 - `timeout_s` (class attribute): a step that runs longer raises `StepTimeout`.
 
+```mermaid
+flowchart TB
+    subgraph L0["Level 0"]
+        load["Load"]
+    end
+    subgraph L1["Level 1: nodes start together"]
+        clean["Clean"]
+        count["Count"]
+    end
+    subgraph L2["Level 2"]
+        report["Report"]
+    end
+    load --> clean --> report
+    load --> count --> report
+```
+
+`aresolve_all` and `parallel=True` both work level by level. A level holds the nodes whose
+upstream nodes are all done. The next level starts when the current one ends.
+
 ```python
 --8<-- "docs/examples/async_parallel.py"
 ```

@@ -5,7 +5,7 @@
 # (format = write, bump, setup, install-hooks, clean) run a command directly here.
 # One-time setup after cloning:  make setup
 .DEFAULT_GOAL := help
-.PHONY: help setup install-hooks format lint format-check typecheck test check version-ahead bump docs build clean
+.PHONY: help setup install-hooks format lint format-check typecheck test check version-ahead bump docs docs-graphs build clean
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -46,6 +46,9 @@ bump: ## bump the version -- TYPE=patch|minor|major (default patch)
 
 docs: ## build docs strictly (as CI / Read the Docs do) -- the CI :docs task
 	moon run :docs
+
+docs-graphs: ## regenerate docs/assets/*.svg with adag's own renderer
+	./scripts/gen-docs-graphs
 
 build: ## build sdist + wheel into dist/ -- the CI :build task
 	moon run :build

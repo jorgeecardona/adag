@@ -1,13 +1,18 @@
 # Visualization
 
 `dag(output)` renders the graph to SVG. With `cache_dir`, each step is colored by its state:
-cached, pending, or blocked (an input is missing).
+cached (green), pending (yellow), or blocked (red, an input is missing).
 
 ```python
 --8<-- "docs/examples/visualization.py"
 ```
 
 ![The quickstart graph](assets/graph.svg)
+
+Here a pipeline ran once, then the `case` field of `Clean` changed. `Clean` and `Report` are
+pending (yellow). `Load` and `Count` are still cached (green).
+
+![A graph with two pending steps and two cached steps](assets/graph_states.svg)
 
 In a notebook, the returned `SVG` object displays inline. Use `SvgOptions` to change the theme
 or hide the per-step parameters.

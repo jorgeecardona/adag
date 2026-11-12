@@ -5,7 +5,7 @@ This module exports every public name of the package, including the lower-level 
 imported from here.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep

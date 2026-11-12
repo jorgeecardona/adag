@@ -7,6 +7,16 @@ same keys. Each branch is cached like any other step.
 - `factory(key, value)`: returns the branch's `StepResult`.
 - `max_workers`: run branches on a thread pool of this size. The default runs them one by one.
 
+```mermaid
+flowchart LR
+    over["over: dict with keys a, b, c"] --> fa["factory('a', value)"] --> ra["branch a"]
+    over --> fb["factory('b', value)"] --> rb["branch b"]
+    over --> fc["factory('c', value)"] --> rc["branch c"]
+    ra --> out["dict with keys a, b, c"]
+    rb --> out
+    rc --> out
+```
+
 ```python
 --8<-- "docs/examples/fan_out.py"
 ```

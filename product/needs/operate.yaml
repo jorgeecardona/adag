@@ -39,3 +39,12 @@ needs:
     proofs:
       - "test:tests/test_io_utils.py::test_atomic_write_text_leaves_target_untouched_when_rename_fails"
       - "test:tests/test_step.py::test_empty_or_corrupt_cache_file_is_a_miss"
+
+  - id: OP-5
+    text: >
+      When the developer draws a graph with a cache_dir, they can tell cached steps from pending
+      steps by color, in the light and the dark theme.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "docs/visualization.md (docs pass, 2026-11-12)"}
+    proofs:
+      - "test:tests/test_visualization.py::test_dag_colors_cached_steps_apart_from_pending_steps"

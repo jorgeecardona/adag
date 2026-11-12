@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `dag()` now draws cached steps green, as the docs always said. Before, a cached step and a
+  pending step had the same fill, and only blocked steps had their own color. The classes
+  `is-cached`, `is-pending` and `is-blocked` are unchanged, so your own stylesheet still wins.
+
 ## [0.3.0] - 2026-11-12
 
 0.2.6 to 0.2.43 were published per commit; this entry collects all of them. Read

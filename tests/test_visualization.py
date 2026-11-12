@@ -373,3 +373,39 @@ def test_custom_rendering_through_public_names() -> None:
     ]
     svg = render_graph_svg(changed, [(e.source, e.target) for e in edges])
     assert "My custom title" in svg
+
+
+def test_dag_colors_cached_steps_apart_from_pending_steps(tmp_path: Path) -> None:
+    """A cached step has its own fill in both themes, so the state shows without custom CSS."""
+    from dataclasses import dataclass
+
+    from pydantic import BaseModel
+
+    from adag import NullObserver, Pipeline, Step, dag
+    from adag.visualization import SvgOptions
+
+    class Num(BaseModel):
+        value: int
+
+    @dataclass(frozen=True)
+    class Base(Step[Num]):
+        def run(self) -> Num:
+            return Num(value=1)
+
+    @dataclass(frozen=True)
+    class Top(Step[Num]):
+        bump: int = 0
+
+        def run(self, base: Num, bump: int) -> Num:
+            return Num(value=base.value + bump)
+
+    cache = tmp_path / "cache"
+    Pipeline(Top()(base=Base()()), cache_dir=cache).execute(observer=NullObserver())
+    changed = Top(bump=1)(base=Base()())
+
+    for theme in ("light", "dark"):
+        svg = str(dag(changed, cache_dir=cache, options=SvgOptions(theme=theme)))
+        stylesheet, drawing = svg.split("</style>", 1)
+        assert "is-cached" in stylesheet
+        assert "is-cached" in drawing  # Base kept its result
+        assert "is-pending" in drawing  # Top has a new field

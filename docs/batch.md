@@ -23,5 +23,17 @@ second run called: ['carol', 'dave']
 ['hello alice', 'hello bob', 'hello carol', 'hello dave']
 ```
 
+```mermaid
+flowchart TB
+    items["items(): one BatchItem per item"] --> each{"Item result saved?"}
+    each -- yes --> load["Load it"]
+    each -- no --> proc["process_item(): compute it"] --> save["Save it right away"]
+    load --> asm["assemble(): combine all results"]
+    save --> asm
+    asm --> done(["Step result"])
+```
+
+A crash loses only the item in progress: items already saved are loaded on the next run.
+
 Item results live under `<cache_dir>/.items/<namespace>/`. The namespace is the class name in
 snake case (`greet` above).
