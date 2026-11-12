@@ -187,7 +187,7 @@ def test_batch_step_caches_a_path_result_next_to_its_items(tmp_path: Path) -> No
 
 class Bulk(BaseModel):
     n_records: int
-    records: list[int] = Field(default_factory=list, exclude=True)
+    records: list[int] = Field(default_factory=list[int], exclude=True)
 
 
 @dataclass(frozen=True)
