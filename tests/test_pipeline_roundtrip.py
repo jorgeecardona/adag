@@ -186,5 +186,6 @@ def test_pipeline_without_metadata_writes_no_key(tmp_path: Path):
 def test_metadata_must_be_json():
     import pytest
 
+    bad: Any = {"when": object()}  # not JSON on purpose
     with pytest.raises(TypeError, match="JSON value"):
-        Pipeline(build_pipeline().output, metadata={"when": object()})
+        Pipeline(build_pipeline().output, metadata=bad)
