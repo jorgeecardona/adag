@@ -1,0 +1,15 @@
+who: developer who schedules async steps inside their own event loop
+
+needs:
+
+  - id: AS-1
+    text: >
+      When the developer gathers several aresolve calls that share an upstream node, they can
+      rely on that node's body running once.
+    must: true
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/9"}
+    proofs:
+      - "test:tests/test_async_dedup.py::test_shared_upstream_runs_once_under_gather"
+      - "test:tests/test_async_dedup.py::test_failed_owner_releases_the_waiter"
+      - "test:tests/test_async_dedup.py::test_waiter_cancellation_propagates"

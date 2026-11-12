@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Two `aresolve` calls gathered on one context ran a shared upstream step twice. The first task
+  now claims the node and the others wait for it, as the threaded path already did.
 - `dag(..., cache_dir=)` draws pipeline-cached steps as cached. It read the step hash, which the
   pipeline does not use as a key, so every step showed as pending.
 - A `FanOutStep` runs under `Pipeline.aexecute()`. It raised `NotImplementedError` before.

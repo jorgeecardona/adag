@@ -12,6 +12,7 @@ parameters, file sources, and step results.
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import contextvars
 import warnings
@@ -40,6 +41,10 @@ def _empty_resolved() -> dict[int, Any]:
 
 
 def _empty_inflight() -> dict[int, Event]:
+    return {}
+
+
+def _empty_ainflight() -> dict[int, asyncio.Future[None]]:
     return {}
 
 
@@ -312,6 +317,9 @@ class ResolveContext:
     removes the entry and sets the Event in a ``finally``, so a body that raises
     releases its waiters (which then re-resolve) rather than hanging them. Also
     guarded by ``_lock``.
+
+    ``_ainflight`` is the same registry for ``aresolve``, with a future per node, so tasks
+    gathered on one loop wait on the loop instead of blocking it on a thread ``Event``.
     """
 
     cache_dir: Path | None = None
@@ -326,6 +334,9 @@ class ResolveContext:
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
     _inflight: dict[int, Event] = field(default_factory=_empty_inflight, repr=False, compare=False)
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+    _ainflight: dict[int, asyncio.Future[None]] = field(
+        default_factory=_empty_ainflight, repr=False, compare=False
+    )
 
     def result_store(self) -> CacheStore | None:
         """Where step results are cached: ``store``, else files under ``cache_dir``, else None."""

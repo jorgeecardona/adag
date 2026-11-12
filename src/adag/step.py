@@ -747,7 +747,33 @@ class StepResult(Deferred[Out]):
         every call: it memoizes each node, so a shared upstream runs once and a later call reuses
         earlier results. Upstream nodes are awaited, async step bodies run on the loop, and sync
         bodies run unchanged. A cancelled task starts no further step.
+
+        Gathered calls that reach the same node at the same time run its body once: the first
+        task claims the node and the others wait for it. If that body raises, a waiting task
+        resolves the node itself.
         """
+        while True:
+            with context._lock:
+                if id(self) in context._resolved:
+                    return context._resolved[id(self)]
+                in_flight = context._ainflight.get(id(self))
+                if in_flight is None:
+                    own = asyncio.get_running_loop().create_future()
+                    context._ainflight[id(self)] = own
+                    break
+            # Another task owns this node. Wait without taking its exception, then loop: a
+            # success left the value in the memo, a failure removed the marker.
+            await asyncio.wait([in_flight])
+        try:
+            return await self._aresolve_owned(context)
+        finally:
+            with context._lock:
+                context._ainflight.pop(id(self), None)
+            if not own.done():
+                own.set_result(None)
+
+    async def _aresolve_owned(self, context: ResolveContext) -> Out:
+        """Resolve this node on the loop, once this task owns it (see ``aresolve``)."""
         cached = self._check_cache(context)
         if not isinstance(cached, _Miss):
             return cached
