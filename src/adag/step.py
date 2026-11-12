@@ -76,6 +76,7 @@ def _round_trip_differs(produced: object, reloaded: object) -> bool:
     except Exception:
         return False
 
+
 Out = TypeVar("Out")
 
 
