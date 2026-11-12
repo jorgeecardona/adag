@@ -94,6 +94,14 @@ def is_dict(obj: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(obj, dict)
 
 
+KEY_FORMAT = 2
+"""Version of the cache key bytes. It changes only when a release changes every key on purpose.
+
+1 is the first release; 2 is the framed encoding from 0.2.0. ``tests/test_key_golden.py`` pins the
+current format.
+"""
+
+
 class UnhashableValueError(TypeError):
     """A value has a type the cache key cannot encode."""
 

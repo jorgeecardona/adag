@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `adag.hashing.KEY_FORMAT` (now 2): the version of the cache key bytes. A release that changes
+  every key bumps it.
 - `adag.visualization.render_graph_svg`: draw a graph from your own node metadata. The private
   name `_render_graph_svg` still works.
 - `SerializableStep.from_directory` has a default that rebuilds a step from its `spec`. A step

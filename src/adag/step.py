@@ -30,6 +30,7 @@ import shutil
 import time
 import warnings
 from abc import abstractmethod
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
@@ -53,6 +54,7 @@ from adag.hashing import (
     is_tuple,
 )
 from adag.io import FileSource, atomic_write_text
+from adag.key import ComponentKind
 
 logger = structlog.get_logger()
 
@@ -385,26 +387,46 @@ class Step(Generic[Out]):
             return pinned
 
         h = hashlib.sha256()
+        for _, _, _, chunk in self._key_chunks():
+            if chunk is None:
+                return None
+            h.update(chunk)
+        return h.hexdigest()[:12]
+
+    def _key_chunks(self) -> Iterator[tuple[ComponentKind, str, Any, bytes | None]]:
+        """Yield each component of this step's key: ``(kind, name, value, bytes)``.
+
+        ``content_hash`` feeds the bytes to sha256 in this order; ``explain_key`` reads the same
+        tuples. ``None`` bytes block the key. Empty bytes add nothing.
+        """
         kind = type(self).kind
         if kind:
-            h.update(b"KIND:" + encode_value(kind))
+            yield ComponentKind.IDENTITY, "", kind, b"KIND:" + encode_value(kind)
         else:
-            h.update(b"STEP:" + encode_value(type(self).__name__))
+            name = type(self).__name__
+            yield ComponentKind.IDENTITY, "", name, b"STEP:" + encode_value(name)
         # Source is hashed for kind-tagged steps too: editing a step's code must
         # invalidate its results whether or not it has a serialization kind.
         code_bytes = class_source_hash(type(self))
         if code_bytes:
-            h.update(b"CODE:" + code_bytes)
+            yield ComponentKind.CODE, "", code_bytes.hex()[:12], b"CODE:" + code_bytes
 
         for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
             if field.name == "node_label":
-                continue  # display-only label for the graph renderer (visualization.walk), not compute identity
-            chunk = self._hash_field(field.name, getattr(self, field.name))
-            if chunk is None:
-                return None
-            h.update(chunk)
-
-        return h.hexdigest()[:12]
+                # Display-only label for the graph renderer, not compute identity.
+                yield ComponentKind.SKIPPED, field.name, value, b""
+                continue
+            chunk = self._hash_field(field.name, value)
+            if isinstance(value, Config) or chunk == b"":
+                component = ComponentKind.SKIPPED
+            elif isinstance(value, FileSource):
+                component = ComponentKind.FILE
+            elif isinstance(value, Step):
+                component = ComponentKind.NESTED_STEP
+            else:
+                component = ComponentKind.FIELD
+            yield component, field.name, value, chunk
 
     def _hash_field(self, field_name: str, value: Any) -> bytes | None:
         """Hash a single dataclass field for content_hash.
@@ -734,20 +756,37 @@ class StepResult(Deferred[Out]):
         return result
 
     def _compute_content_hash(self, params: dict[str, Any] | None = None) -> str | None:
-        step_hash = self.step.content_hash()
-        if step_hash is None:
-            return None
-
         h = hashlib.sha256()
-        h.update(step_hash.encode())
+        for _, _, _, chunk in self._key_chunks(params):
+            if chunk is None:
+                return None
+            h.update(chunk)
+        return h.hexdigest()[:12]
+
+    def _key_chunks(
+        self, params: dict[str, Any] | None
+    ) -> Iterator[tuple[ComponentKind, str, Any, bytes | None]]:
+        """Yield each component of this node's key: ``(kind, name, value, bytes)``.
+
+        The first is the step's own key; then one per input, sorted by name. ``None`` bytes
+        block the key (a missing file, an upstream with no key).
+        """
+        step_hash = self.step.content_hash()
+        yield (
+            ComponentKind.IDENTITY,
+            "",
+            step_hash,
+            None if step_hash is None else step_hash.encode(),
+        )
 
         for name, source in sorted(self.sources.items()):
-            h.update(encode_value(name))
+            prefix = encode_value(name)
             if isinstance(source, StepResult):
                 upstream_hash = source.content_hash(params=params)
-                if upstream_hash is None:
-                    return None
-                h.update(b"UP:" + encode_value(upstream_hash))
+                chunk = (
+                    None if upstream_hash is None else prefix + b"UP:" + encode_value(upstream_hash)
+                )
+                yield ComponentKind.UPSTREAM, name, source, chunk
             elif isinstance(source, InputParam):
                 if params and source.name in params:
                     param_value: Any = params[source.name]
@@ -756,20 +795,28 @@ class StepResult(Deferred[Out]):
                 else:
                     param_value = None
                 where = f"value of InputParam {source.name!r}"
-                h.update(b"PARAM:" + encode_value(source.name) + encode_value(param_value, where))
+                chunk = (
+                    prefix
+                    + b"PARAM:"
+                    + encode_value(source.name)
+                    + encode_value(param_value, where)
+                )
+                yield ComponentKind.PARAM, name, param_value, chunk
             elif isinstance(source, Deferred):
                 # A Deferred's own content_hash (FileSource hashes file bytes) must reach the
                 # key, or editing a tracked file would not invalidate anything downstream.
                 deferred_hash = source.content_hash() if hasattr(source, "content_hash") else None
-                h.update(
-                    b"DEFERRED:" + encode_value(type(source).__name__) + encode_value(deferred_hash)
+                chunk = (
+                    prefix
+                    + b"DEFERRED:"
+                    + encode_value(type(source).__name__)
+                    + encode_value(deferred_hash)
                 )
+                yield ComponentKind.DEFERRED, name, source, chunk
             else:
-                h.update(
-                    b"RAW:" + encode_value(source, f"input {name!r} of {type(self.step).__name__}")
-                )
-
-        return h.hexdigest()[:12]
+                where = f"input {name!r} of {type(self.step).__name__}"
+                chunk = prefix + b"RAW:" + encode_value(source, where)
+                yield ComponentKind.RAW, name, source, chunk
 
     def is_cached(self, where: Path | CacheStore, params: dict[str, Any] | None = None) -> bool:
         """Return True when a complete, valid result for this node is in ``where``.
