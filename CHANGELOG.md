@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dag(..., cache_dir=)` draws pipeline-cached steps as cached. It read the step hash, which the
   pipeline does not use as a key, so every step showed as pending.
 - A `FanOutStep` runs under `Pipeline.aexecute()`. It raised `NotImplementedError` before.
+- A `FileSource`, `LinesSource` or `JSONLSource` on a directory (an empty path included) raises
+  an error that names the source and the path. It raised a bare `IsADirectoryError` from inside
+  hashing.
 
 ### Changed
 

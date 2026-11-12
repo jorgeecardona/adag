@@ -1,0 +1,12 @@
+who: developer debugging a pipeline that fails or recomputes unexpectedly
+
+needs:
+
+  - id: FX-1
+    text: >
+      When a file source points at a directory, the developer can see an error that names the
+      source and the path.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/6"}
+    proofs:
+      - "test:tests/test_file_source.py::test_file_source_on_a_directory_names_the_source"

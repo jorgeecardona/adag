@@ -45,14 +45,23 @@ from adag.hashing import file_hash
 # Read side — content-addressable leaf Deferreds
 
 
-def _existing_path_hash(path: str) -> str | None:
+def _existing_path_hash(path: str, source: str) -> str | None:
     """Hash the file at ``path`` by content, or ``None`` if it doesn't exist.
 
     Shared by every read-leaf below so the hashing convention stays in one
     place; downstream caches invalidate consistently regardless of which
     leaf type produced the bytes.
+
+    Raises:
+        IsADirectoryError: ``path`` is a directory (an empty path is the working directory).
+            The message names the source class and the path. Use ``DirSource`` for a folder.
     """
     p = Path(path)
+    if p.is_dir():
+        raise IsADirectoryError(
+            f"{source}(path={path!r}) points at a directory ({p.resolve()}), not a file. "
+            "Use DirSource for a folder."
+        )
     return file_hash(p) if p.exists() else None
 
 
@@ -63,7 +72,7 @@ class FileSource(Deferred[str]):
     path: str
 
     def content_hash(self) -> str | None:
-        return _existing_path_hash(self.path)
+        return _existing_path_hash(self.path, type(self).__name__)
 
     def resolve(self, context: ResolveContext) -> str:
         del context  # leaf source: no cache_dir or params consulted
@@ -82,7 +91,7 @@ class LinesSource(Deferred[list[str]]):
     path: str
 
     def content_hash(self) -> str | None:
-        return _existing_path_hash(self.path)
+        return _existing_path_hash(self.path, type(self).__name__)
 
     def resolve(self, context: ResolveContext) -> list[str]:
         del context  # leaf source: no cache_dir or params consulted
@@ -116,7 +125,7 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
     record_type: type[T]
 
     def content_hash(self) -> str | None:
-        return _existing_path_hash(self.path)
+        return _existing_path_hash(self.path, type(self).__name__)
 
     def resolve(self, context: ResolveContext) -> list[T]:
         del context  # leaf source: no cache_dir or params consulted

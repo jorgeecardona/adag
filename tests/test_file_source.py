@@ -144,3 +144,10 @@ def test_jsonl_source_validation_error_includes_line_number(tmp_path: Path):
 
     with pytest.raises(ValueError, match="bad.jsonl:2"):
         JSONLSource(path=str(path), record_type=Record).resolve(ResolveContext())
+
+
+@pytest.mark.parametrize("path", ["", "."])
+def test_file_source_on_a_directory_names_the_source(path: str) -> None:
+    """A directory path raises an error naming the FileSource, not a bare OS error (#6)."""
+    with pytest.raises(IsADirectoryError, match=r"FileSource\(path=.*DirSource"):
+        FileSource(path).content_hash()
