@@ -19,3 +19,13 @@ needs:
       - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/5"}
     proofs:
       - "test:tests/test_path_results.py::test_is_cached_agrees_with_the_resolver_on_an_invalid_entry"
+
+  - id: FX-3
+    text: >
+      When load_result gives back less than run produced, the developer can see a warning on the
+      first save instead of losing the data silently downstream.
+    sources:
+      - {kind: secondary, date: 2026-11-12, locator: "https://gitlab.com/cardona-oss/adag/-/issues/7"}
+    proofs:
+      - "test:tests/test_path_results.py::test_lossy_round_trip_warns_on_first_save"
+      - "test:tests/test_path_results.py::test_faithful_round_trip_does_not_warn"

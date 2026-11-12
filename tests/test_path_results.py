@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from structlog.testing import capture_logs
 
 from adag import BatchItem, BatchStep, InputParam, Pipeline, Step
 from adag.cache_store import MemoryCacheStore
@@ -182,3 +183,36 @@ def test_batch_step_caches_a_path_result_next_to_its_items(tmp_path: Path) -> No
     assert pipeline.execute(n=4).values == [0, 1, 4, 9]
     assert CALLS == {"item": 4, "assemble": 1}
     assert list(tmp_path.joinpath(".items").rglob("*.json"))
+
+
+class Bulk(BaseModel):
+    n_records: int
+    records: list[int] = Field(default_factory=list, exclude=True)
+
+
+@dataclass(frozen=True)
+class LossyBulk(Step[Bulk]):
+    """Writes only the summary, so the excluded field does not come back."""
+
+    def run(self, n: int) -> Bulk:
+        return Bulk(n_records=n, records=list(range(n)))
+
+    def save_result(self, result: Bulk, path: Path) -> None:
+        path.write_text(result.model_dump_json())
+
+    def load_result(self, path: Path) -> Bulk:
+        return Bulk.model_validate_json(path.read_text())
+
+
+def test_lossy_round_trip_warns_on_first_save(tmp_path: Path) -> None:
+    """Downstream sees load_result's value on the first run; a lossy one warns once (#7)."""
+    with capture_logs() as logs:
+        result = Pipeline(LossyBulk()(n=InputParam[int]("n")), cache_dir=tmp_path).execute(n=3)
+    assert result.records == []
+    assert [e["event"] for e in logs].count("step.load_result_differs") == 1
+
+
+def test_faithful_round_trip_does_not_warn(tmp_path: Path) -> None:
+    with capture_logs() as logs:
+        Pipeline(Records()(n=InputParam[int]("n")), cache_dir=tmp_path).execute(n=2)
+    assert "step.load_result_differs" not in [e["event"] for e in logs]

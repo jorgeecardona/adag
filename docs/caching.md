@@ -63,6 +63,11 @@ format: JSONL, a custom file, a file plus a sidecar, or a directory.
   it into place, then writes `<key>.done`.
 - `load_result` reads it back. Raise any exception to mark the entry invalid: the step runs again.
 - Downstream steps get the value `load_result` returns, on a fresh run and on a cached run.
+  On the first run too, adag saves the result and hands on `load_result(path)`, not the value
+  `run` returned. So `load_result` must rebuild everything `run` put in the result, including a
+  pydantic field marked `exclude=True` that `save_result` wrote to its own file. When the reloaded
+  value differs from the one `run` returned, adag logs `step.load_result_differs` once per step
+  class.
 - Override both methods, or neither. Overriding one raises `TypeError` when the class is defined.
 - These results live under `cache_dir`. A run with `store=` and no `cache_dir` raises before the
   step runs. `BatchStep` uses the same two methods for its assembled result.

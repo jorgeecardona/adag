@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `StepResult.is_cached` for a step with `save_result`/`load_result` calls `load_result`, so an
   entry it rejects is not cached, the same answer the resolver gives. It checked only that the
   files existed.
+- A step whose `load_result` gives back less than `run` produced (for example a field marked
+  `exclude=True`) now logs `step.load_result_differs` on the first save. Downstream gets the
+  reloaded value, so the data was dropped silently. The Caching page now says so.
 
 ### Changed
 

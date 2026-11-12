@@ -56,6 +56,26 @@ from adag.io import FileSource, atomic_write_text
 
 logger = structlog.get_logger()
 
+# Step classes already warned about a save_result/load_result round trip that loses data.
+_ROUND_TRIP_WARNED: set[type] = set()
+
+
+def _round_trip_differs(produced: object, reloaded: object) -> bool:
+    """Return True when ``load_result`` gave back something other than what ``run`` produced.
+
+    A ``Path`` result is skipped: it is expected to change to the final cache path. A pydantic
+    model is compared field by field, including fields excluded from serialization, because
+    those are the ones a round trip drops silently.
+    """
+    if isinstance(produced, Path):
+        return False
+    try:
+        if isinstance(produced, BaseModel) and isinstance(reloaded, BaseModel):
+            return dict(produced) != dict(reloaded)
+        return bool(produced != reloaded)
+    except Exception:
+        return False
+
 Out = TypeVar("Out")
 
 
@@ -800,7 +820,17 @@ class StepResult(Deferred[Out]):
         finally:
             _remove_path(tmp)
         atomic_write_text(cache_dir.joinpath(key + ".done"), datetime.now(UTC).isoformat())
-        return self.step.load_result(final)
+        reloaded = self.step.load_result(final)
+        step_cls = type(self.step)
+        if step_cls not in _ROUND_TRIP_WARNED and _round_trip_differs(result, reloaded):
+            _ROUND_TRIP_WARNED.add(step_cls)
+            logger.warning(
+                "step.load_result_differs",
+                step=step_cls.__name__,
+                hint="downstream gets load_result's value, also on the first run; "
+                "load_result must rebuild everything run put in the result",
+            )
+        return reloaded
 
     def _try_load(
         self, where: Path | CacheStore, params: dict[str, Any] | None = None
