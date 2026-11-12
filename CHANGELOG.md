@@ -28,28 +28,26 @@ step result recomputes once, and so do `BatchStep` items whose keys adag derives
   replace any `NodeMetadata` and pass the list to `render_graph_svg`. `Node`, `Edge`,
   `NodeMetadata`, `compute_state`, `node_metadata` and `render_graph_svg` import from `adag`.
   The old private names keep working until 1.0.
+- `Pipeline(metadata=...)`: caller data, any JSON value, saved in `pipeline.json` and read back
+  by `from_directory`.
 - `adag.JsonValue`: the type of `Pipeline(metadata=...)` and `pipeline.metadata`, instead of
   `Any`. A strict type checker now asks you to narrow the loaded value before you use it.
 - `aresolve_all(targets, context, max_concurrency=)`: resolve several nodes level by level inside
   your own event loop, with one memo, equal keys run once, and a bound on running step bodies.
   `Pipeline.aexecute` now uses it.
-- After each save, adag writes a key record `.keys/<key>.json` (the `explain_key` output, about
-  1 to 2 KB) next to the result. Code that lists every file in a cache directory now also sees
-  `.keys/`.
+- After each save, adag writes a key record `.keys/<key>.json` (the `explain_key` output, under
+  1 KB for a small step) next to the result. Code that lists every file in a cache directory
+  now also sees `.keys/`.
 - `StepResult.explain_key(params)` and `Pipeline.explain_keys(params)` list every component of
-  a cache key, so you can see why a node recomputed. See Caching, "Why did a node recompute".
+  a cache key, so you can see why a node recomputed. See the docs page "Why a step recomputed".
 - `adag.hashing.KEY_FORMAT` (now 2): the version of the cache key bytes. A release that changes
   every key bumps it.
-- `adag.visualization.render_graph_svg`: draw a graph from your own node metadata. The private
-  name `_render_graph_svg` still works.
 - `SerializableStep.from_directory` has a default that rebuilds a step from its `spec`. A step
   it cannot rebuild now raises `TypeError` at save time instead of failing at load time.
 - `AdagDeprecationWarning`: every deprecated name and call form warns with it. It is a
   `FutureWarning`, so scripts and notebooks see it without changing warning filters, and each
   message names the replacement. Deprecated forms keep working until adag 1.0.
 - Python 3.12 support (`requires-python >=3.12`), tested in CI.
-- `Pipeline(metadata=...)`: caller data, any JSON value, saved in `pipeline.json` and read back
-  by `from_directory`.
 - `Step.save_result` and `Step.load_result`: cache a result that is not one JSON document
   (JSONL, a directory, a file plus a sidecar), under a path keyed on the step and its inputs.
   `BatchStep` uses them too.

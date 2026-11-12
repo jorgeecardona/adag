@@ -13,7 +13,7 @@ Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
 pip install adag
 ```
 
-Requires Python 3.12+.
+Requires Python 3.12 or newer. CI runs the tests on 3.12 and 3.13.
 
 ## Quickstart
 
@@ -80,6 +80,8 @@ Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gi
 - `FanOutStep` runs a sub-graph per key.
 - Cache stores for step results and `BatchStep` items: filesystem, memory, SQLite, SQLAlchemy
   (`adag[sql]`), Redis (`adag[redis]`). Pass one with `Pipeline(..., store=)`.
+- `explain_key` lists every part of a cache key, so you can see why a step ran again.
+- `save_result` and `load_result` cache a result in your own format (JSONL, a directory).
 - Save a pipeline to disk and load it back with identical hashes.
 - SVG rendering of the graph, and an `adag run pipeline.py` CLI.
 - Run fan-out branches in worker processes or on a job scheduler (AWS Batch, SLURM, Kubernetes):

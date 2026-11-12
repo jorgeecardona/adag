@@ -16,8 +16,7 @@ Steps that can be saved subclass `SerializableStep`. What a subclass implements:
    to `step.json`. Call `super().save_artifacts(path)` first.
 
 A step that the default cannot rebuild, and that has no `from_directory`, raises `TypeError` in
-`save()`, before `pipeline.json` is written. You find out when you save, not months later when you
-load.
+`save()`, before `pipeline.json` is written.
 
 ```python
 --8<-- "docs/examples/save_load.py"

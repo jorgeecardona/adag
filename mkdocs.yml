@@ -77,19 +77,24 @@ plugins:
 nav:
   - Home: index.md
   - Why adag: comparison.md
-  - Migrating to 0.3.0: migration.md
-  - Guide:
+  - Tutorial:
       - Steps and pipelines: steps.md
-      - Caching: caching.md
       - Inputs: inputs.md
+      - Caching: caching.md
+      - Command line: cli.md
+  - Inspect a run:
+      - Why a step recomputed: cache-keys.md
+      - Visualization: visualization.md
+      - Observers: observers.md
+  - Scale:
       - Batch steps: batch.md
       - Fan-out: fan-out.md
       - Async and parallel: async-parallel.md
-      - Observers: observers.md
-      - Visualization: visualization.md
-      - Command line: cli.md
+      - Dispatch: dispatch.md
+  - Storage:
       - Cache stores: cache-stores.md
       - Save and load: save-load.md
-      - Dispatch: dispatch.md
-  - API reference: api.md
-  - Changelog: changelog.md
+  - Reference:
+      - API reference: api.md
+      - Upgrade to 0.3.0: migration.md
+      - Changelog: changelog.md

@@ -69,39 +69,20 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 
 ## Why did a node recompute
 
-Call `explain_key(params)` on the node. It lists each component of the key, in the order adag
-hashes them, with a 12-hex digest per component. Run it before and after a change: the
-component whose digest differs is the cause.
-
-```python
---8<-- "docs/examples/explain_key.py"
-```
-
-```text
-Scale  key=9ba856cd8cc6  format=2
-  identity  -        Scale         88caac9df9ad
-  code      -        663765373931  3c5791a5408e
-  field     factor   2             01e6dab02f90
-  skipped   workers  Config(4)     -
-  param     x        3             412a6e3e02d7
-```
-
-- An `upstream` component shows the upstream step and its key. Explain that node next to follow
-  a change up the graph.
-- `skipped` lists what is not in the key: `Config` fields and `node_label`.
-- A missing input file blocks the key: `key` is `None` and `blocked_by` names the field.
-- `format` is `adag.hashing.KEY_FORMAT`. A release that changes every key bumps it.
-- `Pipeline.explain_keys(params)` explains every node, upstream nodes first.
+Call `node.explain_key(params)`: it lists every component of the key with a digest. See
+[Why a step recomputed](cache-keys.md).
 
 ## On disk
 
-Each result is `<cache_dir>/<key>` (JSON) plus `<key>.done`, written after the result. A
-result without its `.done` file, an empty file, or a file that does not parse is a miss.
-After each save adag also writes a key record, `.keys/<key>.json`: the node's `explain_key`
-output as JSON, with the adag version and the time. It is about 1 to 2 KB, holds field values
-cut to 80 characters (never `Config` fields), and a failed write never fails the run. A later
-release will use it to compare a new key with the one a result was saved under.
-With `store=`, the same two keys go to the store (see [Cache stores](cache-stores.md)).
+adag writes three entries per result, in this order:
+
+- `<cache_dir>/<key>`: the result as JSON.
+- `<cache_dir>/<key>.done`: the marker. A result without it is a miss.
+- `<cache_dir>/.keys/<key>.json`: the key record (see
+  [Why a step recomputed](cache-keys.md#key-records)).
+
+An empty result file, or one that does not parse, is also a miss: the step runs again.
+With `store=`, the same three keys go to the store (see [Cache stores](cache-stores.md)).
 
 ## Results that are not one JSON document
 
@@ -112,12 +93,13 @@ format: JSONL, a custom file, a file plus a sidecar, or a directory.
 - `save_result` creates `path` as a file or a directory. adag passes a temporary path and renames
   it into place, then writes `<key>.done`.
 - `load_result` reads it back. Raise any exception to mark the entry invalid: the step runs again.
-- Downstream steps get the value `load_result` returns, on a fresh run and on a cached run.
-  On the first run too, adag saves the result and hands on `load_result(path)`, not the value
-  `run` returned. So `load_result` must rebuild everything `run` put in the result, including a
-  pydantic field marked `exclude=True` that `save_result` wrote to its own file. When the reloaded
-  value differs from the one `run` returned, adag logs `step.load_result_differs` once per step
-  class.
+- Downstream steps always get the value `load_result` returns. On the first run too: adag saves
+  the result, then hands on `load_result(path)`, not the value `run` returned.
+- So `load_result` must rebuild everything `run` put in the result. A pydantic field marked
+  `exclude=True` is lost unless `save_result` writes it to its own file.
+- When the reloaded value differs from the one `run` returned, adag logs
+  `step.load_result_differs`, once per step class.
+- `node.is_cached(cache_dir, params)` calls `load_result` too, so it costs one load.
 - Override both methods, or neither. Overriding one raises `TypeError` when the class is defined.
 - These results live under `cache_dir`. A run with `store=` and no `cache_dir` raises before the
   step runs. `BatchStep` uses the same two methods for its assembled result.

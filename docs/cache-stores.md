@@ -3,13 +3,15 @@
 Pass `store=` to `Pipeline` to keep step results and `BatchStep` items in a `CacheStore`
 instead of files under `cache_dir`.
 
-| Store | Module | Extra |
-|---|---|---|
-| `FileSystemCacheStore` (default) | `adag.cache_store` | none |
-| `MemoryCacheStore` | `adag.cache_store` | none |
-| `SqliteCacheStore` | `adag.cache_store` | none |
-| `SqlCacheStore` | `adag.cache_store` | `adag[sql]` |
-| `RedisCacheStore` | `adag.cache_store` | `adag[redis]` |
+All stores import from `adag.cache_store`.
+
+| Store | Extra |
+|---|---|
+| `FileSystemCacheStore` (default) | none |
+| `MemoryCacheStore` | none |
+| `SqliteCacheStore` | none |
+| `SqlCacheStore` | `adag[sql]` |
+| `RedisCacheStore` | `adag[redis]` |
 
 ```python
 --8<-- "docs/examples/pipeline_store.py"

@@ -26,10 +26,6 @@ class Greet(SerializableStep[Greeting]):
     def run(self, name: str, **_: Any) -> Greeting:
         return Greeting(text=f"{self.spec.salutation}, {name}")
 
-    @classmethod
-    def from_directory(cls, path: str) -> "Greet":
-        return cls(spec=cls.load_spec(path, GreetSpec))
-
 
 name = InputParam[str]("name")
 pipeline = Pipeline(Greet(spec=GreetSpec(salutation="Hello"))(name=name))

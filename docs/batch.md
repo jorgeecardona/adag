@@ -9,9 +9,15 @@ Implement three methods:
 2. `process_item(item, **inputs)`: compute one item.
 3. `assemble(results, **inputs)`: combine the per-item results into the step result.
 
-Instead of `items()`, you can implement `items_data()` and return plain data; adag then
-derives each key from the step's cache key and the item data. Override `process_batch()` to
-process items concurrently.
+Instead of `items()`, you can implement `items_data()` and return plain data. adag then derives
+each item key from three things: the step's own hash (class, code, fields), the item data, and
+every other input of the step.
+
+Set `items_source_keys` to the name of the input that holds the items, for example
+`items_source_keys = ("names",)`. Without it, the whole list is part of every item key, so
+adding one item recomputes all of them. The example in [Cache stores](cache-stores.md) sets it.
+
+Override `process_batch()` to process items concurrently.
 
 ```python
 --8<-- "docs/examples/batch.py"

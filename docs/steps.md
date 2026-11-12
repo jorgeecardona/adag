@@ -5,12 +5,14 @@ Write each unit of work as a step, wire steps by calling them, and run the graph
 
 ## Write a step
 
-A step is a frozen dataclass that subclasses `Step[Result]`, where `Result` is a pydantic
-`BaseModel`. Its `run()` method takes the step's inputs by name and returns a `Result`.
+A step is a frozen dataclass that subclasses `Step[Result]`, where `Result` is usually a pydantic
+`BaseModel` (see [Caching](caching.md#results-that-are-not-one-json-document) for other types).
+Its `run()` method takes the step's inputs by name and returns a `Result`.
 
 - Dataclass fields are configuration. They are part of the cache key.
 - `run()` arguments are inputs. They come from other steps, `InputParam`s, or sources.
-- A field with the same name as a `run()` argument fills that argument.
+- adag passes every field to `run()` by name. `run()` must accept each field, or take `**kwargs`.
+  A wired input with the same name as a field wins.
 
 ## Wire and run
 
@@ -31,15 +33,24 @@ value=17
 
 ## Errors before running
 
-Two errors and one warning can stop a graph before any step runs:
+adag checks the graph at three moments, before any step runs.
 
-- `AdagDeprecationWarning`, when you call the step: a field holds a `Step` and the same name is
-  also wired as an input. Wire an upstream step once, as an input. This becomes a `TypeError` in
-  adag 1.0.
-- `CyclicPipelineError`, when you build the `Pipeline`: the graph has a cycle.
-- `UnboundInputError`, when you call `pipeline.validate()`: a `run()` argument is neither wired,
-  a field, nor has a default. Without `validate()`, `execute()` fails with a `TypeError` from
-  `run()`.
+When you call a step:
+
+- `TypeError`: a field holds a `StepResult`. A field is part of the key, not an edge. Pass the
+  node as a call input: `MyStep()(name=node)`.
+- `TypeError`: an input's type does not match the type hint of that `run()` argument.
+- `AdagDeprecationWarning`: a field holds a `Step` and the same name is also wired as an input.
+  The run continues. Wire the upstream step once, as an input. This is a `TypeError` in adag 1.0.
+
+When you build the `Pipeline`:
+
+- `CyclicPipelineError`: the graph has a cycle.
+
+When you call `pipeline.validate()`:
+
+- `UnboundInputError`: a `run()` argument is not wired, is not a field, and has no default.
+  Without `validate()`, `execute()` fails with a `TypeError` from `run()`.
 
 ## Reserved names
 
