@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-12
+
+0.2.6 to 0.2.43 were published per commit; this entry collects all of them. Read
+[Migrating to 0.3.0](https://cardona-oss.gitlab.io/adag/migration/) before you upgrade: every
+step result recomputes once, and so do `BatchStep` items whose keys adag derives.
+
 ### Added
 
 - Custom graph drawing has a public API: `node_metadata(nodes)` returns what `dag` would draw;
@@ -102,9 +108,24 @@ the first release exported imports again, except `BatchDispatcher` (use `RemoteD
 - `CachedStep` as a working class, with its direct `output_path`, `save`, `load`, `validate`,
   `is_cached` and `is_partial` methods (deprecated; see `save_result`/`load_result`).
 - `hash_scalar` and `hash_list`, with the same bytes as the first release.
-- Deprecated: `Parameter`, `StepMode`, `BranchExecutionError`, `NullObserver.on_embedding` and
-  `on_model_refused`, `run_branch` with a `KEY=VALUE` list, `resolve-branch --param`.
 - `ResolveContext` and `BranchPolicy` keep their first-release positional field order.
+
+### Deprecated
+
+Each warns with `AdagDeprecationWarning` and works until adag 1.0.
+
+- `CachedStep`: subclass `Step`, and override `save_result`/`load_result` for a result that is
+  not one JSON document.
+- `Parameter`, `StepMode`, `BranchExecutionError`.
+- `NullObserver.on_embedding` and `on_model_refused`: declare a typed hook of your own.
+- A dispatcher with only `dispatch()`: implement `dispatch_all`.
+- `run_branch` with a `KEY=VALUE` list, and `resolve-branch --param`: use `--params-json`.
+- An upstream step that is both a field and an input.
+
+### Removed
+
+- `BatchDispatcher`: use `RemoteDispatcher` with a `JobBackend`.
+- `StepOutput`: nothing returned one.
 
 ## [0.2.5] - 2026-11-11
 

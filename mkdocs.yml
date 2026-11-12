@@ -73,6 +73,7 @@ plugins:
 nav:
   - Home: index.md
   - Why adag: comparison.md
+  - Migrating to 0.3.0: migration.md
   - Guide:
       - Steps and pipelines: steps.md
       - Caching: caching.md
