@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-14
+
 ### Changed
 
+- The Issues link on PyPI and in the docs points to `/-/work_items`, which loads when you are
+  logged out. The old `/-/issues` URL returned 404.
 - The key record `.keys/<key>.json` no longer holds the value of a skipped component, such as a
   `Config` field. A `Config` can hold a client or a secret, and the record goes to disk or to a
   shared store. The record keeps the field name.
