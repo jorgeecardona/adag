@@ -91,7 +91,7 @@ Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gi
 
 - **Documentation:** https://cardona-oss.gitlab.io/adag/
 - **Source:** https://gitlab.com/cardona-oss/adag
-- **Issues:** https://gitlab.com/cardona-oss/adag/-/issues
+- **Issues:** https://gitlab.com/cardona-oss/adag/-/work_items
 - **PyPI:** https://pypi.org/project/adag/
 - **Changelog:** [CHANGELOG.md](https://gitlab.com/cardona-oss/adag/-/blob/main/CHANGELOG.md)
 

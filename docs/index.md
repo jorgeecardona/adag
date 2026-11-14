@@ -58,5 +58,5 @@ The second run reads both results from the cache and does not call `Square.run` 
 ## Links
 
 - Source: <https://gitlab.com/cardona-oss/adag>
-- Issues: <https://gitlab.com/cardona-oss/adag/-/issues>
+- Issues: <https://gitlab.com/cardona-oss/adag/-/work_items>
 - PyPI: <https://pypi.org/project/adag/>
