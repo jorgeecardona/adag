@@ -1,7 +1,7 @@
 [project]
 name = "adag"
 dynamic = ["version"]  # the single source of truth is __version__ in src/adag/__init__.py (see [tool.hatch.version])
-description = "Another DAG: a cached, content-addressed DAG engine for Python data pipelines."
+description = "A DAG engine for Python data pipelines with content-addressed caching"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"

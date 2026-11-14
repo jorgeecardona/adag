@@ -5,7 +5,9 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/adag.svg)](https://pypi.org/project/adag/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://gitlab.com/cardona-oss/adag/-/blob/main/LICENSE)
 
-Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
+A DAG engine for Python data and ML pipelines with a content-addressed cache. A step's cache key
+is a hash of its fields, its inputs, and its source code. Change any of them and that step and
+everything downstream recompute. Nothing else does.
 
 ## Install
 
@@ -66,10 +68,8 @@ value=17
 
 ## Why adag
 
-A step's cache key is a hash of its fields, its inputs, and its source code. Change any of
-them and that step and everything downstream recompute; nothing else does. Use it for data
-and ML pipelines where steps are slow and you rerun the graph often. How it compares to Luigi,
-Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gitlab.io/adag/comparison/).
+Use it for data and ML pipelines where steps are slow and you rerun the graph often. How it
+compares to Luigi, Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](https://cardona-oss.gitlab.io/adag/comparison/).
 
 ## Key features
 

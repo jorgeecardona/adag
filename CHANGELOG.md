@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-11-14
+
+### Changed
+
+- The PyPI page and README start with what adag does: the cache key and what reruns after an edit.
+
 ## [0.3.4] - 2026-11-14
 
 ### Changed
