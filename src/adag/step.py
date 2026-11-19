@@ -18,6 +18,7 @@ one. Otherwise it resolves the inputs, runs the step and saves the result.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import dataclasses
 import hashlib
 import json
@@ -31,7 +32,17 @@ from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from threading import Event
-from typing import Any, ClassVar, Generic, TypeAlias, TypeVar, get_args, get_origin, get_type_hints
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 from uuid import UUID, uuid4
 
 import structlog
@@ -201,6 +212,13 @@ class Step(Generic[Out]):
     strict_content_hash: ClassVar[bool] = True
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
+    # Where the body runs on the async path: "loop" (the event loop, the default), "thread" (a
+    # worker thread) or "process" (a worker process; the step must pickle). A sync ``execute``
+    # honours only "process".
+    runs_on: ClassVar[Literal["loop", "thread", "process"]] = "loop"
+    # True for a step that only waits for the steps it builds (a fan-out). It holds no slot of the
+    # concurrency limit, so the steps inside it can take the slots.
+    _orchestrates: ClassVar[bool] = False
 
     # Optional typed ports, read by graph editors to check a connection before it is made.
     # ``produces`` is this step's output port type; ``accepts`` the port types it can consume.
@@ -806,19 +824,23 @@ class StepResult(Deferred[Out]):
         if not isinstance(cached, _Miss):
             return cached
         resolved = self._merge_step_defaults(await self._aresolve_sources(context))
-        started_at = time.perf_counter()
-        timeout = self.step.timeout_s
-        body = context.async_executor.run(self.step, context, resolved)
-        if timeout is None:
-            result = await body
-        else:
-            try:
-                result = await asyncio.wait_for(body, timeout)
-            except TimeoutError as e:  # asyncio.TimeoutError is TimeoutError on 3.11+
-                raise StepTimeout(
-                    f"step {type(self.step).__name__} (kind={self.step.kind or '-'}, label={self.step.label or '-'}) "
-                    f"exceeded timeout_s={timeout}"
-                ) from e
+        slot: Any = context._budget.semaphore
+        if slot is None or self.step._orchestrates:
+            slot = contextlib.nullcontext()
+        async with slot:
+            started_at = time.perf_counter()
+            timeout = self.step.timeout_s
+            body = context.async_executor.run(self.step, context, resolved)
+            if timeout is None:
+                result = await body
+            else:
+                try:
+                    result = await asyncio.wait_for(body, timeout)
+                except TimeoutError as e:  # asyncio.TimeoutError is TimeoutError on 3.11+
+                    raise StepTimeout(
+                        f"step {type(self.step).__name__} (kind={self.step.kind or '-'}, label={self.step.label or '-'}) "
+                        f"exceeded timeout_s={timeout}"
+                    ) from e
         return self._finalize(result, context, started_at)
 
     async def _aresolve_sources(self, context: ResolveContext) -> dict[str, Any]:

@@ -46,6 +46,7 @@ from adag.deferred import (
     PipelineObserver,
     Progress,
     ResolveContext,
+    gather_first_failure,
     observing,
 )
 from adag.hashing import UnhashableValueError
@@ -440,27 +441,33 @@ class Pipeline(Generic[Out]):
             executor=executor or LocalExecutor(),
             dispatcher=dispatcher or InlineDispatcher(),
         )
-        with observing(context.observer):
-            if parallel:
-                self._resolve_levels_concurrently(context, max_workers)
-            return self.output.resolve(context)
+        try:
+            with observing(context.observer):
+                if parallel:
+                    self._resolve_levels_concurrently(context, max_workers)
+                return self.output.resolve(context)
+        finally:
+            context.close()
 
     async def aexecute(
         self,
         *,
         observer: PipelineObserver | None = None,
         async_executor: AsyncExecutor | None = None,
+        max_concurrency: int | None = 1,
         **params: Any,
     ) -> Out:
         """Run the graph on the running event loop and return the result of ``output``.
 
-        ``AsyncStep`` bodies are awaited on the loop. Sync step bodies also run on the loop and block
-        it while they run. One step body runs at a time (``aresolve_all`` with ``max_concurrency=1``),
-        so a shared resource such as one database session is never used by two steps at once.
-        Cancelling the task starts no further step.
+        ``AsyncStep`` bodies are awaited on the loop. A sync step body runs on the loop and blocks
+        it, unless the step sets ``runs_on = "thread"`` or ``"process"``. At most ``max_concurrency``
+        step bodies run at once (``aresolve_all``), and the branches of a ``FanOutStep`` count
+        too. The default is 1, so a shared resource such as one database session is never used by
+        two steps at once. Pass ``None`` to run a whole level together. Cancelling the task starts
+        no further step.
 
-        ``observer`` and ``async_executor`` are reserved: do not use them as ``InputParam`` names.
-        There is no ``dispatcher``: fan-out branches run in this process.
+        ``observer``, ``async_executor`` and ``max_concurrency`` are reserved: do not use them as
+        ``InputParam`` names. There is no ``dispatcher``: fan-out branches run in this process.
         """
         missing = [p.name for p in self._inputs if p.name not in params and not p.has_default]
         if missing:
@@ -474,7 +481,10 @@ class Pipeline(Generic[Out]):
             observer=observer or LoggingObserver(),
             async_executor=async_executor or LocalAsyncExecutor(),
         )
-        return (await aresolve_all([self.output], context, max_concurrency=1))[0]
+        try:
+            return (await aresolve_all([self.output], context, max_concurrency=max_concurrency))[0]
+        finally:
+            context.close()
 
     def resolve(
         self,
@@ -776,26 +786,30 @@ async def aresolve_all(
     - Each level's nodes run together with ``asyncio.gather``; the next level starts when this
       one is done. A node with a saved result is not expanded: its upstream nodes do not run.
     - Nodes in one level with the same cache key run once.
-    - ``max_concurrency`` bounds how many step bodies run at once. ``None`` runs a whole level.
+    - ``max_concurrency`` bounds how many step bodies run at once, including the steps inside
+      fan-out branches. ``None`` runs a whole level.
     - The first failure cancels the rest of its level and is raised as it is (no
       ``ExceptionGroup``).
     - Sync step bodies and cache reads run on the loop and block it while they run.
-    - ``FanOutStep`` branches are resolved inside the step, so ``max_concurrency`` does not
-      bound them.
+    - A ``FanOutStep`` resolves its branches as tasks of this run, so they share the limit.
+    - A step with ``runs_on = "thread"`` or ``"process"`` does not block the loop.
 
     Args:
         targets: the nodes to resolve.
         context: shared by every node; build one per run.
-        max_concurrency: the most step bodies running at the same time.
+        max_concurrency: the most step bodies running at the same time, in any branch.
     """
-    semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else None
+    budget = context._budget
+    previous = budget.semaphore
+    budget.semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency else previous
+    try:
+        return await _resolve_levels(targets, context)
+    finally:
+        budget.semaphore = previous
 
-    async def run(node: StepResult[Any]) -> Any:
-        if semaphore is None:
-            return await node.aresolve(context)
-        async with semaphore:
-            return await node.aresolve(context)
 
+async def _resolve_levels(targets: Sequence[StepResult[Any]], context: ResolveContext) -> list[Any]:
+    """The level-by-level loop of ``aresolve_all``."""
     with observing(context.observer):
         for level in _node_levels(targets, lambda n: _has_cache_entry(n, context)):
             leaders: list[StepResult[Any]] = []
@@ -810,9 +824,9 @@ async def aresolve_all(
                         leader_by_key[key] = node
                 else:
                     followers[id(leader)].append(node)
-            tasks = [asyncio.create_task(run(node)) for node in leaders]
+            tasks = [asyncio.create_task(node.aresolve(context)) for node in leaders]
             try:
-                values = await _gather_first_failure(tasks)
+                values = await gather_first_failure(tasks)
             finally:
                 for task in tasks:
                     task.cancel()
@@ -821,17 +835,3 @@ async def aresolve_all(
                     for follower in followers[id(leader)]:
                         context._resolved[id(follower)] = (follower, value)
         return [await target.aresolve(context) for target in targets]
-
-
-async def _gather_first_failure(tasks: list[asyncio.Task[Any]]) -> list[Any]:
-    """Await ``tasks``; on the first failure cancel the others and raise that exception."""
-    if not tasks:
-        return []
-    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-    failures = [e for t in tasks if t in done and (e := t.exception()) is not None]
-    if failures:
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        raise failures[0]
-    return [task.result() for task in tasks]

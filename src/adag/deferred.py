@@ -15,8 +15,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import contextvars
+import multiprocessing
+import pickle
 import warnings
 from collections.abc import Callable, Generator, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event, Lock
@@ -45,6 +48,10 @@ def _empty_inflight() -> dict[int | str, Event]:
 
 
 def _empty_ainflight() -> dict[int | str, asyncio.Future[None]]:
+    return {}
+
+
+def _empty_pools() -> dict[str, ProcessPoolExecutor]:
     return {}
 
 
@@ -187,6 +194,20 @@ def observing(observer: PipelineObserver) -> Generator[None]:
         _CURRENT_OBSERVER.reset(token)
 
 
+async def gather_first_failure(tasks: list[asyncio.Task[Any]]) -> list[Any]:
+    """Await ``tasks``; on the first failure cancel the others and raise that exception."""
+    if not tasks:
+        return []
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    failures = [e for t in tasks if t in done and (e := t.exception()) is not None]
+    if failures:
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        raise failures[0]
+    return [task.result() for task in tasks]
+
+
 class Executor(Protocol):
     """Decides *where* a step runs. The graph stays the same; the executor is a
     property of the run, carried on ``ResolveContext``.
@@ -201,10 +222,77 @@ class Executor(Protocol):
     def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any: ...
 
 
+_PLACES = ("loop", "thread", "process")
+
+
+def _place(step: Step[Any]) -> str:
+    """The step's ``runs_on``, checked."""
+    place: str = step.runs_on
+    if place not in _PLACES:
+        raise ValueError(
+            f"{type(step).__name__}.runs_on is {place!r}; use one of {', '.join(_PLACES)}."
+        )
+    return place
+
+
+def overrides_method(step: Step[Any], name: str) -> bool:
+    """Whether the step's class replaces ``Step.<name>`` (checked on the class, not the instance)."""
+    from adag.step import Step as StepBase  # late: step imports this module
+
+    base: Any = getattr(StepBase, name)
+    return getattr(type(step), name) is not base
+
+
+def _require_sync_body(step: Step[Any], place: str) -> None:
+    """Refuse ``runs_on`` thread or process for a step that has no synchronous ``run``."""
+    if not overrides_method(step, "run"):
+        raise TypeError(
+            f"{type(step).__name__} has runs_on={place!r} but no run(): only a step with a "
+            "synchronous run() can run in a thread or a process. An AsyncStep runs on the loop."
+        )
+
+
+def _pickled_job(step: Step[Any], inputs: dict[str, Any]) -> bytes:
+    """Pickle what a worker process needs, or raise a ``TypeError`` that names the step."""
+    name = type(step).__name__
+    if overrides_method(step, "execute"):
+        raise TypeError(
+            f"{name} has runs_on='process' but overrides execute(), which needs the run's "
+            "context. Only a step with a plain run() can run in a process."
+        )
+    try:
+        return pickle.dumps((step, inputs))
+    except (pickle.PicklingError, AttributeError, TypeError) as e:
+        raise TypeError(
+            f"{name} has runs_on='process' but it, or its inputs, cannot be pickled: {e}. "
+            "Define the step class at the top level of a module, and keep unpicklable objects "
+            "out of its fields."
+        ) from e
+
+
+def _run_pickled(payload: bytes) -> Any:
+    """Run one step body in a worker process. It sees no observer and no cache."""
+    step, inputs = pickle.loads(payload)  # noqa: S301  (the payload is this run's own step)
+    return step.run(**inputs)
+
+
 class LocalExecutor:
-    """Runs each step in this process. The default."""
+    """Runs each step in this process. The default.
+
+    A step with ``runs_on = "process"`` runs its ``run()`` in a worker process of the run's pool
+    and this call waits for it.
+    """
 
     def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any:
+        if _place(step) == "process":
+            _require_sync_body(step, "process")
+            future = context.process_pool().submit(_run_pickled, _pickled_job(step, inputs))
+            try:
+                return future.result()
+            except pickle.PicklingError as e:
+                raise TypeError(
+                    f"{type(step).__name__} returned a value that cannot be pickled: {e}"
+                ) from e
         return step.execute(context, **inputs)
 
 
@@ -224,12 +312,27 @@ class AsyncExecutor(Protocol):
 
 
 class LocalAsyncExecutor:
-    """Awaits each step's async body in-process, the default async executor. The mirror of
-    ``LocalExecutor`` for the ``aresolve`` path.
+    """Awaits each step's body, the default async executor. The mirror of ``LocalExecutor``.
+
+    ``runs_on`` picks where the body runs: ``"loop"`` (the default) awaits ``aexecute`` on the
+    event loop, ``"thread"`` runs ``execute`` in a worker thread, ``"process"`` runs ``run`` in a
+    worker process of the run's pool.
     """
 
     async def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any:
-        return await step.aexecute(context, **inputs)
+        place = _place(step)
+        if place == "loop":
+            return await step.aexecute(context, **inputs)
+        _require_sync_body(step, place)
+        if place == "thread":
+            return await asyncio.to_thread(step.execute, context, **inputs)
+        future = context.process_pool().submit(_run_pickled, _pickled_job(step, inputs))
+        try:
+            return await asyncio.wrap_future(future)
+        except pickle.PicklingError as e:
+            raise TypeError(
+                f"{type(step).__name__} returned a value that cannot be pickled: {e}"
+            ) from e
 
 
 @dataclass(frozen=True)
@@ -284,6 +387,13 @@ class InlineDispatcher:
         return sub.resolve(context)
 
 
+class _Budget:
+    """A holder for the semaphore that limits step bodies, so a frozen context can carry it."""
+
+    def __init__(self) -> None:
+        self.semaphore: asyncio.Semaphore | None = None
+
+
 @dataclass(frozen=True)
 class ResolveContext:
     """The state of one run: where results are cached, the params, the observer and the memo.
@@ -327,6 +437,38 @@ class ResolveContext:
     _ainflight: dict[int | str, asyncio.Future[None]] = field(
         default_factory=_empty_ainflight, repr=False, compare=False
     )
+    # The process pool for steps with ``runs_on = "process"``, made on first use. ``close()`` ends it.
+    _pools: dict[str, ProcessPoolExecutor] = field(
+        default_factory=_empty_pools, repr=False, compare=False
+    )
+    # The limit on step bodies running at once, set by ``aresolve_all(max_concurrency=...)``.
+    _budget: _Budget = field(default_factory=_Budget, repr=False, compare=False)
+
+    def process_pool(self) -> ProcessPoolExecutor:
+        """The run's pool of worker processes, made on first use.
+
+        Workers start with ``spawn``, so a step class must be importable in a new interpreter:
+        define it at the top level of a module, and guard a script with
+        ``if __name__ == "__main__":``.
+        """
+        with self._lock:
+            pool = self._pools.get("process")
+            if pool is None:
+                pool = ProcessPoolExecutor(mp_context=multiprocessing.get_context("spawn"))
+                self._pools["process"] = pool
+            return pool
+
+    def close(self) -> None:
+        """End the worker processes of this run, if any started.
+
+        ``Pipeline.execute`` and ``Pipeline.aexecute`` call it. Call it yourself when you built
+        the context and ran steps with ``runs_on = "process"``.
+        """
+        with self._lock:
+            pools = list(self._pools.values())
+            self._pools.clear()
+        for pool in pools:
+            pool.shutdown(wait=True, cancel_futures=True)
 
     def result_store(self) -> CacheStore | None:
         """Where step results are cached: ``store``, else files under ``cache_dir``, else None."""

@@ -33,11 +33,11 @@ from collections.abc import Callable, Hashable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from dataclasses import dataclass, field
-from typing import Any, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 import structlog
 
-from adag.deferred import BranchRef, InlineDispatcher, ResolveContext
+from adag.deferred import BranchRef, InlineDispatcher, ResolveContext, gather_first_failure
 from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import encode_value
 from adag.key import Expansion
@@ -101,6 +101,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         pipeline_module: file path or module name a dispatch worker imports.
         fan_out_var: module-level variable that holds this fan-out's ``StepResult``.
     """
+
+    _orchestrates: ClassVar[bool] = True
 
     over: dict[K, Any] | StepResult[dict[K, Any]] = field(default_factory=_no_items)
     factory: Callable[[K, Any], StepResult[V]] | None = None
@@ -192,12 +194,29 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         return items
 
     async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> dict[K, V]:
-        """Async entry: run ``execute`` in a worker thread so the event loop is not blocked.
+        """Async entry: resolve the branches as tasks of this run, so they share its limit.
 
-        Branches resolve on the sync path inside that thread, the same as under ``execute``.
-        ``asyncio.to_thread`` copies the current context, so the observer reaches the branches.
+        Each branch is an ``aresolve`` task. ``aresolve_all(max_concurrency=N)`` and
+        ``Pipeline.aexecute(max_concurrency=N)`` count the step bodies inside the branches, and a
+        branch can hold an ``AsyncStep``. A branch that raises cancels the others and raises as it
+        is. With a dispatcher, or with ``max_workers`` set, ``execute`` runs in a worker thread
+        instead. ``asyncio.to_thread`` copies the current context, so the observer reaches the
+        branches.
         """
-        return await asyncio.to_thread(self.execute, context, **kwargs)
+        if self.max_workers is not None or not isinstance(context.dispatcher, InlineDispatcher):
+            return await asyncio.to_thread(self.execute, context, **kwargs)
+        over = self._items(kwargs)
+        prepared: list[tuple[K, StepResult[V]]] = []
+        for key, value in over.items():
+            context.observer.on_fan_out_branch(str(key))
+            prepared.append((key, self._branch(key, value)))
+        tasks = [asyncio.create_task(sub.aresolve(context)) for _, sub in prepared]
+        try:
+            values = await gather_first_failure(tasks)
+        finally:
+            for task in tasks:
+                task.cancel()
+        return {key: value for (key, _), value in zip(prepared, values, strict=True)}
 
     def _resolve_branches_sequentially(
         self, context: ResolveContext, over: Mapping[K, Any]
