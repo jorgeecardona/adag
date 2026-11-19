@@ -4,7 +4,7 @@ This module exports every public name of the package, including the lower-level 
 (executors, dispatchers, ``ResolveContext``, ``walk``).
 """
 
-__version__ = "0.3.8"
+__version__ = "0.3.9"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -34,6 +34,7 @@ from adag.hashing import UnhashableValueError
 from adag.io import FileSource, JSONLSource, LinesSource
 from adag.item_cache import ItemCache
 from adag.key import ComponentKind, Expansion, KeyComponent, KeyExplanation
+from adag.loop import LoopNotConverged, LoopStep
 from adag.observers import LoggingObserver, RunTreeObserver
 from adag.pipeline import (
     CyclicPipelineError,
@@ -93,6 +94,8 @@ __all__ = [
     "LocalAsyncExecutor",
     "LocalExecutor",
     "LoggingObserver",
+    "LoopNotConverged",
+    "LoopStep",
     "Node",
     "NodeMetadata",
     "NullObserver",

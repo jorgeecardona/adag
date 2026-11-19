@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.9] - 2026-11-19
+
+### Added
+
+- `LoopStep` runs a sub-graph again and again, each round starting from the result of the one
+  before, until `until(state)` is true. The graph stays acyclic: the loop is one node, and its
+  rounds are built when the run reaches it. See the new Loops page.
+- Each round is cached under the key of the sub-graph built over its start state. A rerun finds
+  the finished rounds, a crashed loop continues after its last cached round, and a higher
+  `max_rounds` reuses the rounds that ran.
+- The loop stops when `until(state)` is true, when a round returns the state it was given, or at
+  `max_rounds`. At `max_rounds` it raises `LoopNotConverged`, or returns the last state with
+  `on_max="return"`.
+- `key_by_round=True` puts the round number into each round's key, for a retry that must try
+  the same state again.
+- `until` must be a function at module level. A lambda or a nested function raises `TypeError`.
+  Change `until_version` when its behaviour changes.
+- Observers get `on_loop_round(number, key)`. `RunTreeObserver` labels the steps of a round
+  `[round 0]`. `dag()` draws a loop as one dashed box.
+
 ## [0.3.8] - 2026-11-19
 
 ### Added

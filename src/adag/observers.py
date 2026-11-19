@@ -91,6 +91,10 @@ class RunTreeObserver(NullObserver):
         # The next step to start is the root of this fan-out branch; label it by key.
         self._state.pending_label = key
 
+    def on_loop_round(self, number: int, key: str) -> None:
+        # The next step to start is the root of this loop round; label it by round.
+        self._state.pending_label = f"round {number}"
+
     def on_step_start(self, step: str) -> None:
         label = self._state.pending_label
         name = step if label is None else f"{step} [{label}]"

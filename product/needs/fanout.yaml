@@ -49,6 +49,33 @@ needs:
         locator: >
           chat 2026-11-19, dictated: "and I also want to have loops please"
       - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (LoopStep)"}
+    proofs:
+      - "test:tests/test_loop.py::test_stops_when_until_is_true"
+      - "test:tests/test_loop.py::test_a_start_state_that_already_satisfies_until_runs_no_round"
+      - "test:tests/test_loop.py::test_stops_at_a_fixed_point"
+      - "test:tests/test_loop.py::test_max_rounds_raises_and_carries_the_last_state"
+      - "test:tests/test_loop.py::test_on_max_return_gives_the_last_state"
+      - "test:tests/test_loop.py::test_a_higher_max_rounds_reuses_the_rounds_that_ran"
+      - "test:tests/test_loop.py::test_a_crashed_loop_continues_after_its_last_cached_round"
+      - "test:tests/test_loop.py::test_a_new_upstream_key_with_the_same_state_hits_every_round"
+      - "test:tests/test_loop.py::test_a_lambda_or_a_nested_function_is_refused"
+      - "test:tests/test_loop.py::test_the_same_state_gives_the_same_key_so_a_retry_never_retries"
+      - "test:tests/test_loop.py::test_a_loop_inside_a_fan_out_branch"
+      - "test:tests/test_loop.py::test_a_fan_out_inside_a_loop_body"
+
+  - id: FO-6
+    text: >
+      When a node builds its sub-graph at run time (a template fan-out or a loop), the developer
+      can see that in the graph and in the key explanation, and the observer reports each branch
+      and each round.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (plan step 4: dag, explain_key and observers for mapped nodes)"}
+    proofs:
+      - "test:tests/test_template_fan_out.py::test_dag_draws_one_mapped_node_with_the_template_steps_inside_in_both_themes"
+      - "test:tests/test_template_fan_out.py::test_explain_key_says_the_branches_are_known_at_run_time"
+      - "test:tests/test_template_fan_out.py::test_run_tree_labels_each_template_branch_by_its_key"
+      - "test:tests/test_loop.py::test_the_graph_draws_one_loop_node_and_explain_key_lists_the_expansion"
+      - "test:tests/test_loop.py::test_the_observer_hears_each_round_and_the_run_tree_labels_it"
 
   - id: FO-4
     text: >

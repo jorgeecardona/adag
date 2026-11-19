@@ -20,8 +20,8 @@ Square  ⟳ cached
 ```
 
 The hooks are the methods of `PipelineObserver`: `on_step_start`, `on_step_cached`,
-`on_step_finished`, `on_fan_out_branch`, `on_fan_out_branch_failed`, and `on_event` for
-progress events (`step.saved`, `batch.*`, `item_cache.*`, `branch.*`).
+`on_step_finished`, `on_fan_out_branch`, `on_fan_out_branch_failed`, `on_loop_round`, and
+`on_event` for progress events (`step.saved`, `batch.*`, `item_cache.*`, `branch.*`).
 
 - `NullObserver` drops all of them, so a run prints nothing.
 - Warnings and errors (a timed-out branch, a cache invariant violation) are always logged

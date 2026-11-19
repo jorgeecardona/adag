@@ -79,6 +79,8 @@ class PipelineObserver(Protocol):
 
     def on_fan_out_branch_failed(self, key: str, error: str) -> None: ...
 
+    def on_loop_round(self, number: int, key: str) -> None: ...
+
     def on_event(self, event: str, fields: dict[str, Any]) -> None: ...
 
 
@@ -101,6 +103,9 @@ class NullObserver:
         pass
 
     def on_fan_out_branch_failed(self, key: str, error: str) -> None:
+        pass
+
+    def on_loop_round(self, number: int, key: str) -> None:
         pass
 
     def on_event(self, event: str, fields: dict[str, Any]) -> None:
