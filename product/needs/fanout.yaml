@@ -1,0 +1,82 @@
+who: developer who calls one graph many times with different inputs
+
+needs:
+
+  - id: FO-1
+    text: >
+      When one step returns a dict, the developer can run one sub-graph per item of that dict,
+      with the keys known only at run time, and each branch is cached on its own.
+    sources:
+      - kind: primary
+        who: Jorge
+        date: 2026-11-19
+        observed_at: 2026-11-19
+        locator: >
+          chat 2026-11-19, dictated: "I guess fanning out ... if I have one graph I can call it
+          several times with different inputs. And that sounds to me like something it would be
+          interesting to have in the directed graph"
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (plan steps 2 and 3)"}
+    proofs:
+      - "test:tests/test_template_fan_out.py::test_one_branch_per_item_the_upstream_returns"
+      - "test:tests/test_template_fan_out.py::test_threaded_branches_give_the_same_result"
+      - "test:tests/test_template_fan_out.py::test_upstream_that_returns_the_same_items_hits_every_branch"
+      - "test:tests/test_template_fan_out.py::test_a_changed_item_recomputes_only_its_branch"
+      - "test:tests/test_template_fan_out.py::test_keys_that_differ_only_as_text_raise"
+      - "test:tests/test_template_fan_out.py::test_the_static_form_still_works"
+      - "test:tests/test_fan_out_golden.py::test_static_fan_out_node_key_is_pinned"
+
+  - id: FO-2
+    text: >
+      When the developer describes the sub-graph of a fan-out, they can give it as a value with
+      named inputs, and its hash does not depend on any item.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (Template)"}
+    proofs:
+      - "test:tests/test_template.py::test_template_hash_ignores_the_items"
+      - "test:tests/test_template.py::test_template_hash_changes_with_a_field_the_build_sets"
+      - "test:tests/test_template.py::test_branch_key_is_the_key_of_the_graph_built_over_that_item"
+      - "test:tests/test_template.py::test_a_build_that_reads_the_value_of_an_input_raises"
+
+  - id: FO-3
+    text: >
+      When a result must be refined until a condition holds, the developer can run a loop whose
+      rounds are cached, while the graph stays acyclic.
+    sources:
+      - kind: primary
+        who: Jorge
+        date: 2026-11-19
+        observed_at: 2026-11-19
+        locator: >
+          chat 2026-11-19, dictated: "and I also want to have loops please"
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (LoopStep)"}
+
+  - id: FO-4
+    text: >
+      When a step is CPU bound or I/O bound, the developer can say where it runs (event loop,
+      thread or process) and one concurrency limit covers every branch and step.
+    sources:
+      - kind: primary
+        who: Jorge
+        date: 2026-11-19
+        observed_at: 2026-11-19
+        locator: >
+          chat 2026-11-19, dictated: "I would like to have asynchronous in Python as the default
+          mode ... but I can imagine most many of these computations are CPU bound, so that
+          wouldn't work"
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (runs_on)"}
+
+  - id: FO-5
+    text: >
+      When the developer runs branches on another machine (ssh, a server created for the run, a
+      scheduler), they can resume after a crash, read job logs and release the machine, from the
+      job backend.
+    sources:
+      - kind: primary
+        who: Jorge
+        date: 2026-11-19
+        observed_at: 2026-11-19
+        locator: >
+          chat 2026-11-19, dictated: "It will use uh SSH to another server, it will create a
+          server and make the call, like there's probably plenty of different ways to do some
+          external"
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (JobBackend find, logs, close)"}

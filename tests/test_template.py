@@ -120,3 +120,11 @@ def test_build_must_return_a_step_result() -> None:
 def test_bind_checks_the_number_of_values() -> None:
     with pytest.raises(TypeError, match="takes 2 input"):
         Template(build=_measure).bind("only one")
+
+
+def test_a_build_that_reads_the_value_of_an_input_raises() -> None:
+    def build(key: str, item: Any) -> StepResult[Size]:
+        return Measure(text=item.upper())()
+
+    with pytest.raises(TemplateInputError, match="template input 'item'"):
+        Template(build=build).hash()
