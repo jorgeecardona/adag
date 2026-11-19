@@ -238,8 +238,9 @@ class BranchRef:
 
     The worker imports ``pipeline_module``, finds the ``FanOutStep`` bound to
     ``fan_out_var``, looks up its own ``over[key]`` (so the value never has to
-    serialize), calls ``factory(key, value)`` to rebuild the branch sub-DAG (so
-    the closure never serializes either), and resolves it. ``branch_hash`` is the
+    serialize), calls ``factory(key, value)`` or binds the template to rebuild the branch
+    sub-DAG (so the closure never serializes either), and resolves it. When ``over`` is an
+    upstream node, the worker resolves that node first. ``branch_hash`` is the
     branch ``StepResult``'s content hash: the cache key the worker writes to and
     the main process polls/loads from. ``params`` are the run's ``InputParam``
     values, which the worker needs to resolve to the same hash.

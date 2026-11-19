@@ -224,7 +224,9 @@ def run_branch(
 
     Re-imports the pipeline, finds the ``FanOutStep`` bound to ``fan_out_var``, looks up its
     own ``over[key]`` (so the value never had to cross the wire), re-derives the branch via
-    ``factory(key, value)``, and resolves it under a plain in-process context.
+    ``factory(key, value)`` or the template, and resolves it under a plain in-process context.
+    When ``over`` is an upstream node, the worker resolves that node first: it reads the result
+    from the cache when it is a ``BaseModel`` result, and runs the upstream step otherwise.
     ``StepResult.resolve`` writes the result to ``cache_dir`` (or the store at ``store_url``)
     under the branch content hash, which the main process reads back.
 
@@ -244,27 +246,39 @@ def run_branch(
             f"fan-out target {fan_out_var!r} not found. Available: {sorted(targets)}"
         )
 
-    fan_out = _fan_out_step(targets[fan_out_var], fan_out_var)
-    matches = [
-        (original, value) for original, value in fan_out.over.items() if str(original) == key
-    ]
+    target = targets[fan_out_var]
+    fan_out = _fan_out_step(target, fan_out_var)
+    store = store_from_url(store_url) if store_url is not None else None
+    over_node = target.sources.get("over")
+    over_pipeline: Pipeline[Any] | None = None
+    if isinstance(over_node, StepResult):
+        over: Any = over_node
+        if isinstance(params, list):
+            raise TypeError("a fan-out over an upstream node needs --params-json, not --param")
+        over_pipeline = Pipeline(over, cache_dir=cache_dir, store=store)
+        items = over_pipeline.resolve(
+            over, **{name: params[name] for name in over_pipeline.input_names if name in params}
+        )
+    else:
+        items = fan_out.over
+    matches = [(original, value) for original, value in items.items() if str(original) == key]
     if not matches:
-        keys = sorted(str(branch_key) for branch_key in fan_out.over)
+        keys = sorted(str(branch_key) for branch_key in items)
         raise BranchReferenceError(
             f"branch key {key!r} not in fan-out {fan_out_var!r}. Keys: {keys}"
         )
     original_key, value = matches[0]
 
-    sub: StepResult[Any] = fan_out.factory(original_key, value)
-    store = store_from_url(store_url) if store_url is not None else None
+    sub: StepResult[Any] = fan_out._branch(original_key, value)
     pipeline_obj: Pipeline[Any] = Pipeline(sub, cache_dir=cache_dir, store=store)
     if isinstance(params, list):
         params = _coerce_legacy_assignments(pipeline_obj, params)
-    unknown = set(params) - pipeline_obj.input_names
+    known: set[str] = set(pipeline_obj.input_names)
+    if over_pipeline is not None:
+        known |= over_pipeline.input_names
+    unknown = set(params) - known
     if unknown:
-        raise ValueError(
-            f"unknown param(s) {sorted(unknown)}. Expected: {sorted(pipeline_obj.input_names)}"
-        )
+        raise ValueError(f"unknown param(s) {sorted(unknown)}. Expected: {sorted(known)}")
     if expect_hash is not None:
         actual = sub.content_hash(params=params)
         if actual != expect_hash:

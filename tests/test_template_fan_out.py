@@ -180,11 +180,11 @@ def test_a_template_with_a_static_over_runs_too(tmp_path: Path) -> None:
     assert {key: size.chars for key, size in _run(node, tmp_path).items()} == {"a": 2, "b": 1}
 
 
-def test_a_template_fan_out_is_not_dispatched() -> None:
+def test_a_dispatched_template_fan_out_needs_the_module_and_variable_of_the_worker() -> None:
     from adag import ResolveContext, SubprocessDispatcher
 
     node: Any = FanOutStep[Any, Size](over={"a": "xy"}, template=Template(build=_measure))()
-    with pytest.raises(NotImplementedError, match="in this process only"):
+    with pytest.raises(ValueError, match="pipeline_module and fan_out_var"):
         node.resolve(ResolveContext(dispatcher=SubprocessDispatcher()))
 
 

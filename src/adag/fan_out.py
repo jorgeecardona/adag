@@ -118,7 +118,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     # For distributed dispatch (e.g. SubprocessDispatcher): the file path or the module
     # name (pkg.pipeline) of the module that defines this fan-out and the module-level variable its
     # StepResult is bound to, so a worker can re-import and re-derive a branch
-    # via factory(key, over[key]). Empty for in-process runs (InlineDispatcher),
+    # via factory(key, over[key]) or the template. Empty for in-process runs (InlineDispatcher),
     # which never need them. Not part of content_hash (it ignores fields).
     pipeline_module: str = field(default="")
     fan_out_var: str = field(default="")
@@ -163,11 +163,6 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         branches are dispatched to workers and rejoined through the shared cache by content hash.
         """
         over = self._items(kwargs)
-        if self.template is not None and not isinstance(context.dispatcher, InlineDispatcher):
-            raise NotImplementedError(
-                "A FanOutStep with a template runs in this process only. Dispatch of branches "
-                "that come from an upstream node is not supported yet."
-            )
         if isinstance(context.dispatcher, InlineDispatcher):
             if self.max_workers is None:
                 return self._resolve_branches_sequentially(context, over)
@@ -261,9 +256,14 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     def _dispatch_branches(self, context: ResolveContext, over: Mapping[K, Any]) -> dict[K, V]:
         """Distribute branches via ``context.dispatcher`` and rejoin by content hash.
 
-        Pass 1 re-derives each branch (runs the factory), validates it can cross the wire, and
-        builds a ``BranchRef``. Pass 2 hands all branches to ``dispatcher.dispatch_all`` in one
-        call, so the dispatcher controls concurrency and polls every job in one loop.
+        Pass 1 re-derives each branch (runs the factory, or binds the template), validates it can
+        cross the wire, and builds a ``BranchRef``. Pass 2 hands all branches to
+        ``dispatcher.dispatch_all`` in one call, so the dispatcher controls concurrency and polls
+        every job in one loop.
+
+        With a template, ``over`` is already resolved here, because it is an input of this step.
+        A worker resolves the same upstream node again: it reads the result from the cache when
+        the upstream result is a ``BaseModel``, and runs the upstream step otherwise.
         """
         if not self.pipeline_module or not self.fan_out_var:
             raise ValueError(
@@ -271,7 +271,6 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                 "set them when building the fan-out for distributed dispatch."
             )
 
-        factory = self._require_factory()
         seen: dict[str, K] = {}
         for key in over:
             if str(key) in seen:
@@ -284,11 +283,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         prepared: list[tuple[K, StepResult[V], BranchRef]] = []
         for key, value in over.items():
             context.observer.on_fan_out_branch(str(key))
-            sub = factory(key, value)
-            if not isinstance(sub, StepResult):  # pyright: ignore[reportUnnecessaryIsInstance]  (factory is user code)
-                raise TypeError(
-                    f"FanOutStep factory must return a StepResult; got {type(sub).__name__} for key {key!r}."
-                )
+            sub = self._branch(key, value)
             if sub.step.result_model() is None:
                 raise TypeError(
                     f"Distributed FanOutStep branch {key!r} ({type(sub.step).__name__}) has no result_type; "
