@@ -71,7 +71,8 @@ Rules for the items:
 - `over` must resolve to a dict.
 
 A fan-out with a `template` runs in the calling process, one branch at a time or on `max_workers`
-threads. With a dispatcher it raises `NotImplementedError`.
+threads. To run its branches in worker processes, see
+[Fan out over an upstream result](dispatch.md#fan-out-over-an-upstream-result) in Dispatch.
 
 ## Template
 

@@ -53,6 +53,47 @@ ran in other processes: True
   never pass secrets as params.
 - A rerun after a failure submits only the failed keys: the others are already in the cache.
 
+## Fan out over an upstream result
+
+A fan-out with a `template` and a wired `over` (see [Fan-out](fan-out.md)) can run on any
+dispatcher. Set `pipeline_module` and `fan_out_var` on the `FanOutStep`, as above. The
+`fan_out_var` names the wired node, the result of `FanOutStep(...)(over=split)`.
+
+```python
+--8<-- "docs/examples/dispatch_template_pipeline.py"
+```
+
+```python
+--8<-- "docs/examples/dispatch_template.py"
+```
+
+```text
+{'part0': 6, 'part1': 19, 'part2': 4}
+ran in other processes: True
+{'part0': 6, 'part1': 19, 'part2': 8}
+ran in other processes: True
+```
+
+The second run submitted one job: only `part2` changed.
+
+How it works:
+
+1. The main process resolves `over` and computes each branch hash from its item.
+2. A job carries the branch key and `--expect-hash`. It does not carry the items.
+3. The worker imports the file and resolves the `over` node again, with the same params.
+4. It picks its item by key, builds the branch from the template, and checks the hash.
+
+Notes:
+
+- Step 3 reads the upstream result from the cache when the step saves its result with
+  `save_result` (see [Save and load](save-load.md)). A step that returns a plain dict has no cache
+  entry, so each worker runs it again. Keep that step cheap, or give it `save_result`.
+- If the upstream step gives different items in the worker, the branch hash differs and the
+  worker exits 2. It is not retried.
+- A fan-out inside a branch runs in that worker, in its process. Only the fan-out named by
+  `fan_out_var` is dispatched.
+- Workers get params as JSON, as above. A param that only the upstream step uses is passed too.
+
 ## Retries and timeouts
 
 `BranchPolicy` sets how hard to try each branch:

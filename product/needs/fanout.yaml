@@ -77,6 +77,20 @@ needs:
       - "test:tests/test_loop.py::test_the_graph_draws_one_loop_node_and_explain_key_lists_the_expansion"
       - "test:tests/test_loop.py::test_the_observer_hears_each_round_and_the_run_tree_labels_it"
 
+  - id: FO-7
+    text: >
+      When the keys of a fan-out come from an upstream step, the developer can still run its
+      branches in worker processes or on a scheduler, and a rerun with the same items submits
+      no job.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (plan step 5: dispatch of dynamic branches)"}
+    proofs:
+      - "test:tests/test_dispatch_template.py::test_branches_run_in_worker_processes_and_rejoin_by_hash"
+      - "test:tests/test_dispatch_template.py::test_same_items_submit_no_job_and_a_changed_item_reruns_only_its_branch"
+      - "test:tests/test_dispatch_template.py::test_a_worker_reads_an_upstream_that_saves_its_result"
+      - "test:tests/test_dispatch_template.py::test_a_worker_with_different_code_fails_and_is_not_retried"
+      - "test:tests/test_dispatch_template.py::test_dispatch_needs_a_cache_dir_or_a_store"
+
   - id: FO-4
     text: >
       When a step is CPU bound or I/O bound, the developer can say where it runs (event loop,

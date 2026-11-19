@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.12] - 2026-11-19
+
+### Added
+
+- A fan-out over an upstream step, `FanOutStep(template=...)(over=split)`, now runs on a
+  dispatcher. Each worker resolves `split` again, picks its item by key, and builds its branch
+  from the template. A rerun with the same items submits no job, and a changed item submits one.
+
+### Changed
+
+- The `NotImplementedError` for a template fan-out under a dispatcher is gone. Without
+  `pipeline_module` and `fan_out_var` it raises the same `ValueError` as a fan-out with a factory.
+
 ## [0.3.11] - 2026-11-19
 
 ### Added

@@ -8,7 +8,11 @@ import pytest
 
 EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "docs" / "examples"
 # Modules other examples import; they define a pipeline and run nothing on their own.
-LIBRARY_FILES = {"cli_pipeline.py", "dispatch_pipeline.py"}
+LIBRARY_FILES = {
+    "cli_pipeline.py",
+    "dispatch_pipeline.py",
+    "dispatch_template_pipeline.py",
+}
 
 
 def _scripts() -> list[Path]:
