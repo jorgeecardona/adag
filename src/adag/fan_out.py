@@ -13,6 +13,12 @@ Example::
     )()
 
 The factory must return a ``StepResult[V]``, the result of calling a configured step.
+
+``over`` can also be an upstream node, with a ``Template`` that builds each branch from the key
+and the item. The keys are then known when the run reaches the fan-out::
+
+    sizes = FanOutStep(template=Template(build=lambda key, item: Measure(text=item)()))(over=split)
+
 ``FanOutStep.run()`` is not the entry point: execution goes through ``execute(context, ...)``
 so each sub-graph resolves under the same ``ResolveContext`` that drives the parent pipeline.
 """
@@ -20,9 +26,10 @@ so each sub-graph resolves under the same ``ResolveContext`` that drives the par
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import hashlib
 import warnings
-from collections.abc import Callable, Hashable
+from collections.abc import Callable, Hashable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from dataclasses import dataclass, field
@@ -32,12 +39,24 @@ import structlog
 
 from adag.deferred import BranchRef, InlineDispatcher, ResolveContext
 from adag.deprecation import AdagDeprecationWarning
+from adag.hashing import encode_value
 from adag.step import Step, StepResult
+from adag.template import Template
 
 logger = structlog.get_logger()
 
 K = TypeVar("K", bound=Hashable)
 V = TypeVar("V")
+
+_FACTORY_CANNOT_BE_WIRED = (
+    "FanOutStep(over=<node>) needs template=: a factory cannot be hashed, so the key would not "
+    "change when the factory does."
+)
+_TEMPLATE_INPUTS = 2  # a fan-out template takes (key, item)
+
+
+def _no_items() -> dict[Any, Any]:
+    return {}
 
 
 class FanOutBranchError(RuntimeError):
@@ -60,21 +79,30 @@ class FanOutBranchError(RuntimeError):
 class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     """Apply a sub-pipeline factory to each value in ``over``; collect into a dict.
 
+    Give either ``factory`` (keys known when the graph is built) or ``template`` (keys can come
+    from an upstream node). With ``template``, wire ``over`` as an input,
+    ``FanOutStep(template=t)(over=node)``, or pass the node as ``over=``.
+
     Fields:
         over: dict whose keys identify each fan-out branch and whose values
-            are passed verbatim to ``factory`` for that branch.
+            are passed verbatim to ``factory`` or ``template`` for that branch. With a
+            ``template`` it can be an upstream ``StepResult`` of a dict, resolved at run time.
+            Each item must be encodable as a cache key (a ``BaseModel``, or JSON-like data).
         factory: callable ``(key, value) -> StepResult[V]`` building the
             sub-DAG for one branch. Called once per key during ``execute``;
             each returned ``StepResult`` is resolved under the same
             ``ResolveContext`` as the parent so caches are shared.
+        template: a ``Template`` with inputs ``("key", "item")``, used instead of ``factory``.
+            A branch key is the key of the sub-graph built over that item, so an upstream that
+            returns the same items again finds every branch in the cache.
         max_workers: run branches in-process on this many threads. Ignored by a dispatcher.
         instance_label: overrides the visualization label.
         pipeline_module: file path or module name a dispatch worker imports.
         fan_out_var: module-level variable that holds this fan-out's ``StepResult``.
     """
 
-    over: dict[K, Any]
-    factory: Callable[[K, Any], StepResult[V]]
+    over: dict[K, Any] | StepResult[dict[K, Any]] = field(default_factory=_no_items)
+    factory: Callable[[K, Any], StepResult[V]] | None = None
     # Concurrency of the in-process (InlineDispatcher) path. None (default) keeps the
     # historical sequential branch-by-branch resolution. An int resolves branches in a
     # ThreadPoolExecutor of that size, a win when each branch is I/O-bound (an LLM/HTTP
@@ -93,6 +121,37 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     # which never need them. Not part of content_hash (it ignores fields).
     pipeline_module: str = field(default="")
     fan_out_var: str = field(default="")
+    # Last, so positional FanOutStep(over, factory, max_workers, ...) from 0.1 still binds.
+    template: Template | None = None
+
+    def __post_init__(self) -> None:
+        if (self.factory is None) == (self.template is None):
+            raise TypeError("FanOutStep needs exactly one of factory= or template=.")
+        if isinstance(self.over, StepResult) and self.template is None:
+            raise TypeError(_FACTORY_CANNOT_BE_WIRED)
+        if self.template is not None and len(self.template.inputs) != _TEMPLATE_INPUTS:
+            raise TypeError(
+                f"FanOutStep template needs two inputs (key, item); got {self.template.inputs}."
+            )
+
+    def __call__(self, **kwargs: Any) -> StepResult[dict[K, V]]:
+        """Wire this fan-out into the DAG.
+
+        ``over`` can be an upstream node, passed here as ``over=node`` or as the field. That form
+        needs ``template=``: a ``factory`` is code adag cannot hash.
+
+        Raises:
+            TypeError: ``over`` is wired and there is no ``template``, or it is given twice.
+        """
+        wired: Any = kwargs.get("over", self.over)
+        if not isinstance(wired, StepResult):
+            return super().__call__(**kwargs)
+        if self.template is None:
+            raise TypeError(_FACTORY_CANNOT_BE_WIRED)
+        if "over" in kwargs and isinstance(self.over, StepResult):
+            raise TypeError("FanOutStep got over= twice: as a field and as an input.")
+        step = dataclasses.replace(self, over={})
+        return StepResult(step=step, sources={**kwargs, "over": wired})
 
     def execute(self, context: ResolveContext, /, **kwargs: Any) -> dict[K, V]:
         """Resolve one sub-DAG per key in ``over``.
@@ -102,12 +161,39 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         behaviour) or concurrently in a thread pool when it is set. With a real dispatcher,
         branches are dispatched to workers and rejoined through the shared cache by content hash.
         """
-        del kwargs  # FanOutStep does not take wired inputs, closure over factory does.
+        over = self._items(kwargs)
+        if self.template is not None and not isinstance(context.dispatcher, InlineDispatcher):
+            raise NotImplementedError(
+                "A FanOutStep with a template runs in this process only. Dispatch of branches "
+                "that come from an upstream node is not supported yet."
+            )
         if isinstance(context.dispatcher, InlineDispatcher):
             if self.max_workers is None:
-                return self._resolve_branches_sequentially(context)
-            return self._resolve_branches_concurrently(context, self.max_workers)
-        return self._dispatch_branches(context)
+                return self._resolve_branches_sequentially(context, over)
+            return self._resolve_branches_concurrently(context, over, self.max_workers)
+        return self._dispatch_branches(context, over)
+
+    def _items(self, kwargs: dict[str, Any]) -> dict[K, Any]:
+        """The dict to fan out over: the resolved ``over`` input, else the ``over`` field.
+
+        With a ``template`` the keys must differ as text and every item must be encodable as a
+        cache key; both are checked before any branch runs.
+        """
+        over: Any = kwargs.get("over", self.over)
+        if not isinstance(over, dict):
+            raise TypeError(f"FanOutStep over must be a dict; got {type(over).__name__}.")
+        items: dict[K, Any] = over  # pyright: ignore[reportUnknownVariableType]
+        if self.template is not None:
+            seen: dict[str, K] = {}
+            for key, value in items.items():
+                if str(key) in seen:
+                    raise ValueError(
+                        f"FanOutStep keys {seen[str(key)]!r} and {key!r} have the same text "
+                        f"{str(key)!r}; keys must differ as text."
+                    )
+                seen[str(key)] = key
+                encode_value(value, f"item {key!r} of the FanOutStep over")
+        return items
 
     async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> dict[K, V]:
         """Async entry: run ``execute`` in a worker thread so the event loop is not blocked.
@@ -117,14 +203,16 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """
         return await asyncio.to_thread(self.execute, context, **kwargs)
 
-    def _resolve_branches_sequentially(self, context: ResolveContext) -> dict[K, V]:
+    def _resolve_branches_sequentially(
+        self, context: ResolveContext, over: Mapping[K, Any]
+    ) -> dict[K, V]:
         """Resolve each branch under the parent context, one after another."""
         results: dict[K, V] = {}
         # Hold every branch StepResult alive for the whole fan-out: the per-execute memo keys by
         # id(), so a branch freed before the next is built would let CPython reuse its address and
         # the next branch would hit its stale memo entry.
         branches: list[StepResult[V]] = []
-        for key, value in self.over.items():
+        for key, value in over.items():
             # Tell the observer which branch is next so it can label this branch's
             # subtree by key (a no-op for every observer except RunTreeObserver).
             context.observer.on_fan_out_branch(str(key))
@@ -134,7 +222,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         return results
 
     def _resolve_branches_concurrently(
-        self, context: ResolveContext, max_workers: int
+        self, context: ResolveContext, over: Mapping[K, Any], max_workers: int
     ) -> dict[K, V]:
         """Resolve every branch in a thread pool, each worker inside a COPIED context so ambient
         ContextVars (the usage observer, ``current_observer``) propagate across the thread boundary.
@@ -143,10 +231,10 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         where a branch raising aborts ``execute``. It is not collected, as it is on the dispatcher path. The
         pool's ``__exit__`` waits for the in-flight branches before the exception unwinds.
         """
-        if not self.over:
+        if not over:
             return {}
         prepared: list[tuple[K, StepResult[V]]] = []
-        for key, value in self.over.items():
+        for key, value in over.items():
             context.observer.on_fan_out_branch(str(key))
             prepared.append((key, self._branch(key, value)))
         results: dict[K, V] = {}
@@ -159,15 +247,17 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         return {key: results[key] for key, _ in prepared}  # keep the order of ``over``
 
     def _branch(self, key: K, value: Any) -> StepResult[V]:
-        """Build one branch's sub-DAG via the factory, validating it is a resolvable Deferred."""
-        sub = self.factory(key, value)
+        """Build one branch's sub-DAG via the template or factory, checking it is a StepResult."""
+        if self.template is not None:
+            return self.template.bind(key, value)
+        sub = self._require_factory()(key, value)
         if not isinstance(sub, StepResult):  # pyright: ignore[reportUnnecessaryIsInstance]  (factory is user code)
             raise TypeError(
                 f"FanOutStep factory must return a StepResult/Deferred; got {type(sub).__name__} for key {key!r}."
             )
         return sub
 
-    def _dispatch_branches(self, context: ResolveContext) -> dict[K, V]:
+    def _dispatch_branches(self, context: ResolveContext, over: Mapping[K, Any]) -> dict[K, V]:
         """Distribute branches via ``context.dispatcher`` and rejoin by content hash.
 
         Pass 1 re-derives each branch (runs the factory), validates it can cross the wire, and
@@ -180,8 +270,9 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                 "set them when building the fan-out for distributed dispatch."
             )
 
+        factory = self._require_factory()
         seen: dict[str, K] = {}
-        for key in self.over:
+        for key in over:
             if str(key) in seen:
                 raise ValueError(
                     f"FanOutStep keys {seen[str(key)]!r} and {key!r} have the same text "
@@ -190,9 +281,9 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             seen[str(key)] = key
 
         prepared: list[tuple[K, StepResult[V], BranchRef]] = []
-        for key, value in self.over.items():
+        for key, value in over.items():
             context.observer.on_fan_out_branch(str(key))
-            sub = self.factory(key, value)
+            sub = factory(key, value)
             if not isinstance(sub, StepResult):  # pyright: ignore[reportUnnecessaryIsInstance]  (factory is user code)
                 raise TypeError(
                     f"FanOutStep factory must return a StepResult; got {type(sub).__name__} for key {key!r}."
@@ -268,9 +359,12 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """
         h = hashlib.sha256()
         h.update(b"FANOUT:" + type(self).__name__.encode())
-        for key in sorted(self.over, key=repr):
+        if self.template is not None:
+            return self._template_hash(h, self.template)
+        factory, over = self._require_factory(), self._static_over()
+        for key in sorted(over, key=repr):
             try:
-                sub = self.factory(key, self.over[key])
+                sub = factory(key, over[key])
             except Exception as exc:
                 logger.warning(
                     "fan_out.factory_raised",
@@ -284,4 +378,28 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             if sub_hash is None:
                 return None
             h.update(b"|K:" + repr(key).encode() + b"|H:" + sub_hash.encode())
+        return h.hexdigest()[:12]
+
+    def _require_factory(self) -> Callable[[K, Any], StepResult[V]]:
+        """The factory. A fan-out built with a template has none, and cannot be dispatched."""
+        if self.factory is None:
+            raise TypeError("this FanOutStep has a template, not a factory.")
+        return self.factory
+
+    def _static_over(self) -> dict[K, Any]:
+        """The ``over`` field as a dict. A node is wired as an input, so the field is a dict."""
+        if not isinstance(self.over, dict):
+            raise TypeError("this FanOutStep wires over from a node, so it has no static dict.")
+        return self.over
+
+    def _template_hash(self, h: hashlib._Hash, template: Template) -> str | None:
+        """The step hash of a template fan-out: the template hash and a static ``over``.
+
+        A wired ``over`` is not here: the node key adds the key of the upstream node.
+        """
+        template_hash = template.hash()
+        if template_hash is None:
+            return None
+        h.update(b"|TEMPLATE:" + template_hash.encode())
+        h.update(b"|OVER:" + encode_value(self.over, "the FanOutStep over"))
         return h.hexdigest()[:12]

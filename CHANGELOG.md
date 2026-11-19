@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-11-19
+
+### Added
+
+- A `FanOutStep` can fan out over the result of an upstream step. Give it a `Template` and wire
+  `over`: `FanOutStep(template=t)(over=split)`. The keys are known when the run reaches the
+  fan-out, so a `Split` step can decide how many branches there are.
+- Each branch is cached under the key of the sub-graph built for its item. When an upstream step
+  runs again and returns the same items, every branch is a cache hit. A changed item recomputes
+  only its branch.
+- A fan-out that uses a `template` runs in this process (sequential or `max_workers`). With a
+  dispatcher it raises `NotImplementedError`: dispatching these branches comes later.
+
+### Changed
+
+- `FanOutStep(over=..., factory=...)` keeps its keys. A test pins them.
+- `FanOutStep` raises `TypeError` when you give neither or both of `factory` and `template`.
+
 ## [0.3.6] - 2026-11-19
 
 ### Added
