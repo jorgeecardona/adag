@@ -90,6 +90,7 @@ plugins:
           - observers.md
           - batch.md
           - fan-out.md
+          - loops.md
           - async-parallel.md
           - dispatch.md
           - cache-stores.md
@@ -113,6 +114,7 @@ nav:
   - Scale:
       - Batch steps: batch.md
       - Fan-out: fan-out.md
+      - Loops: loops.md
       - Async and parallel: async-parallel.md
       - Dispatch: dispatch.md
   - Storage:
