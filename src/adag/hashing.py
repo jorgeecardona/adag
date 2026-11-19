@@ -106,6 +106,58 @@ class UnhashableValueError(TypeError):
     """A value has a type the cache key cannot encode."""
 
 
+class TemplateInputError(TypeError):
+    """A ``Template`` build function used the value of one of its inputs."""
+
+
+class Placeholder:
+    """A stand-in for a value that does not exist yet. ``Template`` uses it to hash its graph.
+
+    A placeholder has a name and nothing else. It can be passed on, as a step field or an input,
+    and the cache key encodes it by name. Any other use raises ``TemplateInputError``: reading an
+    attribute, comparing, iterating, formatting, doing arithmetic. A build function that looks
+    at the value would give a template hash that is wrong for the real values.
+    """
+
+    __slots__ = ("name",)
+
+    def __init__(self, name: str) -> None:
+        object.__setattr__(self, "name", name)
+
+    def __repr__(self) -> str:
+        return f"<template input {self.name!r}>"
+
+    def __getattr__(self, attribute: str) -> Any:
+        raise _used(self.name, f".{attribute}")
+
+
+def _used(name: str, how: str) -> TemplateInputError:
+    return TemplateInputError(
+        f"template input {name!r} was used as a value ({how}). A template is built once, with "
+        "placeholders, to hash its graph. Pass the input to a step as a field or an input and let "
+        "the step read it."
+    )
+
+
+def _blocked(how: str) -> Any:
+    def method(self: Placeholder, *args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        raise _used(self.name, how)
+
+    return method
+
+
+_BLOCKED_OPERATIONS = (
+    "__bool__ __len__ __iter__ __next__ __getitem__ __setitem__ __delitem__ __contains__ "
+    "__call__ __eq__ __ne__ __lt__ __le__ __gt__ __ge__ __hash__ __str__ __format__ __bytes__ "
+    "__int__ __float__ __index__ __add__ __radd__ __sub__ __rsub__ __mul__ __rmul__ "
+    "__truediv__ __rtruediv__ __floordiv__ __mod__ __matmul__ __neg__ __pos__ __abs__ "
+    "__and__ __or__ __xor__ __invert__ __enter__ __exit__ __await__"
+)
+for _operation in _BLOCKED_OPERATIONS.split():
+    setattr(Placeholder, _operation, _blocked(_operation))
+
+
 def _frame(tag: bytes, payload: bytes) -> bytes:
     """Prefix ``payload`` with a type tag and its length so no two values share bytes."""
     return tag + len(payload).to_bytes(8, "big") + payload
@@ -149,6 +201,8 @@ def encode_value(value: Any, where: str = "value") -> bytes:
         cls = type(value)
         dumped = json.dumps(value.model_dump(mode="json"), sort_keys=True).encode()
         return _frame(b"M", f"{cls.__module__}.{cls.__qualname__}".encode() + b"\0" + dumped)
+    if isinstance(value, Placeholder):
+        return _frame(b"X", value.name.encode())
     return _encode_container(value, where)
 
 

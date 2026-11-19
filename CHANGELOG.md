@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-11-19
+
+### Added
+
+- `Template(build=fn, inputs=("key", "item"))`: a sub-graph with named inputs. adag builds it once
+  with placeholders to get its hash, so the hash does not depend on any item. A `build` that reads
+  the value of an input raises `TemplateInputError`. `FanOutStep` takes a template in 0.3.7.
+
 ## [0.3.5] - 2026-11-14
 
 ### Changed

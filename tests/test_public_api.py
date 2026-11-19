@@ -34,6 +34,7 @@ EXPECTED = {
     "StepResult",
     "StepTimeout",
     "SvgOptions",
+    "Template",
     "UnboundInputError",
     "UnhashableValueError",
     "WriteJSONL",

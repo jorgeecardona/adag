@@ -4,7 +4,7 @@ This module exports every public name of the package, including the lower-level 
 (executors, dispatchers, ``ResolveContext``, ``walk``).
 """
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -45,6 +45,7 @@ from adag.pipeline import (
 from adag.serializable import SerializableStep
 from adag.sinks import WriteJSONL
 from adag.step import AsyncStep, Step, StepResult, StepTimeout
+from adag.template import Template
 from adag.visualization import (
     SVG,
     Edge,
@@ -105,6 +106,7 @@ __all__ = [
     "StepTimeout",
     "SubprocessDispatcher",
     "SvgOptions",
+    "Template",
     "UnboundInputError",
     "UnhashableValueError",
     "WriteJSONL",
