@@ -23,6 +23,7 @@ import structlog
 
 from adag.deferred import Deferred, InputParam
 from adag.io import FileSource, atomic_write_text
+from adag.key import Expansion
 from adag.step import Step, StepResult
 
 logger = structlog.get_logger()
@@ -82,6 +83,8 @@ _STYLESHEET_LIGHT = """
 .dag-node--leaf { fill: #e8eaf6; stroke: #9fa8da; }
 .dag-node--step.is-cached, .dag-node--leaf.is-cached { fill: #e8f5e9; stroke: #66bb6a; }
 .dag-node--step.is-blocked, .dag-node--leaf.is-blocked { fill: #ffebee; stroke: #ef5350; }
+.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
+.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
 .dag-node--param { fill: #f3e5f5; stroke: #ce93d8; }
 .dag-node--file { fill: #efebe9; stroke: #bcaaa4; }
 .dag-node--output { fill: #e3f2fd; stroke: #64b5f6; }
@@ -101,6 +104,8 @@ _STYLESHEET_DARK = """
 .dag-node--leaf { fill: #1e2030; stroke: #6b74a8; }
 .dag-node--step.is-cached, .dag-node--leaf.is-cached { fill: #16261a; stroke: #4f9a5b; }
 .dag-node--step.is-blocked, .dag-node--leaf.is-blocked { fill: #2d1a1c; stroke: #d05a5a; }
+.dag-node--mapped { stroke-dasharray: 8 4; stroke: #c58ad6; }
+.dag-node--loop { stroke-dasharray: 3 3; stroke: #4db6ac; }
 .dag-node--param { fill: #271c2b; stroke: #9a63a6; }
 .dag-node--file { fill: #241f1d; stroke: #8a7466; }
 .dag-node--output { fill: #16232e; stroke: #4a90c4; }
@@ -147,6 +152,8 @@ class NodeMetadata:
     description: str = ""
     params: tuple[tuple[str, str], ...] = ()
     state: str = "PENDING"
+    shape: str = ""
+    """``mapped`` or ``loop`` for a node that builds its sub-graph at run time, else empty."""
 
 
 def _node_name_and_kind(deferred: Deferred[Any]) -> tuple[str, str] | None:
@@ -353,6 +360,7 @@ class LayoutNode:
     width: float = 0.0
     height: float = 0.0
     params: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
+    shape: str = ""
 
 
 def _orient(ax: float, ay: float, bx: float, by: float, cx: float, cy: float) -> float:
@@ -742,6 +750,7 @@ def _compute_layout(
                 width=w,
                 height=h,
                 params=list(meta.params),
+                shape=meta.shape,
             )
         else:
             continue
@@ -1159,6 +1168,8 @@ def _svg_step_node(parent: ET.Element, node: LayoutNode) -> None:
     """Render a step box with title, description, and scalar parameters."""
     kind_class = "dag-node--leaf" if node.is_leaf else "dag-node--step"
     state_class = f"is-{node.state.lower()}"
+    if node.shape:
+        state_class += f" dag-node--{node.shape}"
     lw = "2" if node.is_leaf else "1.5"
 
     left, top = node.x - node.width / 2, node.y - node.height / 2
@@ -1250,6 +1261,26 @@ def _render_layout(
     return ET.tostring(svg, encoding="unicode")
 
 
+_NESTED_WIDTH = 56
+
+
+def _nested_params(expansion: Expansion) -> tuple[tuple[str, str], ...]:
+    """The steps of a node's template, upstream first, as one line inside the node.
+
+    Empty when the template cannot be built over placeholders.
+    """
+    try:
+        graph_nodes, _ = walk(expansion.template.trace())
+    except TypeError:  # includes TemplateInputError
+        return ()
+    names = [n.title or n.name for n in reversed(graph_nodes) if n.kind == "step"]
+    text = " > ".join(names)
+    if len(text) > _NESTED_WIDTH:
+        text = text[: _NESTED_WIDTH - 3] + "..."
+    label = "each round" if expansion.shape == "loop" else "each item"
+    return ((label, text),) if names else ()
+
+
 def _walk_to_metadata(
     graph_nodes: list[Node], *, cache_dir: Path | None, prefix: str
 ) -> dict[str, NodeMetadata]:
@@ -1262,10 +1293,17 @@ def _walk_to_metadata(
             )
             description = _first_doc_line(node.step)
             params = tuple(_scalar_params(node.step))
+            shape = ""
+            expansion = node.step.expansion()
+            if expansion is not None:
+                shape = expansion.shape
+                description = expansion.note
+                params = _nested_params(expansion)
         else:
             title = node.name
             description = ""
             params = ()
+            shape = ""
         result[node.name] = NodeMetadata(
             name=node.name,
             kind=node.kind,
@@ -1273,6 +1311,7 @@ def _walk_to_metadata(
             description=description,
             params=params,
             state=compute_state(node, cache_dir),
+            shape=shape,
         )
     return result
 

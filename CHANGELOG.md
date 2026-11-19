@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-11-19
+
+### Added
+
+- `dag()` draws a fan-out that uses a `template` as one dashed box. The box lists the steps of
+  the template, because the number of branches is not known until the run.
+- `explain_key` shows an `expansion` row for such a node: "one branch per item of 'over'; the
+  number of branches is known at run time". The row adds nothing to the key.
+- `adag.Expansion` and `Step.expansion()` describe a step that builds its sub-graph at run time.
+
 ## [0.3.7] - 2026-11-19
 
 ### Added

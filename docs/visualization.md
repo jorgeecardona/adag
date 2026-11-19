@@ -19,6 +19,12 @@ pending (yellow). `Load` and `Count` are still cached (green).
 
 ![A graph with two pending steps and two cached steps](assets/graph_states.svg)
 
+A node that builds its sub-graph at run time has a dashed border. A `FanOutStep` with a
+`template` is `mapped` (long dashes): the box says "one branch per item", and its `each item`
+line lists the steps of the template. A `LoopStep` is `loop` (short dashes) and its `each round`
+line lists the steps of its body. The graph shows one box, not one per item or round, because the
+count is not known until the run reaches the node.
+
 In a notebook, the returned `SVG` object displays inline. Use `SvgOptions` to change the theme
 or hide the per-step parameters.
 

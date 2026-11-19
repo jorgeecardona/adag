@@ -193,3 +193,66 @@ def test_the_static_form_still_works(tmp_path: Path) -> None:
         over={"a": "xy"}, factory=lambda key, text: Measure(text=text)()
     )()
     assert _run(node, tmp_path)["a"].chars == 2
+
+
+# ── how a mapped node is shown ───────────────────────────────────────────────
+
+
+def test_dag_draws_one_mapped_node_with_the_template_steps_inside_in_both_themes() -> None:
+    from adag import dag
+    from adag.visualization import SvgOptions
+
+    target = _fan_out(InputParam[str]("text", value_type=str))
+    for theme in ("light", "dark"):
+        svg = str(dag(target, options=SvgOptions(theme=theme)))
+        stylesheet, drawing = svg.split("</style>", 1)
+        assert ".dag-node--mapped" in stylesheet
+        assert drawing.count("dag-node--mapped") == 1  # one node, not one per item
+        assert "each item" in drawing and "Measure" in drawing  # the template, inside the node
+        assert "known at run time" in drawing
+
+
+def test_dag_does_not_flag_a_factory_fan_out_as_mapped() -> None:
+    from adag import dag
+
+    static = FanOutStep[str, Size](over={"a": "x"}, factory=lambda key, text: Measure(text=text)())
+    assert "dag-node--mapped" not in str(dag(static())).split("</style>", 1)[1]
+
+
+def test_explain_key_says_the_branches_are_known_at_run_time() -> None:
+    from adag import ComponentKind
+
+    target = _fan_out(InputParam[str]("text", value_type=str))
+    explanation = target.explain_key()
+    expansion = [c for c in explanation.components if c.kind is ComponentKind.EXPANSION]
+    assert len(expansion) == 1
+    assert expansion[0].name == "mapped"
+    assert "known at run time" in expansion[0].value
+    assert expansion[0].digest == ""  # adds nothing to the key
+    assert explanation.key == target.content_hash()
+    assert "expansion" in str(explanation)
+
+
+def test_explain_key_of_a_static_fan_out_has_no_expansion_component() -> None:
+    from adag import ComponentKind
+
+    static = FanOutStep[str, Size](over={"a": "x"}, factory=lambda key, text: Measure(text=text)())
+    assert all(c.kind is not ComponentKind.EXPANSION for c in static().explain_key().components)
+
+
+def test_redacted_keeps_the_expansion_component() -> None:
+    from adag import ComponentKind
+
+    target = _fan_out(InputParam[str]("text", value_type=str))
+    redacted = target.explain_key().redacted()
+    assert any(c.kind is ComponentKind.EXPANSION and c.value for c in redacted.components)
+
+
+def test_run_tree_labels_each_template_branch_by_its_key(tmp_path: Path) -> None:
+    from adag import RunTreeObserver
+
+    observer = RunTreeObserver()
+    target = _fan_out(InputParam[str]("text", value_type=str))
+    Pipeline(target, cache_dir=tmp_path).execute(observer=observer, text="ab;cde")
+    tree = observer.render_tree()
+    assert "Measure [ab]" in tree and "Measure [cde]" in tree

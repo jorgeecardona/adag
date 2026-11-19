@@ -51,7 +51,7 @@ from adag.hashing import (
     is_tuple,
 )
 from adag.io import FileSource, atomic_write_text
-from adag.key import ComponentKind, KeyComponent, KeyExplanation
+from adag.key import ComponentKind, Expansion, KeyComponent, KeyExplanation
 
 logger = structlog.get_logger()
 
@@ -355,6 +355,14 @@ class Step(Generic[Out]):
         """
         del context
         return await self.arun(**kwargs)
+
+    def expansion(self) -> Expansion | None:
+        """Return how this step builds its sub-graph at run time, or ``None`` for a plain step.
+
+        ``FanOutStep`` with a template and ``LoopStep`` return one. ``dag()`` and ``explain_key``
+        read it.
+        """
+        return None
 
     def content_hash(self) -> str | None:
         """Return the step's own hash (class, code and fields), or ``None`` when a field blocks it.
@@ -858,6 +866,11 @@ class StepResult(Deferred[Out]):
                 components.append(KeyComponent.build(kind, name, value, chunk))
                 if chunk is None and blocked_by is None:
                     blocked_by = name or kind.value
+        expansion = step.expansion()
+        if expansion is not None:
+            components.append(
+                KeyComponent.build(ComponentKind.EXPANSION, expansion.shape, expansion.note, b"")
+            )
         for kind, name, value, chunk in self._key_chunks(params):
             if kind is ComponentKind.IDENTITY:
                 continue  # the step's own key: already listed component by component above

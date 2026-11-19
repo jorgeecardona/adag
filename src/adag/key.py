@@ -9,7 +9,10 @@ from __future__ import annotations
 import hashlib
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from adag.template import Template
 
 
 class ComponentKind(StrEnum):
@@ -35,9 +38,25 @@ class ComponentKind(StrEnum):
     """An input wired to another source, such as a ``FileSource``."""
     RAW = "raw"
     """An input passed as a literal value."""
+    EXPANSION = "expansion"
+    """A node that builds its sub-graph at run time (a template fan-out or a loop). The text says
+    what is not known yet. It adds nothing to the key."""
     SKIPPED = "skipped"
     """Not part of the key: a ``Config`` field, ``node_label``, or a value that cannot be
     hashed when ``strict_content_hash = False``."""
+
+
+@dataclass(frozen=True)
+class Expansion:
+    """How a node builds its sub-graph at run time: a template fan-out (``mapped``) or a loop.
+
+    ``dag()`` draws the node with the template's steps inside it, and ``explain_key`` lists the
+    ``note`` as an ``EXPANSION`` component.
+    """
+
+    shape: str
+    template: Template
+    note: str
 
 
 _VALUE_WIDTH = 80

@@ -40,6 +40,7 @@ import structlog
 from adag.deferred import BranchRef, InlineDispatcher, ResolveContext
 from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import encode_value
+from adag.key import Expansion
 from adag.step import Step, StepResult
 from adag.template import Template
 
@@ -342,6 +343,16 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         if failed:
             raise FanOutBranchError(succeeded=sorted(str(key) for key in results), failed=failed)
         return {key: results[key] for key, _, _ in prepared}
+
+    def expansion(self) -> Expansion | None:
+        """A template fan-out builds its branches at run time; a factory fan-out does not."""
+        if self.template is None:
+            return None
+        return Expansion(
+            shape="mapped",
+            template=self.template,
+            note="one branch per item of 'over'; the number of branches is known at run time",
+        )
 
     def content_hash(self) -> str | None:
         """Identity = class + each branch's sub-DAG content_hash.
