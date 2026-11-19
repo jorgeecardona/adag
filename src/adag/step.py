@@ -580,6 +580,22 @@ class StepResult(Deferred[Out]):
                         f"but {type(self.step).__name__} expects {expected_name} for '{name}'"
                     )
 
+    def _flight_key(self, context: ResolveContext) -> int | str:
+        """The key of this node in the in-flight registries: its content key, else its id.
+
+        Two node objects with one content key are one computation, so concurrent resolutions
+        of both run the body once: the second finds the first one's result in the cache. Without
+        a result store there is no cache to find it in, so the node keeps its id. So does a node
+        with no key.
+        """
+        if context.result_store() is None:
+            return id(self)
+        try:
+            key = self.content_hash(params=context.params)
+        except UnhashableValueError:
+            return id(self)
+        return id(self) if key is None else key
+
     def _memo_get(self, context: ResolveContext) -> Out | _Miss:
         """This node's memoized result in ``context``, or ``_CACHE_MISS``. Hold ``_lock``.
 
@@ -689,21 +705,23 @@ class StepResult(Deferred[Out]):
         In-flight dedup makes that guarantee hold under CONCURRENCY too: the memo only
         collapses resolutions that do not overlap in time, so N branch workers reaching one
         shared upstream at once would each miss the memo and run the body N times. Here the
-        first thread to miss the memo claims ownership (an ``Event`` in ``context._inflight``);
+        first thread to miss the memo claims ownership (an ``Event`` in ``context._inflight``, keyed by
+        the node's content key, so two node objects with one key count as one);
         concurrent threads find that Event, wait on it, then loop: a success left the value in
         the memo (returned), a failure removed the marker so they re-claim and resolve it
         themselves. Uncontended (single-threaded) there is never a waiter, so behaviour and
         cost are unchanged bar creating one Event that is set immediately.
         """
+        flight_key = self._flight_key(context)
         while True:
             with context._lock:
                 memo = self._memo_get(context)
                 if not isinstance(memo, _Miss):
                     return memo
-                in_flight = context._inflight.get(id(self))
+                in_flight = context._inflight.get(flight_key)
                 if in_flight is None:
                     own_event = Event()
-                    context._inflight[id(self)] = own_event
+                    context._inflight[flight_key] = own_event
                     break
             # Another thread owns this exact node's resolution. Wait for it, then loop.
             in_flight.wait()
@@ -717,7 +735,7 @@ class StepResult(Deferred[Out]):
             return self._finalize(result, context, started_at)
         finally:
             with context._lock:
-                context._inflight.pop(id(self), None)
+                context._inflight.pop(flight_key, None)
             own_event.set()
 
     def _merge_step_defaults(self, resolved: dict[str, Any]) -> dict[str, Any]:
@@ -760,15 +778,16 @@ class StepResult(Deferred[Out]):
         task claims the node and the others wait for it. If that body raises, a waiting task
         resolves the node itself.
         """
+        flight_key = self._flight_key(context)
         while True:
             with context._lock:
                 memo = self._memo_get(context)
                 if not isinstance(memo, _Miss):
                     return memo
-                in_flight = context._ainflight.get(id(self))
+                in_flight = context._ainflight.get(flight_key)
                 if in_flight is None:
                     own = asyncio.get_running_loop().create_future()
-                    context._ainflight[id(self)] = own
+                    context._ainflight[flight_key] = own
                     break
             # Another task owns this node. Wait without taking its exception, then loop: a
             # success left the value in the memo, a failure removed the marker.
@@ -777,7 +796,7 @@ class StepResult(Deferred[Out]):
             return await self._aresolve_owned(context)
         finally:
             with context._lock:
-                context._ainflight.pop(id(self), None)
+                context._ainflight.pop(flight_key, None)
             if not own.done():
                 own.set_result(None)
 

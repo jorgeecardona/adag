@@ -40,11 +40,11 @@ def _empty_resolved() -> dict[int, Any]:
     return {}
 
 
-def _empty_inflight() -> dict[int, Event]:
+def _empty_inflight() -> dict[int | str, Event]:
     return {}
 
 
-def _empty_ainflight() -> dict[int, asyncio.Future[None]]:
+def _empty_ainflight() -> dict[int | str, asyncio.Future[None]]:
     return {}
 
 
@@ -311,16 +311,19 @@ class ResolveContext:
     # object (a model handle) would run once per consumer, and each consumer would get a
     # different instance.
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
-    # While one thread runs a node's body, its id maps to an Event that other threads wait on.
-    # The owner removes the entry and sets the Event in a ``finally``, so a body that raises
-    # releases its waiters, which then resolve the node again.
-    _inflight: dict[int, Event] = field(default_factory=_empty_inflight, repr=False, compare=False)
+    # While one thread runs a node's body, its content key maps to an Event that other threads
+    # wait on (the id of a node with no key). Two node objects with one key share the entry. The
+    # owner removes the entry and sets the Event in a ``finally``, so a body that raises releases
+    # its waiters, which then resolve the node again.
+    _inflight: dict[int | str, Event] = field(
+        default_factory=_empty_inflight, repr=False, compare=False
+    )
     # Guards every read and write of the two dicts above. A level of nodes resolves in a thread
     # pool, and the free-threaded build gives no atomicity for free.
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
     # The in-flight registry for ``aresolve``: a future per node, so gathered tasks wait on the
     # loop instead of blocking it on a thread Event.
-    _ainflight: dict[int, asyncio.Future[None]] = field(
+    _ainflight: dict[int | str, asyncio.Future[None]] = field(
         default_factory=_empty_ainflight, repr=False, compare=False
     )
 

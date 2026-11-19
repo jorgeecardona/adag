@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Two node objects with the same cache key now run their body once when threads or tasks reach
+  them together. A fan-out whose branches each build their own copy of an upstream step used to
+  run that step once per branch.
+
 ## [0.3.9] - 2026-11-19
 
 ### Added

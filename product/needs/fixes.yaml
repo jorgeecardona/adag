@@ -39,3 +39,13 @@ needs:
     proofs:
       - "test:tests/test_step.py::test_step_result_field_is_rejected_when_wired"
       - "test:tests/test_step.py::test_unhashable_graph_node_does_not_suggest_config"
+
+  - id: FX-7
+    text: >
+      When fan-out branches each build their own copy of an upstream step, the developer can run
+      the fan-out in threads and see that step run once, not once per branch.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "docs/issues/19-11-2026-in-flight-dedup-keyed-by-object-id.md"}
+    proofs:
+      - "test:tests/test_inflight_dedup.py::test_equal_nodes_built_per_branch_run_the_body_once"
+      - "test:tests/test_inflight_dedup.py::test_equal_nodes_gathered_on_the_loop_run_the_body_once"
