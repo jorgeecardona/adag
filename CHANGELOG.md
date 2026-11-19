@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2026-11-19
+
+### Deprecated
+
+- `execute(parallel=True, max_workers=N)` and `FanOutStep(max_workers=N)` warn with
+  `AdagDeprecationWarning` and are removed in 1.0. They still work. Set `runs_on = "thread"` on
+  the steps and use `aexecute(max_concurrency=N)`. See the migration page.
+
+## [0.3.13] - 2026-11-19
+
+### Added
+
+- A step can set `runs_on` to `"loop"` (the default), `"thread"` or `"process"`. A `"thread"`
+  step does not block the event loop. A `"process"` step runs its `run()` in a worker process,
+  for CPU-bound code. The workers end when `Pipeline.execute()` or `aexecute()` returns. If you
+  build a `ResolveContext` yourself, call `context.close()`.
+- `Pipeline.aexecute(max_concurrency=N)`. The default stays 1.
+- `ResolveContext.process_pool()` and `ResolveContext.close()`.
+
+### Changed
+
+- Under `aexecute()` and `aresolve_all()`, the branches of a `FanOutStep` are tasks of the same
+  run. `max_concurrency` now counts the step bodies inside them, and a branch can hold an
+  `AsyncStep`. Without a limit, the branches of one fan-out run together. Before, they ran one
+  after another in a worker thread.
+
 ## [0.3.12] - 2026-11-19
 
 ### Added

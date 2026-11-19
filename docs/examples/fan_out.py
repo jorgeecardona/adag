@@ -1,4 +1,4 @@
-"""FanOutStep: one sub-graph per key, run on a thread pool, results as a dict."""
+"""FanOutStep: one sub-graph per key, results as a dict."""
 
 from dataclasses import dataclass
 
@@ -23,7 +23,6 @@ documents = {"intro": "Hello.", "body": "A longer paragraph.", "end": "Bye."}
 sizes = FanOutStep(
     over=documents,
     factory=lambda key, text: Measure(text=text)(),
-    max_workers=3,
 )()
 
 result = Pipeline(sizes).execute(observer=NullObserver())

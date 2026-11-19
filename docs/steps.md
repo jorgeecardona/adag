@@ -55,4 +55,5 @@ When you call `pipeline.validate()`:
 ## Reserved names
 
 `observer`, `executor`, `dispatcher`, `parallel` and `max_workers` are keyword arguments of
-`execute()`, and `async_executor` of `aexecute()`. Do not use them as `InputParam` names.
+`execute()`. `observer`, `async_executor` and `max_concurrency` are keyword arguments of
+`aexecute()`. Do not use them as `InputParam` names.

@@ -1,8 +1,9 @@
-"""Async steps and parallel execution."""
+"""Async steps, and blocking steps on worker threads."""
 
 import asyncio
 import time
 from dataclasses import dataclass
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel
 
@@ -35,6 +36,7 @@ print("aexecute:", asyncio.run(Pipeline(graph).aexecute(observer=NullObserver())
 @dataclass(frozen=True)
 class Slow(Step[Value]):
     n: int
+    runs_on: ClassVar[Literal["loop", "thread", "process"]] = "thread"
 
     def run(self, n: int) -> Value:
         time.sleep(0.2)  # blocking work, for example a subprocess or a C extension
@@ -43,5 +45,5 @@ class Slow(Step[Value]):
 
 graph = Sum()(a=Slow(n=1)(), b=Slow(n=2)())
 start = time.perf_counter()
-result = Pipeline(graph).execute(observer=NullObserver(), parallel=True)
-print(f"parallel: {result}, both Slow steps at once: {time.perf_counter() - start < 0.35}")
+result = asyncio.run(Pipeline(graph).aexecute(observer=NullObserver(), max_concurrency=None))
+print(f"threads: {result}, both Slow steps at once: {time.perf_counter() - start < 0.35}")

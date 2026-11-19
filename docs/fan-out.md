@@ -8,7 +8,8 @@ same keys. Each branch is cached like any other step.
   you build the graph.
 - `template`: a [`Template`](#template) that builds each branch. Use it when the keys come from
   an upstream step.
-- `max_workers`: run branches on a thread pool of this size. The default runs them one by one.
+- `max_workers`: deprecated, removed in 1.0. Use `max_concurrency` and `runs_on` instead (see
+  [Async and parallel](async-parallel.md)).
 
 Give exactly one of `factory` and `template`.
 
@@ -70,8 +71,7 @@ Rules for the items:
 - Two keys that give the same text, such as `1` and `"1"`, raise `ValueError`.
 - `over` must resolve to a dict.
 
-A fan-out with a `template` runs in the calling process, one branch at a time or on `max_workers`
-threads. To run its branches in worker processes, see
+A fan-out with a `template` runs in the calling process. To run its branches in worker processes, see
 [Fan out over an upstream result](dispatch.md#fan-out-over-an-upstream-result) in Dispatch.
 
 ## Template

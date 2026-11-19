@@ -105,6 +105,18 @@ needs:
           mode ... but I can imagine most many of these computations are CPU bound, so that
           wouldn't work"
       - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (runs_on)"}
+    proofs:
+      - "test:tests/test_runs_on.py::test_a_step_runs_on_the_loop_by_default"
+      - "test:tests/test_runs_on.py::test_runs_on_thread_runs_the_body_in_a_worker_thread"
+      - "test:tests/test_runs_on.py::test_runs_on_thread_does_not_block_the_event_loop"
+      - "test:tests/test_runs_on.py::test_runs_on_process_runs_the_body_in_another_process_on_the_async_path"
+      - "test:tests/test_runs_on.py::test_runs_on_process_runs_the_body_in_another_process_on_the_sync_path"
+      - "test:tests/test_runs_on.py::test_runs_on_process_refuses_a_step_that_cannot_be_pickled"
+      - "test:tests/test_runs_on.py::test_an_observer_does_not_cross_into_a_process_but_does_into_a_thread"
+      - "test:tests/test_runs_on.py::test_max_concurrency_bounds_the_step_bodies_inside_fan_out_branches"
+      - "test:tests/test_runs_on.py::test_a_branch_can_be_an_async_step"
+      - "test:tests/test_runs_on.py::test_fan_out_max_workers_is_deprecated"
+      - "test:tests/test_runs_on.py::test_execute_parallel_is_deprecated"
 
   - id: FO-5
     text: >

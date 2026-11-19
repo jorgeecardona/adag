@@ -96,6 +96,8 @@ Each one warns with `AdagDeprecationWarning` and works until adag 1.0.
 | a dispatcher with only `dispatch()` | `dispatch_all(branches, context)` |
 | `adag resolve-branch --param K=V` | `--params-json` |
 | a `Step` field that is also wired as an input | wire it once, as an input |
+| `execute(parallel=True, max_workers=N)` | `runs_on = "thread"` on the steps, and `aexecute(max_concurrency=N)` |
+| `FanOutStep(max_workers=N)` | `aexecute(max_concurrency=N)`, with `runs_on` on the steps in the branches |
 
 ## Deprecation warnings
 
