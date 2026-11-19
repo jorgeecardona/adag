@@ -4,6 +4,9 @@ A dispatcher decides where fan-out branches run. Workers write each result to th
 under the branch content hash, and the main process reads it back by that hash. Only the job
 description (`BranchJob`) crosses to the worker.
 
+Dispatch is the only place where adag runs work outside the calling process. Everything else
+(steps, `BatchStep`, thread pools, `aresolve_all`) runs in that process.
+
 ```mermaid
 sequenceDiagram
     participant M as Main process
