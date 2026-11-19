@@ -49,6 +49,7 @@ from adag.deferred import (
     gather_first_failure,
     observing,
 )
+from adag.deprecation import warn_deprecated
 from adag.hashing import UnhashableValueError
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
@@ -419,8 +420,10 @@ class Pipeline(Generic[Out]):
             dispatcher: where fan-out branches run. Default: ``InlineDispatcher`` (this process).
                 Pass a ``SubprocessDispatcher`` or a ``RemoteDispatcher`` to run them elsewhere.
             parallel: run the independent steps of each level on a thread pool. Use it for steps
-                that block on I/O. ``RunTreeObserver`` then shows a flat tree.
-            max_workers: thread pool size for ``parallel``. Default: one thread per step of the level.
+                that block on I/O. ``RunTreeObserver`` then shows a flat tree. Deprecated, removed
+                in 1.0: set ``runs_on = "thread"`` on the steps and use ``aexecute``.
+            max_workers: thread pool size for ``parallel``. Default: one thread per step of the
+                level. Deprecated with ``parallel``: use ``aexecute(max_concurrency=)``.
             **params: one value per ``InputParam``.
 
         The five keyword names above are reserved: do not use them as ``InputParam`` names.
@@ -428,6 +431,11 @@ class Pipeline(Generic[Out]):
         Raises:
             ValueError: a required ``InputParam`` has no value.
         """
+        if parallel or max_workers is not None:
+            warn_deprecated(
+                "Pipeline.execute(parallel=, max_workers=)",
+                'steps with runs_on = "thread" and Pipeline.aexecute(max_concurrency=)',
+            )
         missing = [p.name for p in self._inputs if p.name not in params and not p.has_default]
         if missing:
             raise ValueError(f"Missing parameters: {missing}")

@@ -4,6 +4,7 @@ import asyncio
 import os
 import threading
 import time
+import warnings
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -11,6 +12,7 @@ import pytest
 from pydantic import BaseModel
 
 from adag import (
+    AdagDeprecationWarning,
     AsyncStep,
     FanOutStep,
     NullObserver,
@@ -301,3 +303,29 @@ def test_a_failing_branch_raises_as_it_is() -> None:
     fan = FanOutStep(over={str(i): i for i in range(4)}, factory=lambda key, n: Boom(n=n)())()
     with pytest.raises(RuntimeError, match="branch two failed"):
         asyncio.run(Pipeline(fan).aexecute(observer=NullObserver(), max_concurrency=4))
+
+
+def test_fan_out_max_workers_is_deprecated() -> None:
+    with pytest.warns(AdagDeprecationWarning, match=r"FanOutStep\(max_workers=\).*1\.0"):
+        FanOutStep(over={"a": 1}, factory=lambda key, n: Slow(n=n)(), max_workers=2)
+
+
+def test_wiring_a_fan_out_does_not_warn_a_second_time() -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        fan = FanOutStep(over={"a": 1}, factory=lambda key, n: Slow(n=n)(), max_workers=2)
+        fan()
+    assert [w.category for w in caught] == [AdagDeprecationWarning]
+
+
+def test_execute_parallel_is_deprecated() -> None:
+    with pytest.warns(AdagDeprecationWarning, match=r"parallel.*1\.0.*max_concurrency"):
+        Pipeline(Slow(n=1)()).execute(observer=NullObserver(), parallel=True)
+    with pytest.warns(AdagDeprecationWarning, match="max_workers"):
+        Pipeline(Slow(n=1)()).execute(observer=NullObserver(), max_workers=2)
+
+
+def test_execute_without_parallel_does_not_warn() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", AdagDeprecationWarning)
+        Pipeline(Slow(n=1)()).execute(observer=NullObserver())

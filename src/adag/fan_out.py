@@ -38,7 +38,7 @@ from typing import Any, ClassVar, Generic, TypeVar
 import structlog
 
 from adag.deferred import BranchRef, InlineDispatcher, ResolveContext, gather_first_failure
-from adag.deprecation import AdagDeprecationWarning
+from adag.deprecation import AdagDeprecationWarning, warn_deprecated
 from adag.hashing import encode_value
 from adag.key import Expansion
 from adag.step import Step, StepResult
@@ -97,6 +97,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             A branch key is the key of the sub-graph built over that item, so an upstream that
             returns the same items again finds every branch in the cache.
         max_workers: run branches in-process on this many threads. Ignored by a dispatcher.
+            Deprecated, removed in 1.0: use ``max_concurrency`` and ``runs_on``.
         instance_label: overrides the visualization label.
         pipeline_module: file path or module name a dispatch worker imports.
         fan_out_var: module-level variable that holds this fan-out's ``StepResult``.
@@ -128,6 +129,13 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     template: Template | None = None
 
     def __post_init__(self) -> None:
+        if self.max_workers is not None:
+            warn_deprecated(
+                "FanOutStep(max_workers=)",
+                "Pipeline.aexecute(max_concurrency=) or aresolve_all(max_concurrency=), "
+                'with runs_on = "thread" on the steps in the branches',
+                stacklevel=3,
+            )
         if (self.factory is None) == (self.template is None):
             raise TypeError("FanOutStep needs exactly one of factory= or template=.")
         if isinstance(self.over, StepResult) and self.template is None:
@@ -153,7 +161,9 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             raise TypeError(_FACTORY_CANNOT_BE_WIRED)
         if "over" in kwargs and isinstance(self.over, StepResult):
             raise TypeError("FanOutStep got over= twice: as a field and as an input.")
-        step = dataclasses.replace(self, over={})
+        with warnings.catch_warnings():  # the warning was given when the step was made
+            warnings.simplefilter("ignore", AdagDeprecationWarning)
+            step = dataclasses.replace(self, over={})
         return StepResult(step=step, sources={**kwargs, "over": wired})
 
     def execute(self, context: ResolveContext, /, **kwargs: Any) -> dict[K, V]:

@@ -12,10 +12,14 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import pytest
 from pydantic import BaseModel
 
 from adag import AsyncStep, FanOutStep, NullObserver, Pipeline, Step
 from adag.deferred import ResolveContext
+
+# These tests cover max_workers and parallel, which are deprecated and removed in 1.0.
+pytestmark = pytest.mark.filterwarnings("ignore::adag.AdagDeprecationWarning")
 
 
 class Counted(BaseModel):

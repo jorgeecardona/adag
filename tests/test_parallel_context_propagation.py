@@ -6,9 +6,13 @@ level runs inline in the calling thread and needs no copy).
 from contextvars import ContextVar
 from dataclasses import dataclass
 
+import pytest
 from pydantic import BaseModel
 
 from adag import NullObserver, Pipeline, Step
+
+# These tests cover max_workers and parallel, which are deprecated and removed in 1.0.
+pytestmark = pytest.mark.filterwarnings("ignore::adag.AdagDeprecationWarning")
 
 _LEVEL_MARKER: ContextVar[str] = ContextVar("level_marker", default="unset")
 

@@ -3,9 +3,13 @@
 import threading
 from dataclasses import dataclass, field
 
+import pytest
 from pydantic import BaseModel
 
 from adag import Pipeline, RunTreeObserver, Step
+
+# These tests cover max_workers and parallel, which are deprecated and removed in 1.0.
+pytestmark = pytest.mark.filterwarnings("ignore::adag.AdagDeprecationWarning")
 
 
 class Result(BaseModel):

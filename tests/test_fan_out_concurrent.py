@@ -15,6 +15,9 @@ from pydantic import BaseModel
 
 from adag import FanOutStep, NullObserver, Pipeline, Step
 
+# These tests cover max_workers and parallel, which are deprecated and removed in 1.0.
+pytestmark = pytest.mark.filterwarnings("ignore::adag.AdagDeprecationWarning")
+
 _MARKER: ContextVar[str] = ContextVar("fan_out_marker", default="unset")
 
 
