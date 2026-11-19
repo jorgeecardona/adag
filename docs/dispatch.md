@@ -65,6 +65,7 @@ ran in other processes: True
 | `poll_interval_seconds` | 5.0 | time between status calls |
 | `retry_delay_seconds` | 0.0 | wait before a retry |
 | `result_grace_seconds` | 5.0 | wait for the result after a job SUCCEEDED |
+| `missing_status_polls` | 3 | polls that may leave a job out of `status()` before it counts as FAILED |
 
 `SubprocessDispatcher()` with no policy polls every 0.05 s. If you pass a policy, set
 `poll_interval_seconds=0.05` yourself, or local branches are polled every 5 s.
@@ -76,7 +77,8 @@ the main process (`--expect-hash`). That means the worker runs different code. I
 
 `RemoteDispatcher(backend)` runs branches on any job scheduler. It checks the cache, submits up
 to `max_concurrent` jobs, polls them, retries, applies timeouts, and cancels live jobs on an
-error or Ctrl-C. A backend has three methods:
+error or Ctrl-C. On every poll it also looks in the cache. A branch whose result is already there
+is done, even if its job is queued, running or failed, and the dispatcher cancels that job. A backend has three methods:
 
 ```python
 class JobBackend(Protocol):
@@ -93,6 +95,8 @@ Rules for a backend:
 3. Turn off the scheduler's own retries. `RemoteDispatcher` retries, and the attempts multiply.
 4. Answer `status` for all ids in one call where the scheduler allows it.
 5. Give the job access to the cache: a shared filesystem, or the store at `job.store_url`.
+6. Report every submitted job in `status`, until it is SUCCEEDED or FAILED. A job left out of the
+   answer for `missing_status_polls` polls in a row counts as FAILED and is cancelled.
 
 `Resources(cpus=, memory_mb=, gpus=)` is passed on every `BranchJob`. `None` means the
 scheduler's default.
@@ -222,5 +226,8 @@ class SlurmBackend:
 - A shared upstream step that is not cached yet is computed by every worker that needs it.
   Run the pipeline up to that step first, or cache it before you dispatch.
 - If the main process crashes, jobs that are still running are submitted again on the rerun.
+  If an old job finishes first, the rerun finds its result in the cache and cancels the new job.
+- A result that appears after the dispatcher has decided a branch failed is too late. The run
+  raises `FanOutBranchError`, and the next run finds the result in the cache.
 - A worker's stderr reaches you only through `JobStatus.detail`.
 - `MemoryCacheStore`, a disk local to one machine, and SQLite on NFS cannot be the shared cache.

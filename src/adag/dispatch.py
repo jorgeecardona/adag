@@ -55,6 +55,8 @@ class BranchPolicy:
     from submit while the job is PENDING; a batch queue can hold a job for hours.
     ``result_grace_seconds`` is how long to wait for the result to appear after a job
     SUCCEEDED, because a network filesystem can show a new file late.
+    ``missing_status_polls`` is how many polls in a row may leave a job out of the backend's
+    ``status()`` answer before the job counts as FAILED, so the retry policy applies.
     """
 
     max_retries: int = 0
@@ -65,6 +67,7 @@ class BranchPolicy:
     # Added in 0.2.11. Kept after the first-release fields so BranchPolicy(1, 60, 2.0) still means
     # (max_retries, timeout_seconds, poll_interval_seconds).
     queue_timeout_seconds: float | None = None
+    missing_status_polls: int = 3
 
 
 EXIT_BAD_BRANCH = 2
@@ -187,6 +190,7 @@ class _LiveJob:
     submitted_at: float
     running_since: float | None = None
     succeeded_at: float | None = None
+    missing_polls: int = 0
 
 
 @dataclass(frozen=True)
@@ -267,11 +271,12 @@ class RemoteDispatcher:
         now = self._clock()
         queue: deque[_Queued] = deque()
         for ref, sub in branches:
-            if sub.is_cached(store, params=context.params):
+            loaded = sub.try_load(store, params=context.params)
+            if loaded is not None:
                 send_event(
                     context.observer, "branch.cache_hit", {"key": ref.key, "hash": ref.branch_hash}
                 )
-                results[ref.key] = sub.load(store, params=context.params)
+                results[ref.key] = loaded
             else:
                 queue.append(_Queued(ref, sub, 1, now))
 
@@ -279,6 +284,12 @@ class RemoteDispatcher:
 
         def fail(job_id: str, job: _LiveJob, detail: str, exit_code: int | None) -> None:
             del live[job_id]
+            # The result may be in the cache already: an old job from a crashed run finished, or
+            # this job wrote it and then failed. A result that appears after this check is too late.
+            loaded = job.sub.try_load(store, params=context.params)
+            if loaded is not None:
+                results[job.ref.key] = loaded
+                return
             retryable = exit_code != EXIT_BAD_BRANCH and job.attempt <= self.policy.max_retries
             if retryable:
                 ready_at = self._clock() + self.policy.retry_delay_seconds
@@ -294,8 +305,17 @@ class RemoteDispatcher:
                     statuses = self.backend.status(list(live))
                     now = self._clock()
                     for job_id, job in list(live.items()):
-                        status = statuses.get(job_id, JobStatus(JobState.PENDING))
-                        self._advance(job_id, job, status, now, store, live, results, fail, context)
+                        self._advance(
+                            job_id,
+                            job,
+                            statuses.get(job_id),
+                            now,
+                            store,
+                            live,
+                            results,
+                            fail,
+                            context,
+                        )
                 if queue or live:
                     self._sleep(self.policy.poll_interval_seconds)
         finally:
@@ -338,7 +358,7 @@ class RemoteDispatcher:
         self,
         job_id: str,
         job: _LiveJob,
-        status: JobStatus,
+        status: JobStatus | None,
         now: float,
         store: CacheStore,
         live: dict[str, _LiveJob],
@@ -346,13 +366,27 @@ class RemoteDispatcher:
         fail: Callable[[str, _LiveJob, str, int | None], None],
         context: ResolveContext,
     ) -> None:
-        """Move one live job forward from its latest status."""
+        """Move one live job forward from its latest status, or ``None`` when it is not reported.
+
+        The cache comes first: a result already there ends the branch, whatever the job reports.
+        """
         policy = self.policy
+        loaded = job.sub.try_load(store, params=context.params)
+        if loaded is not None:
+            del live[job_id]
+            results[job.ref.key] = loaded
+            if status is None or status.state in (JobState.PENDING, JobState.RUNNING):
+                self.backend.cancel([job_id])
+            return
+        if status is None:
+            job.missing_polls += 1
+            if job.missing_polls >= policy.missing_status_polls:
+                self.backend.cancel([job_id])
+                detail = f"the backend did not report job {job_id} in {job.missing_polls} polls"
+                fail(job_id, job, detail, None)
+            return
+        job.missing_polls = 0
         if status.state is JobState.SUCCEEDED:
-            if job.sub.is_cached(store, params=context.params):
-                del live[job_id]
-                results[job.ref.key] = job.sub.load(store, params=context.params)
-                return
             if job.succeeded_at is None:
                 job.succeeded_at = now
             if now - job.succeeded_at >= policy.result_grace_seconds:

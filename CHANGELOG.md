@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `StepResult.try_load(where)` returns the cached result or `None` in one read.
+
 ### Fixed
 
+- `RemoteDispatcher` no longer waits forever for a job that the backend leaves out of `status()`.
+  After `BranchPolicy.missing_status_polls` polls (default 3) the job counts as failed, so the
+  retry policy applies.
+- `RemoteDispatcher` looks in the cache on every poll and when a job fails or times out. A result
+  that an older job wrote no longer ends in `FanOutBranchError`, and the unneeded job is cancelled.
 - Two node objects with the same cache key now run their body once when threads or tasks reach
   them together. A fan-out whose branches each build their own copy of an upstream step used to
   run that step once per branch.

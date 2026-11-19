@@ -87,6 +87,13 @@ class FakeJobBackend:
     status_calls: int = 0
     cancelled: list[str] = field(default_factory=list[str])
     interrupt_on_status: int | None = None
+    # A guard for a dispatcher that polls forever: fail the test instead of hanging it.
+    max_status_calls: int = 1000
+    # (key, attempt) pairs whose job the scheduler never reports: status() leaves them out.
+    unreported: frozenset[tuple[str, int]] = frozenset()
+    # status call number -> branch key: another process writes that branch's result just before
+    # that call, as an old job from a crashed run would.
+    write_before_status: dict[int, str] = field(default_factory=dict[int, str])
     _jobs: dict[str, _FakeJob] = field(default_factory=dict[str, _FakeJob])
 
     def submit(self, job: BranchJob) -> str:
@@ -99,11 +106,18 @@ class FakeJobBackend:
 
     def status(self, job_ids: Sequence[str]) -> Mapping[str, JobStatus]:
         self.status_calls += 1
+        assert self.status_calls <= self.max_status_calls, "the dispatcher polls forever"
         if self.interrupt_on_status == self.status_calls:
             raise KeyboardInterrupt
+        key_to_write = self.write_before_status.get(self.status_calls)
+        if key_to_write is not None:
+            job = next(job for job in self.submitted if job.branch.key == key_to_write)
+            self._run_worker(job)
         out: dict[str, JobStatus] = {}
         for job_id in job_ids:
             fake = self._jobs[job_id]
+            if (fake.job.branch.key, fake.job.attempt) in self.unreported:
+                continue
             state = fake.states[min(fake.polls, len(fake.states) - 1)]
             fake.polls += 1
             if state is S and not fake.done:
@@ -254,3 +268,46 @@ def test_rerun_after_partial_failure_submits_only_failed_keys(pipeline: Pipeline
     result = pipeline.execute(dispatcher=_dispatcher(backend, FakeClock()))
     assert _values(result) == {"a": 2, "b": 4, "c": 6}
     assert [job.branch.key for job in backend.submitted] == ["b"]
+
+
+def test_a_job_the_backend_never_reports_fails_after_a_few_polls(pipeline: Pipeline[Any]):
+    backend = FakeJobBackend(
+        script={"a": [[P]]}, unreported=frozenset({("a", 1)}), max_status_calls=50
+    )
+    with pytest.raises(FanOutBranchError, match="did not report"):
+        pipeline.execute(
+            dispatcher=_dispatcher(backend, FakeClock(), missing_status_polls=3),
+        )
+    assert backend.status_calls == 3
+    assert "job-1" in backend.cancelled
+
+
+def test_a_job_the_backend_stopped_reporting_is_retried(pipeline: Pipeline[Any]):
+    backend = FakeJobBackend(
+        script={"a": [[P], [S]]}, unreported=frozenset({("a", 1)}), max_status_calls=50
+    )
+    result = pipeline.execute(dispatcher=_dispatcher(backend, FakeClock(), max_retries=1))
+    assert _values(result)["a"] == 2
+    assert [job.attempt for job in backend.submitted if job.branch.key == "a"] == [1, 2]
+
+
+def test_a_failing_job_succeeds_when_another_process_wrote_the_result(pipeline: Pipeline[Any]):
+    """An old job from a crashed run finishes while the new job fails: the result is in the cache."""
+    backend = FakeJobBackend(script={"a": [[R, F]]}, write_before_status={2: "a"})
+    result = pipeline.execute(dispatcher=_dispatcher(backend, FakeClock()))
+    assert _values(result)["a"] == 2
+
+
+def test_a_queue_timeout_succeeds_when_the_result_is_already_cached(pipeline: Pipeline[Any]):
+    backend = FakeJobBackend(script={"a": [[P]]}, write_before_status={6: "a"})
+    result = pipeline.execute(dispatcher=_dispatcher(backend, FakeClock(), queue_timeout_seconds=5))
+    assert _values(result)["a"] == 2
+    assert "job-1" in backend.cancelled  # the job that was no longer needed
+
+
+def test_a_result_that_arrives_after_the_failure_is_decided_still_fails(pipeline: Pipeline[Any]):
+    """Branch a is already failed when its result appears. The run still reports a as failed."""
+    backend = FakeJobBackend(script={"a": [[F]], "b": [[R, R, S]]}, write_before_status={2: "a"})
+    with pytest.raises(FanOutBranchError) as raised:
+        pipeline.execute(dispatcher=_dispatcher(backend, FakeClock()))
+    assert list(raised.value.failed) == ["a"]

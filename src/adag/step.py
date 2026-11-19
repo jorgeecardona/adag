@@ -1093,6 +1093,18 @@ class StepResult(Deferred[Out]):
         store.set(key, new_text)
         store.set(key + ".done", datetime.now(UTC).isoformat())
 
+    def try_load(
+        self, where: Path | CacheStore, params: dict[str, Any] | None = None
+    ) -> Out | None:
+        """Return the cached result, or ``None`` when there is none or it is invalid.
+
+        One read. A check followed by ``load`` can raise when another writer replaces the entry
+        in between; this cannot.
+        """
+        if self.step.caches_to_path():
+            return self._try_load_path(_path_root(where, self.step), params)
+        return self._try_load(where, params=params)
+
     def load(self, where: Path | CacheStore, params: dict[str, Any] | None = None) -> Out:
         """Load the cached result from a cache directory or a ``CacheStore``.
 
