@@ -70,6 +70,9 @@ class BranchPolicy:
     missing_status_polls: int = 3
 
 
+LOG_TAIL_CHARS = 2000
+"""How much of a failed job's output goes into the ``FanOutBranchError`` detail."""
+
 EXIT_BAD_BRANCH = 2
 """Worker exit code for a bad branch reference or a hash mismatch. Never retried."""
 
@@ -153,6 +156,9 @@ class JobBackend(Protocol):
     ``RemoteDispatcher`` owns the cache check, retries, timeouts and cancel. A backend only
     starts jobs and reports on them. It must turn off the scheduler's own retries, or the
     attempts multiply.
+
+    A backend may also have ``find``, ``logs`` and ``close`` (see ``SupportsFind``,
+    ``SupportsLogs`` and ``SupportsClose``). The dispatcher uses each one that exists.
     """
 
     def submit(self, job: BranchJob) -> str:
@@ -165,6 +171,43 @@ class JobBackend(Protocol):
 
     def cancel(self, job_ids: Sequence[str]) -> None:
         """Stop the jobs. Jobs already finished are ignored."""
+        ...
+
+
+class SupportsFind(Protocol):
+    """Optional ``JobBackend`` method: look a job up by name, so a rerun can reattach to it.
+
+    ``RemoteDispatcher`` finds this by name (``getattr``), so a backend that has only
+    ``submit``, ``status`` and ``cancel`` keeps working. A backend that has ``find`` must submit
+    each job under ``BranchJob.name()``.
+    """
+
+    def find(self, name: str) -> str | None:
+        """Return the id of the job submitted under ``name``, or ``None`` if the backend has none.
+
+        A job that has ended may still be returned. The dispatcher asks ``status`` and reattaches
+        only to a job that is PENDING or RUNNING.
+        """
+        ...
+
+
+class SupportsLogs(Protocol):
+    """Optional ``JobBackend`` method: the output of a job, shown when its branch fails."""
+
+    def logs(self, job_id: str) -> str | None:
+        """Return the job's output (the end is enough), or ``None`` when there is none."""
+        ...
+
+
+class SupportsClose(Protocol):
+    """Optional ``JobBackend`` method: release what the backend created for the run."""
+
+    def close(self) -> None:
+        """Stop servers or connections the backend started. Called once per ``dispatch_all``.
+
+        It must be safe to call twice, and the backend must work again if a later
+        ``dispatch_all`` submits more jobs.
+        """
         ...
 
 
@@ -210,6 +253,12 @@ class RemoteDispatcher:
     ``policy.max_retries``, and cancels every live job when it stops early (an error, a
     timeout, or Ctrl-C). A job that exits with ``EXIT_BAD_BRANCH`` is not retried.
 
+    The backend may have the optional methods ``find``, ``logs`` and ``close``:
+    ``find`` lets a rerun reattach to a job that an earlier run left alive instead of submitting
+    a duplicate, ``logs`` adds the end of a failed job's output to the error, and ``close`` is
+    called once when ``dispatch_all`` ends. A branch's own ``resources`` (set on its
+    ``FanOutStep``) replace the dispatcher's ``resources`` for that branch.
+
     When the pipeline has a ``store``, pass ``store_url`` (see ``store_from_url``): a store
     object cannot cross to a worker, so the worker opens the same store from the URL.
 
@@ -251,8 +300,6 @@ class RemoteDispatcher:
             FanOutBranchError: one or more branches failed. Results of the others are in
                 the cache, so a rerun submits only the failed keys.
         """
-        from adag.fan_out import FanOutBranchError
-
         store = context.result_store()
         if store is None:
             raise ValueError(
@@ -263,6 +310,32 @@ class RemoteDispatcher:
                 f"{type(self).__name__} needs store_url= when the pipeline has a store, so "
                 "workers can open the same store."
             )
+        try:
+            return self._dispatch(branches, context, store)
+        finally:
+            self._close_backend()
+
+    def _close_backend(self) -> None:
+        """Call the backend's optional ``close``. A failing ``close`` is logged, not raised."""
+        close = getattr(self.backend, "close", None)
+        if close is None:
+            return
+        try:
+            close()
+        except Exception as error:
+            logger.warning(
+                "backend.close_failed", error_type=type(error).__name__, error=str(error)
+            )
+
+    def _dispatch(
+        self,
+        branches: Sequence[tuple[BranchRef, StepResult[Any]]],
+        context: ResolveContext,
+        store: CacheStore,
+    ) -> dict[str, Any]:
+        """Run ``dispatch_all`` after its checks: cache hits, submits, polls, retries."""
+        from adag.fan_out import FanOutBranchError
+
         cache_dir = str(context.cache_dir) if context.store is None else None
         payload = params_json(context.params)
 
@@ -295,7 +368,7 @@ class RemoteDispatcher:
                 ready_at = self._clock() + self.policy.retry_delay_seconds
                 queue.append(_Queued(job.ref, job.sub, job.attempt + 1, ready_at))
                 return
-            failed[job.ref.key] = detail
+            failed[job.ref.key] = self._with_log_tail(job_id, detail)
             context.observer.on_fan_out_branch_failed(job.ref.key, detail)
 
         try:
@@ -326,6 +399,62 @@ class RemoteDispatcher:
             raise FanOutBranchError(succeeded=sorted(results), failed=failed)
         return results
 
+    def _with_log_tail(self, job_id: str, detail: str) -> str:
+        """Add the end of the job's output to ``detail`` when the backend has ``logs``."""
+        logs = getattr(self.backend, "logs", None)
+        if logs is None:
+            return detail
+        try:
+            text = logs(job_id)
+        except Exception as error:
+            logger.warning("backend.logs_failed", error_type=type(error).__name__, error=str(error))
+            return detail
+        tail = (text or "").strip()[-LOG_TAIL_CHARS:]
+        if not tail or tail in detail:
+            return detail
+        return f"{detail}\nlast output of job {job_id}:\n{tail}"
+
+    def _reattach(
+        self, item: _Queued, payload: str, cache_dir: str | None, context: ResolveContext
+    ) -> tuple[str, int] | None:
+        """Find a job of an earlier run for this branch that is still PENDING or RUNNING.
+
+        A job name holds the attempt number, so this asks for every attempt the policy allows and
+        takes the latest one that is alive. Returns ``(job_id, attempt)``, or ``None`` when the
+        backend has no ``find``, knows no live job, or fails: the caller then submits a new job.
+        """
+        find = getattr(self.backend, "find", None)
+        if find is None:
+            return None
+        known: dict[str, int] = {}
+        try:
+            for attempt in range(1, self.policy.max_retries + 2):
+                name = BranchJob(item.ref, payload, cache_dir, attempt).name()
+                job_id = find(name)
+                if job_id is not None:
+                    known[job_id] = attempt
+            if not known:
+                return None
+            statuses = self.backend.status(list(known))
+        except Exception as error:
+            logger.warning("backend.find_failed", error_type=type(error).__name__, error=str(error))
+            return None
+        alive = [
+            (attempt, job_id)
+            for job_id, attempt in known.items()
+            if (status := statuses.get(job_id)) is not None
+            and status.state in (JobState.PENDING, JobState.RUNNING)
+        ]
+        if not alive:
+            return None
+        attempt, job_id = max(alive)
+        send_event(
+            context.observer,
+            "branch.reattach",
+            {"key": item.ref.key, "attempt": attempt, "job_id": job_id},
+        )
+        return job_id, attempt
+
     def _submit_ready(
         self,
         queue: deque[_Queued],
@@ -343,9 +472,13 @@ class RemoteDispatcher:
             if item.ready_at > now:
                 queue.append(item)
                 continue
-            job = BranchJob(
-                item.ref, payload, cache_dir, item.attempt, self.resources, self.store_url
-            )
+            if item.attempt == 1:
+                found = self._reattach(item, payload, cache_dir, context)
+                if found is not None:
+                    live[found[0]] = _LiveJob(item.ref, item.sub, found[1], now)
+                    continue
+            resources = item.ref.resources if item.ref.resources is not None else self.resources
+            job = BranchJob(item.ref, payload, cache_dir, item.attempt, resources, self.store_url)
             send_event(
                 context.observer,
                 "branch.dispatch",
@@ -414,11 +547,18 @@ class LocalJobBackend:
     """Run each branch job as a local ``python -m adag resolve-branch`` process.
 
     stderr goes to a temporary file, so a chatty worker cannot block on a full pipe. Its last
-    500 characters become the ``detail`` of a FAILED status.
+    500 characters become the ``detail`` of a FAILED status. ``logs`` returns the last
+    ``LOG_KEEP_CHARS`` characters of a failed job's stderr, until ``close``.
+
+    It has no ``find``: the jobs live in this Python process, so a restarted run knows none of
+    them. ``find`` matters for a scheduler that outlives the dispatcher.
     """
+
+    LOG_KEEP_CHARS = 8000
 
     def __init__(self) -> None:
         self._procs: dict[str, tuple[subprocess.Popen[bytes], IO[bytes]]] = {}
+        self._failed_logs: dict[str, str] = {}
         self._next = 0
 
     def submit(self, job: BranchJob) -> str:
@@ -446,9 +586,10 @@ class LocalJobBackend:
                 statuses[job_id] = JobStatus(JobState.SUCCEEDED, exit_code=0)
             else:
                 stderr.seek(0)
-                tail = stderr.read().decode(errors="replace").strip()[-500:]
+                text = stderr.read().decode(errors="replace").strip()
+                self._failed_logs[job_id] = text[-self.LOG_KEEP_CHARS :]
                 statuses[job_id] = JobStatus(
-                    JobState.FAILED, tail or f"exit code {code}", exit_code=code
+                    JobState.FAILED, text[-500:] or f"exit code {code}", exit_code=code
                 )
             stderr.close()
             del self._procs[job_id]
@@ -466,6 +607,15 @@ class LocalJobBackend:
             except subprocess.TimeoutExpired:
                 proc.kill()
             stderr.close()
+
+    def logs(self, job_id: str) -> str | None:
+        """The end of stderr of a job that failed, or ``None`` (running, succeeded, unknown)."""
+        return self._failed_logs.get(job_id)
+
+    def close(self) -> None:
+        """Stop jobs that are still running and forget the saved logs."""
+        self.cancel(list(self._procs))
+        self._failed_logs.clear()
 
 
 class SubprocessDispatcher(RemoteDispatcher):

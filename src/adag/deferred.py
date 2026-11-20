@@ -29,6 +29,7 @@ from adag.deprecation import AdagDeprecationWarning
 
 if TYPE_CHECKING:
     from adag.cache_store import CacheStore
+    from adag.dispatch import Resources
     from adag.step import Step, StepResult
 
 T = TypeVar("T")
@@ -347,12 +348,16 @@ class BranchRef:
     branch ``StepResult``'s content hash: the cache key the worker writes to and
     the main process polls/loads from. ``params`` are the run's ``InputParam``
     values, which the worker needs to resolve to the same hash.
+
+    ``resources`` is what this fan-out asks the scheduler for. ``None`` means the dispatcher's
+    own default. It is not part of the branch hash.
     """
 
     pipeline_module: str
     fan_out_var: str
     key: str
     branch_hash: str
+    resources: Resources | None = None
 
 
 class BranchDispatcher(Protocol):

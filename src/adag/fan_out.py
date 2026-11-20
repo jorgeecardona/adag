@@ -39,6 +39,7 @@ import structlog
 
 from adag.deferred import BranchRef, InlineDispatcher, ResolveContext, gather_first_failure
 from adag.deprecation import AdagDeprecationWarning, warn_deprecated
+from adag.dispatch import Resources
 from adag.hashing import encode_value
 from adag.key import Expansion
 from adag.step import Step, StepResult
@@ -101,6 +102,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         instance_label: overrides the visualization label.
         pipeline_module: file path or module name a dispatch worker imports.
         fan_out_var: module-level variable that holds this fan-out's ``StepResult``.
+        resources: what each dispatched branch asks the scheduler for. It replaces the
+            dispatcher's ``resources`` for this fan-out. It is not part of any cache key.
     """
 
     _orchestrates: ClassVar[bool] = True
@@ -127,6 +130,9 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     fan_out_var: str = field(default="")
     # Last, so positional FanOutStep(over, factory, max_workers, ...) from 0.1 still binds.
     template: Template | None = None
+    # What each dispatched branch asks the scheduler for; None keeps the dispatcher's default.
+    # A deployment setting, so it is not part of any key (content_hash ignores fields).
+    resources: Resources | None = None
 
     def __post_init__(self) -> None:
         if self.max_workers is not None:
@@ -324,7 +330,17 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
                     f"FanOutStep branch {key!r} has no content hash (blocked input); cannot dispatch."
                 )
             prepared.append(
-                (key, sub, BranchRef(self.pipeline_module, self.fan_out_var, str(key), branch_hash))
+                (
+                    key,
+                    sub,
+                    BranchRef(
+                        self.pipeline_module,
+                        self.fan_out_var,
+                        str(key),
+                        branch_hash,
+                        self.resources,
+                    ),
+                )
             )
 
         if not prepared:
