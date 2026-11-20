@@ -412,6 +412,8 @@ class RemoteDispatcher:
         tail = (text or "").strip()[-LOG_TAIL_CHARS:]
         if not tail or tail in detail:
             return detail
+        if tail.endswith(detail.strip()):
+            return tail  # the detail is the end of the output: show the longer text once
         return f"{detail}\nlast output of job {job_id}:\n{tail}"
 
     def _reattach(

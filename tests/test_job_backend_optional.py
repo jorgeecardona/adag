@@ -192,6 +192,15 @@ def test_output_already_in_the_detail_is_not_repeated(pipeline: Pipeline[Any]):
     assert raised.value.failed["a"] == "boom"
 
 
+def test_a_detail_that_ends_the_output_is_replaced_by_the_longer_text(pipeline: Pipeline[Any]):
+    backend = SchedulerBackend(script={"a": [[F]]}, log_text={"a": "context line\nboom"})
+
+    with pytest.raises(FanOutBranchError) as raised:
+        pipeline.execute(dispatcher=_dispatcher(backend, FakeClock()))
+
+    assert raised.value.failed["a"] == "context line\nboom"
+
+
 def test_the_observer_gets_the_short_detail(pipeline: Pipeline[Any]):
     seen: list[str] = []
 
