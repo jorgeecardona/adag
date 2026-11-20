@@ -7,7 +7,9 @@ folder whose content is part of the cache key).
   CLI parses `--param` as `T`.
 - `InputParam[T].with_default("name", value)`: optional.
 - `FileSource(path)`: the file's text. Its content is hashed, so editing the file recomputes.
-- `LinesSource(path)`, `JSONLSource(path)`: the file as lines, or as parsed JSON lines.
+- `LinesSource(path)`, `JSONLSource(path, RecordType)`: the file as lines, or as JSON lines parsed
+  into `RecordType` (a Pydantic model; for untyped lines use `LinesSource` and `json.loads`).
+- A path is a `str` or a `pathlib.Path`. The source stores it as a `str`.
 - `DirSource(path, pattern)`: a folder; adding, removing or editing a matching file recomputes.
 - A `FileSource`, `LinesSource` or `JSONLSource` on a directory raises `IsADirectoryError`. The
   message names the source and the path. Use `DirSource` for a folder.

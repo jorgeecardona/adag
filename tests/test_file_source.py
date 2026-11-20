@@ -151,3 +151,29 @@ def test_file_source_on_a_directory_names_the_source(path: str) -> None:
     """A directory path raises an error naming the FileSource, not a bare OS error (#6)."""
     with pytest.raises(IsADirectoryError, match=r"FileSource\(path=.*DirSource"):
         FileSource(path).content_hash()
+
+
+# A pathlib.Path is accepted and stored as str, so the hash and the cache key do not change (#16)
+
+
+class _Record(BaseModel):
+    n: int
+
+
+def test_sources_accept_a_path_and_store_a_str(tmp_path: Path):
+    from adag.dir_source import DirSource
+
+    file = tmp_path / "data.jsonl"
+    file.write_text('{"n": 1}\n')
+    sources = [
+        FileSource(file),
+        LinesSource(file),
+        JSONLSource(file, _Record),
+        DirSource(tmp_path),
+    ]
+    assert [type(s.path) for s in sources] == [str, str, str, str]
+    assert FileSource(file) == FileSource(str(file))
+    assert FileSource(file).content_hash() == FileSource(str(file)).content_hash()
+    assert JSONLSource(file, _Record).resolve(ResolveContext(cache_dir=tmp_path, params={})) == [
+        _Record(n=1)
+    ]

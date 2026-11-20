@@ -45,7 +45,7 @@ from adag.hashing import file_hash
 # Read side: content-addressable leaf Deferreds
 
 
-def _existing_path_hash(path: str, source: str) -> str | None:
+def _existing_path_hash(path: str | os.PathLike[str], source: str) -> str | None:
     """Hash the file at ``path`` by content, or ``None`` if it doesn't exist.
 
     Shared by every read-leaf below so the hashing convention stays in one
@@ -69,7 +69,11 @@ def _existing_path_hash(path: str, source: str) -> str | None:
 class FileSource(Deferred[str]):
     """Reads the file's full text content into a single string."""
 
-    path: str
+    path: str | os.PathLike[str]
+
+    def __post_init__(self) -> None:
+        # Store a str whatever was passed, so equality and the cache key do not depend on the type (#16).
+        object.__setattr__(self, "path", os.fspath(self.path))
 
     def content_hash(self) -> str | None:
         return _existing_path_hash(self.path, type(self).__name__)
@@ -88,7 +92,11 @@ class LinesSource(Deferred[list[str]]):
     ``JSONLSource`` if you want blanks skipped and each line parsed.
     """
 
-    path: str
+    path: str | os.PathLike[str]
+
+    def __post_init__(self) -> None:
+        # Store a str whatever was passed, so equality and the cache key do not depend on the type (#16).
+        object.__setattr__(self, "path", os.fspath(self.path))
 
     def content_hash(self) -> str | None:
         return _existing_path_hash(self.path, type(self).__name__)
@@ -121,8 +129,12 @@ class JSONLSource(Deferred[list[T]], Generic[T]):
     Blank lines are skipped silently.
     """
 
-    path: str
+    path: str | os.PathLike[str]
     record_type: type[T]
+
+    def __post_init__(self) -> None:
+        # Store a str whatever was passed, so equality and the cache key do not depend on the type (#16).
+        object.__setattr__(self, "path", os.fspath(self.path))
 
     def content_hash(self) -> str | None:
         return _existing_path_hash(self.path, type(self).__name__)

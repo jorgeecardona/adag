@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `FileSource`, `LinesSource`, `JSONLSource` and `DirSource` accept a `pathlib.Path` as well as a
+  `str`. The source stores a `str`, so equality and cache keys do not change (#16).
+- `docs/inputs.md` shows `JSONLSource(path, RecordType)`: the record type is required.
+
 ## [0.3.16] - 2026-11-20
 
 ### Added

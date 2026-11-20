@@ -10,6 +10,7 @@ only keys the cache by content.
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,8 +32,12 @@ class DirSource(Deferred[str]):
     example ``"**/*.json"``) for nested folders.
     """
 
-    path: str
+    path: str | os.PathLike[str]
     pattern: str = "*.jsonl"
+
+    def __post_init__(self) -> None:
+        # Store a str whatever was passed, so equality and the cache key do not depend on the type (#16).
+        object.__setattr__(self, "path", os.fspath(self.path))
 
     @property
     def _path(self) -> Path:
