@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.18] - 2026-11-20
+
 ### Fixed
 
-- A `BatchStep` resume no longer rebuilds the item schema digest for every item. `ItemCache` computes
-  it once. Before, each load and save spent about 19 ms on a nested model (#13).
+- A `BatchStep` resume no longer rebuilds the item schema digest for every item.
+  `ItemCache` computes it once. Before, each load and save spent about 19 ms on a
+  nested model (#13).
+
+## [0.3.17] - 2026-11-20
 
 ### Changed
 

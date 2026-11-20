@@ -119,7 +119,8 @@ the main process (`--expect-hash`). That means the worker runs different code. I
 `RemoteDispatcher(backend)` runs branches on any job scheduler. It checks the cache, submits up
 to `max_concurrent` jobs, polls them, retries, applies timeouts, and cancels live jobs on an
 error or Ctrl-C. On every poll it also looks in the cache. A branch whose result is already there
-is done, even if its job is queued, running or failed, and the dispatcher cancels that job. A backend has three methods:
+is done, even if its job is queued, running or failed, and the dispatcher cancels that job.
+A backend has three methods:
 
 ```python
 class JobBackend(Protocol):
@@ -222,6 +223,7 @@ class ServerBackend:
         if self.server is not None:  # safe to call twice
             self.server.delete()
             self.server = None
+```
 
 Build the dispatcher and pass it to `execute()`. This uses the AWS Batch backend below:
 

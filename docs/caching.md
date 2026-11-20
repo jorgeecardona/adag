@@ -65,7 +65,7 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 - Any edit inside the class body changes the key, comments included.
 - A step whose result is not a `BaseModel` is not cached, unless it overrides `save_result` and
   `load_result` (see below).
-- Keys are 12 hex characters (48 bits) of SHA-256.
+- Step keys are 12 hex characters (48 bits) of SHA-256. `BatchStep` item keys are 16 (64 bits).
 
 ## Why did a node recompute
 

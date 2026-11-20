@@ -78,6 +78,10 @@ compares to Luigi, Airflow, Prefect, Dagster, Hamilton and redun: [Why adag](htt
 - Sync and async steps (`Step`, `AsyncStep`), with a parallel executor.
 - `BatchStep` caches each item on its own, so a rerun resumes after a failure.
 - `FanOutStep` runs a sub-graph per key.
+- `LoopStep` runs a sub-graph in rounds, each feeding the next, until a condition holds.
+  Each round is cached.
+- `runs_on = "thread"` or `"process"` on a step: thread steps keep the event loop free; process
+  steps run CPU-bound code in workers.
 - Cache stores for step results and `BatchStep` items: filesystem, memory, SQLite, SQLAlchemy
   (`adag[sql]`), Redis (`adag[redis]`). Pass one with `Pipeline(..., store=)`.
 - `explain_key` lists every part of a cache key, so you can see why a step ran again.

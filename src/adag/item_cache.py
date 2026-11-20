@@ -6,26 +6,21 @@ not the first 1500.
 
 The ItemCache gets its cache directory from the Pipeline that creates it.
 
-Storage is delegated to a ``CacheStore`` (the pluggable key->text backend) so the same per-item cache can
-live on the local filesystem (default), in Redis/Valkey (shared, for a deployed service), or anywhere else,
-without ItemCache knowing or caring. ItemCache owns only the higher-level concerns, expressed PURELY as
-key->text operations:
+Storage is delegated to a ``CacheStore`` (the pluggable key->text backend) so the same
+per-item cache can live on the local filesystem (default), in Redis/Valkey (shared, for a
+deployed service), or anywhere else. ItemCache owns only the higher-level concerns, expressed
+as key->text operations:
 
-1. **Schema-version stamp**: every saved value carries the schema's
-   ``model_json_schema()`` digest. On load, a mismatch is reported and the
-   entry is treated as stale (forces re-processing). Prevents silent
-   corruption when a schema field is added/renamed/retyped and old caches
-   would otherwise deserialize wrong.
+1. Schema-version stamp: every saved value carries the schema's ``model_json_schema()``
+   digest. On load, a mismatch is reported and the entry is treated as stale. Prevents silent
+   corruption when a schema field is added, renamed or retyped.
 
-2. **In-flight WAL**: ``mark_inflight(key)`` writes a ``<key>.inflight``
-   sentinel (just another store key) before processing starts.
-   ``clear_inflight(key)`` removes it after success. ``inflight_keys()``
-   lists any sentinels left behind by a SIGTERM-killed process so callers
-   can surface them in resume logs.
+2. In-flight WAL: ``mark_inflight(key)`` writes a ``<key>.inflight`` sentinel before
+   processing starts. ``clear_inflight(key)`` removes it after success. ``inflight_keys()``
+   lists sentinels left by a SIGTERM-killed process so callers can surface them in resume logs.
 
-The default ``FileSystemCacheStore`` is rooted at ``<cache_dir>/.items`` and keys are ``<namespace>/<key>``,
-so the on-disk layout (``<cache_dir>/.items/<namespace>/<key>.json``) is byte-for-byte the layout of the first release,
-so existing caches load unchanged.
+The default ``FileSystemCacheStore`` is rooted at ``<cache_dir>/.items`` and keys are
+``<namespace>/<key>`` (on-disk layout: ``<cache_dir>/.items/<namespace>/<key>.json``).
 """
 
 from __future__ import annotations
@@ -71,8 +66,8 @@ class ItemCache(Generic[R]):
         all_results = cache.collect(keys)
 
     Pass ``store=`` to back the cache with something other than the local filesystem (e.g. a
-    ``RedisCacheStore`` for a deployed multi-instance service). Default = ``FileSystemCacheStore`` rooted at
-    ``<cache_dir>/.items`` (the historical layout).
+    ``RedisCacheStore`` for a deployed multi-instance service). Default: ``FileSystemCacheStore``
+    rooted at ``<cache_dir>/.items``.
     """
 
     def __init__(

@@ -73,8 +73,8 @@ Rules for the items:
 - Two keys that give the same text, such as `1` and `"1"`, raise `ValueError`.
 - `over` must resolve to a dict.
 
-A fan-out with a `template` runs in the calling process. To run its branches in worker processes, see
-[Fan out over an upstream result](dispatch.md#fan-out-over-an-upstream-result) in Dispatch.
+A fan-out with a `template` runs in the calling process. To run its branches in worker processes,
+see [Fan out over an upstream result](dispatch.md#fan-out-over-an-upstream-result) in Dispatch.
 
 ## Template
 

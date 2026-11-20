@@ -21,12 +21,13 @@ _LARGE_FILE_BYTES = 1_000_000  # log an info line when hashing a file bigger tha
 
 @dataclass(frozen=True)
 class FileFingerprint:
-    """Identity of a file's content for caching: same fingerprint ⇒ same bytes
-    (cheap stand-in for re-reading). Inode + device are part of the identity
-    because mtime resolution on many filesystems is 1s, and an atomic-replace
-    inside the same second produces a new inode but identical (path, mtime,
-    size): without st_ino the cache would return the stale hash. Frozen ⇒
-    hashable ⇒ usable as a dict key.
+    """File identity for caching: same fingerprint means same bytes.
+
+    A cheap stand-in for re-reading. Inode and device are part of the identity
+    because mtime resolution on many filesystems is 1 second, and an atomic replace
+    inside the same second produces a new inode but identical (path, mtime, size):
+    without ``st_ino`` the cache would return the stale hash. Frozen, so hashable and
+    usable as a dict key.
     """
 
     path: str

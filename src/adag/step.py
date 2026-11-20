@@ -166,8 +166,9 @@ def _serialize_dict_field(value: dict[str, Any]) -> tuple[bool, Any]:
 
 
 class StepTimeout(TimeoutError):
-    """Raised when a step's async body exceeds its ``timeout_s`` budget. Subclasses the builtin
-    ``TimeoutError`` so callers can catch either.
+    """Raised when a step's async body exceeds its ``timeout_s`` budget.
+
+    Subclasses ``TimeoutError`` so callers can catch either.
     """
 
 
@@ -250,15 +251,19 @@ class Step(Generic[Out]):
                 return
 
     def result_model(self) -> type[BaseModel] | None:
-        """The concrete pydantic model the result is cached as (JSON round-trip). Defaults to the class
-        ``result_type`` inferred from ``Step[X]``; override when the result type is generic (e.g. ``Dataset[T]``)
-        so the parametrized model is known at cache-load time, not the unparametrized base.
+        """Return the pydantic model the result is cached as (JSON round-trip).
+
+        Defaults to the class ``result_type`` inferred from ``Step[X]``. Override when the
+        result type is generic (e.g. ``Dataset[T]``) so the parametrized model is known at
+        cache-load time, not the unparametrized base.
         """
         return type(self).result_type
 
     def output_type(self) -> type[Any] | None:
-        """The deferred output type used for wiring / connection checks. Defaults to the class ``return_type``;
-        override alongside ``result_model`` when the result type is generic.
+        """Return the output type used for wiring and connection checks.
+
+        Defaults to the class ``return_type``. Override alongside ``result_model`` when the
+        result type is generic.
         """
         return type(self).return_type
 
@@ -352,24 +357,28 @@ class Step(Generic[Out]):
         )
 
     def execute(self, context: ResolveContext, /, **kwargs: Any) -> Out:
-        """Framework entry point. Override if the step needs per-call state
-        (e.g. BatchStep needs context.cache_dir for its ItemCache). Most
-        steps don't: the default binds the run's observer as the ambient
-        ``current_observer()`` (so step internals, incl. worker threads and
-        asyncio tasks, can emit observer hooks) and delegates to run().
+        """Run the step body under the run's observer and return the result.
+
+        Override when the step needs per-call state (e.g. ``BatchStep`` needs
+        ``context.cache_dir`` for its ``ItemCache``). The default binds the observer as the
+        ambient ``current_observer()`` and delegates to ``run()``.
         """
         with observing(context.observer):
             return self.run(**kwargs)
 
     async def arun(self, **kwargs: Any) -> Out:
-        """Async step body. Default delegates to the sync ``run`` so a sync step works unchanged on the
-        async path; a step that awaits I/O subclasses ``AsyncStep`` and overrides this.
+        """Execute the step on the async path and return the result.
+
+        The default delegates to ``run()`` so a sync step works unchanged on the async path.
+        A step that awaits I/O subclasses ``AsyncStep`` and overrides this.
         """
         return self.run(**kwargs)
 
     async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> Out:
-        """Async framework entry point: the awaitable mirror of ``execute``. Override for per-call state;
-        the default delegates to ``arun``.
+        """Run the step body on the async path and return the result.
+
+        The awaitable mirror of ``execute``. Override for per-call state; the default
+        delegates to ``arun``.
         """
         del context
         return await self.arun(**kwargs)
@@ -511,8 +520,7 @@ class Step(Generic[Out]):
 
 
 class AsyncStep(Step[Out]):
-    """A step whose body awaits I/O (a DB session, an HTTP/LLM call). Implement ``arun`` (async) instead of
-    ``run`` (sync), and resolve it through ``Pipeline.aexecute`` / ``StepResult.aresolve``.
+    """A step whose body awaits I/O; implement ``arun`` and resolve with ``Pipeline.aexecute``.
 
     An AsyncStep has no synchronous body: it does not override ``run``, so the synchronous path
     (``execute``/``resolve``) hits ``Step.run``'s default, which raises a clear message: a sync
@@ -1106,7 +1114,7 @@ class StepResult(Deferred[Out]):
                 hash=key,
                 message=(
                     "Same content_hash produced different bytes. The "
-                    "step's cache key is missing an input — likely a "
+                    "step's cache key is missing an input. Likely a "
                     "side-channel file (model weights, embeddings) or "
                     "a sub-batch whose item keys do not encode all "
                     "inputs. Overwriting cache with new bytes."

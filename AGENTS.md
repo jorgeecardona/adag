@@ -4,18 +4,19 @@ Guidance for AI coding agents working in this repo. Humans: read README.md and C
 
 ## Overview
 
-adag: Another DAG: a cached, content-addressed DAG engine for Python data pipelines.
+adag (Another DAG) is a cached, content-addressed DAG engine for Python data pipelines.
 
 ## Build
 
-- `uv sync` installs dependencies. Toolchain (moon, uv) is pinned in `.prototools`; `proto install` brings it up.
+- `uv sync` installs dependencies. Toolchain (moon, uv) is pinned in `.prototools`;
+  `proto install` brings it up.
 - `make install-hooks` once, to enable the tracked git hooks.
 
 ## Test
 
 - `make test` runs the suite.
-- `make check` runs lint + typecheck + test (the same stage CI runs via `moon run :ci`).
-- Everything in `make check` must pass before you commit.
+- `make check` runs `lint format-check typecheck test` (the same stage CI runs via `moon run :ci`).
+  The pre-push hook runs it. Do not run it before a commit.
 
 ## Style
 
@@ -25,5 +26,7 @@ adag: Another DAG: a cached, content-addressed DAG engine for Python data pipeli
 
 ## Gotchas
 
-- Version lives as `__version__` in `src/adag/__init__.py`; `pyproject.toml` reads it via `[tool.hatch.version]` (`version` is `dynamic`). The pre-commit hook auto-bumps it when `src/` changes. Do not edit versions by hand elsewhere.
+- Version lives in `src/adag/__init__.py` as `__version__`. `pyproject.toml` reads it via
+  `[tool.hatch.version]` (`version` is `dynamic`). The pre-commit hook auto-bumps it when
+  `src/` changes. Do not edit versions by hand elsewhere.
 - Record follow-ups in `docs/issues/`, not as scattered TODO comments.

@@ -26,12 +26,11 @@ logger = structlog.get_logger()
 
 
 class LoggingObserver(NullObserver):
-    """The default observer (installed by ``Pipeline.execute``): logs each step's
-    lifecycle as a structlog event.
+    """Default observer (installed by ``Pipeline.execute``): logs each step's lifecycle.
 
-    This is the single place per-step logging happens. ``resolve`` emits the
-    events and this turns them into log lines. To make one event louder or quieter,
-    change its level here (one place). For full silence, pass ``NullObserver``.
+    This is the single place per-step logging happens. ``resolve`` emits the events and
+    this turns them into log lines. To make one event louder or quieter, change its level
+    here. For full silence, pass ``NullObserver``.
     """
 
     def on_step_start(self, step: str) -> None:

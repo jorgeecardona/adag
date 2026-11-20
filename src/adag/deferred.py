@@ -77,25 +77,40 @@ class PipelineObserver(Protocol):
     a vector), declare a typed hook: see "Typed hooks for your own values" in docs/observers.md.
     """
 
-    def on_step_start(self, step: str) -> None: ...
+    def on_step_start(self, step: str) -> None:
+        """Called before the step's inputs are resolved."""
+        ...
 
-    def on_step_cached(self, step: str) -> None: ...
+    def on_step_cached(self, step: str) -> None:
+        """Called when the step result was read from cache; no body ran."""
+        ...
 
-    def on_step_finished(self, step: str, seconds: float) -> None: ...
+    def on_step_finished(self, step: str, seconds: float) -> None:
+        """Called after the step body ran and its result was saved."""
+        ...
 
-    def on_fan_out_branch(self, key: str) -> None: ...
+    def on_fan_out_branch(self, key: str) -> None:
+        """Called when a fan-out branch starts resolving."""
+        ...
 
-    def on_fan_out_branch_failed(self, key: str, error: str) -> None: ...
+    def on_fan_out_branch_failed(self, key: str, error: str) -> None:
+        """Called when a fan-out branch fails; ``error`` is the exception message."""
+        ...
 
-    def on_loop_round(self, number: int, key: str) -> None: ...
+    def on_loop_round(self, number: int, key: str) -> None:
+        """Called when a loop round starts; ``number`` is 0-based."""
+        ...
 
-    def on_event(self, event: str, fields: dict[str, Any]) -> None: ...
+    def on_event(self, event: str, fields: dict[str, Any]) -> None:
+        """Called for progress events (cache writes, batch progress, dispatch)."""
+        ...
 
 
 class NullObserver:
-    """Silent observer: every hook is a no-op. Use it to turn the per-step
-    logging off. Concrete observers inherit this and override only the hooks
-    they care about, so new hooks never break an existing observer.
+    """Silent observer: every hook is a no-op.
+
+    Use it to turn per-step logging off. Concrete observers inherit this and override only
+    the hooks they care about, so new hooks never break an existing observer.
     """
 
     def on_step_start(self, step: str) -> None:
@@ -210,14 +225,13 @@ async def gather_first_failure(tasks: list[asyncio.Task[Any]]) -> list[Any]:
 
 
 class Executor(Protocol):
-    """Decides *where* a step runs. The graph stays the same; the executor is a
-    property of the run, carried on ``ResolveContext``.
+    """Protocol for where a step runs; carried on ``ResolveContext``.
 
-    ``run`` receives the step, the active context, and the already-resolved input
-    values, and must return the step's result. The default ``LocalExecutor`` runs
-    it in-process. A remote executor would instead dispatch the step (by its
-    content hash) to another process or machine, wait for the result to land in
-    the shared cache, and return it, without the graph knowing the difference.
+    The graph stays the same; the executor is a property of the run. ``run`` receives
+    the step, the active context, and the resolved input values, and must return the
+    step's result. The default ``LocalExecutor`` runs it in-process. A remote executor
+    would dispatch the step by content hash to another process or machine, wait for the
+    result to land in the shared cache, and return it.
     """
 
     def run(self, step: Step[Any], context: ResolveContext, inputs: dict[str, Any]) -> Any: ...
@@ -298,13 +312,11 @@ class LocalExecutor:
 
 
 class AsyncExecutor(Protocol):
-    """The async counterpart of ``Executor``: decides *where* a step runs on the ASYNC resolve path
-    (``StepResult.aresolve`` / ``Pipeline.aexecute``). Carried on ``ResolveContext.async_executor``.
+    """Async counterpart of ``Executor``; carried on ``ResolveContext.async_executor``.
 
-    Mirrors ``Executor`` exactly except ``run`` is awaitable, so a step body that ``await``s I/O (a DB
-    session, an HTTP/LLM call) runs ON the event loop, no thread offload, so the event loop stays
-    responsive and cancellation propagates through the awaits. The default ``LocalAsyncExecutor`` runs the
-    step in-process; a remote async executor would dispatch by content hash and await the result.
+    Used on the async resolve path (``StepResult.aresolve`` / ``Pipeline.aexecute``). Mirrors
+    ``Executor`` except ``run`` is awaitable, so a body that ``await``s I/O runs on the event
+    loop without a thread offload. The default ``LocalAsyncExecutor`` runs the step in-process.
     """
 
     async def run(
@@ -527,10 +539,12 @@ class Deferred(Generic[T]):
         raise NotImplementedError
 
     async def aresolve(self, context: ResolveContext) -> T:
-        """Async resolution. The default delegates to the synchronous ``resolve``, correct for LEAF
-        Deferreds whose resolution does no awaitable work (``InputParam`` reads ``context.params``,
-        ``FileSource`` reads bytes). ``StepResult`` overrides this to await async step bodies and resolve
-        upstreams on the event loop, so an existing sync graph runs unchanged on the async path.
+        """Resolve this deferred value on the async path and return the result.
+
+        The default delegates to the synchronous ``resolve``, correct for leaf deferreds that do
+        no awaitable work (``InputParam`` reads ``context.params``, ``FileSource`` reads bytes).
+        ``StepResult`` overrides this to await async step bodies and resolve upstreams on the
+        event loop.
         """
         return self.resolve(context)
 

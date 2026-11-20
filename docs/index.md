@@ -46,6 +46,8 @@ The second run reads both results from the cache and does not call `Square.run` 
 | Cache a result that is not JSON | [Caching](caching.md#results-that-are-not-one-json-document) |
 | Resume a long loop after a failure | [Batch steps](batch.md) |
 | Run the same sub-graph for each key | [Fan-out](fan-out.md) |
+| Run a sub-graph in cached rounds until a condition holds | [Loops](loops.md) |
+| Run a step in a thread or worker process | [Async and parallel](async-parallel.md#where-a-step-runs) |
 | Await I/O, or run steps at the same time | [Async and parallel](async-parallel.md) |
 | Run branches in processes or on a scheduler | [Dispatch](dispatch.md) |
 | Keep the cache in SQLite, SQL or Redis | [Cache stores](cache-stores.md) |

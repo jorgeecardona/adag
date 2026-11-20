@@ -111,8 +111,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
     over: dict[K, Any] | StepResult[dict[K, Any]] = field(default_factory=_no_items)
     factory: Callable[[K, Any], StepResult[V]] | None = None
     # Concurrency of the in-process (InlineDispatcher) path. None (default) keeps the
-    # historical sequential branch-by-branch resolution. An int resolves branches in a
-    # ThreadPoolExecutor of that size, a win when each branch is I/O-bound (an LLM/HTTP
+    # sequential branch-by-branch resolution. An int resolves branches in a
+    # ThreadPoolExecutor of that size, useful when each branch is I/O-bound (an LLM/HTTP
     # call). Shared upstreams stay safe under it: ResolveContext's in-flight dedup runs a
     # shared node's body once even when many branch workers reach it at the same instant.
     # Ignored by a non-inline dispatcher, which has its own concurrency.
@@ -176,8 +176,8 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """Resolve one sub-DAG per key in ``over``.
 
         In-process (InlineDispatcher, the default) each branch resolves under the parent
-        context: branch-by-branch when ``max_workers`` is None (identical to the pre-dispatch
-        behaviour) or concurrently in a thread pool when it is set. With a real dispatcher,
+        context: branch-by-branch when ``max_workers`` is None, or concurrently in a thread
+        pool when it is set. With a real dispatcher,
         branches are dispatched to workers and rejoined through the shared cache by content hash.
         """
         over = self._items(kwargs)

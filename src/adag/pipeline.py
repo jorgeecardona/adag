@@ -233,12 +233,13 @@ class Pipeline(Generic[Out]):
         return self.steps
 
     def topological_levels(self) -> list[list[Step[Any]]]:
-        """Steps grouped into dependency levels: every step lands one level past its deepest
-        dependency. Steps within a level are mutually independent, so a concurrent executor
-        can run a whole level in parallel; level i+1 starts once level i is resolved.
+        """Return steps grouped into dependency levels.
 
-        Pure analysis: no execution change. The foundation for opt-in parallel execution
-        (run each level's steps together) and for correct left-to-right layered layout.
+        Every step lands one level past its deepest dependency. Steps within a level are
+        mutually independent, so a concurrent executor can run a whole level in parallel;
+        level i+1 starts once level i is resolved.
+
+        Pure analysis: no execution change.
         """
         # step -> upstream steps, walked from the targets by StepResult id (no cached map).
         upstreams: defaultdict[Step[Any], set[Step[Any]]] = defaultdict(set)

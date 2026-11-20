@@ -35,9 +35,10 @@ The 9 keys: 3 items (`greet/<key>.json`), and for each of the 2 runs a result `<
 the main process (see [Dispatch](dispatch.md)).
 
 - `sqlite:///relative.db` or `sqlite:////absolute.db`: `SqliteCacheStore`.
-- `redis://host:6379/0`: `RedisCacheStore`.
+- `redis://host:6379/0` or `rediss://host:6379/0` (TLS): `RedisCacheStore`.
 - `postgresql://...` or any other SQLAlchemy URL: `SqlCacheStore`.
 - `file:///path` or a plain path: `FileSystemCacheStore`.
+- `memory:`: raises `ValueError`; a memory store cannot be shared with a worker.
 
 ## Use one ItemCache directly
 
