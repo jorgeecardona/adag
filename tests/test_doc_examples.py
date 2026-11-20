@@ -12,6 +12,7 @@ LIBRARY_FILES = {
     "cli_pipeline.py",
     "dispatch_pipeline.py",
     "dispatch_template_pipeline.py",
+    "dispatch_failing_pipeline.py",
 }
 
 

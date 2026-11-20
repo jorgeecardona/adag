@@ -133,3 +133,24 @@ needs:
           server and make the call, like there's probably plenty of different ways to do some
           external"
       - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (JobBackend find, logs, close)"}
+    proofs:
+      - "test:tests/test_job_backend_optional.py::test_a_rerun_reattaches_to_the_jobs_the_old_dispatcher_left_alive"
+      - "test:tests/test_job_backend_optional.py::test_a_job_that_already_failed_is_not_reattached"
+      - "test:tests/test_job_backend_optional.py::test_every_attempt_is_probed_and_the_latest_live_job_wins"
+      - "test:tests/test_job_backend_optional.py::test_a_cached_branch_never_asks_the_backend_to_find_it"
+      - "test:tests/test_job_backend_optional.py::test_a_failing_find_submits_a_new_job"
+      - "test:tests/test_job_backend_optional.py::test_the_end_of_a_failed_jobs_output_is_in_the_error"
+      - "test:tests/test_job_backend_optional.py::test_close_is_called_once_per_dispatch_all_and_when_it_raises"
+      - "test:tests/test_job_backend_optional.py::test_a_failing_close_does_not_hide_the_result"
+      - "test:tests/test_job_backend_optional.py::test_local_backend_keeps_the_stderr_of_a_failed_job_until_close"
+
+  - id: FO-8
+    text: >
+      When one fan-out needs more CPU, memory or GPUs than the others, the developer can set that on
+      the fan-out, and the cache key does not change.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "Fable design verdict, 2026-11-19 session (Resources per fan-out)"}
+    proofs:
+      - "test:tests/test_job_backend_optional.py::test_a_fan_out_s_resources_replace_the_dispatchers_default"
+      - "test:tests/test_job_backend_optional.py::test_without_resources_on_the_fan_out_the_dispatcher_default_is_used"
+      - "test:tests/test_job_backend_optional.py::test_resources_do_not_change_any_cache_key"

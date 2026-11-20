@@ -138,9 +138,90 @@ Rules for a backend:
 5. Give the job access to the cache: a shared filesystem, or the store at `job.store_url`.
 6. Report every submitted job in `status`, until it is SUCCEEDED or FAILED. A job left out of the
    answer for `missing_status_polls` polls in a row counts as FAILED and is cancelled.
+7. Ship the code yourself. adag sends only the `BranchJob` (the command line). Building the
+   image, copying files and installing dependencies are the backend's job.
+8. Give the worker its credentials through its own environment. Only `store_url` crosses to the
+   worker, as a command-line argument, so anyone who can list the scheduler's jobs can read it.
+   Keep passwords out of the URL.
+9. Results saved with `save_result(result, path)` are files under `cache_dir`. A dispatched branch
+   gets a `cache_dir` only when the pipeline has no store, so such a step does not run in a
+   dispatched branch of a pipeline that has a store.
 
 `Resources(cpus=, memory_mb=, gpus=)` is passed on every `BranchJob`. `None` means the
-scheduler's default.
+scheduler's default. To size one fan-out differently, set `resources=` on its `FanOutStep`. It
+replaces the dispatcher's `resources` for that fan-out, and it is not part of any cache key:
+
+```python
+FanOutStep(over=..., factory=..., resources=Resources(cpus=8, memory_mb=32768), ...)
+```
+
+### Optional methods
+
+A backend may add three more methods. `RemoteDispatcher` uses each one that exists, so a backend
+with only `submit`, `status` and `cancel` keeps working.
+
+| Method | What the dispatcher does with it |
+|---|---|
+| `find(name) -> str \| None` | Before it submits a branch, asks for a job of an earlier run and reattaches to a live one. |
+| `logs(job_id) -> str \| None` | When a branch fails, adds the last 2000 characters of the output to the error. |
+| `close() -> None` | Calls it once when `dispatch_all` ends, also after an error or Ctrl-C. |
+
+`find`:
+
+- Submit every job under `job.name()`. `find` gets that name back.
+- The name ends with the attempt number, so the dispatcher asks for each attempt that the policy
+  allows. It reattaches to the latest job that is PENDING or RUNNING. It ignores finished jobs.
+- The cache check comes first. A branch whose result is in the cache never calls `find`.
+- A scheduler may still cancel an old job that timed out. The reattached job then fails, and the
+  retry policy applies. `find` does not prevent that.
+- A `find` that raises is logged, and the dispatcher submits a new job.
+- `LocalJobBackend` has no `find`. Its jobs live in the Python process, so a restarted run knows
+  none of them. `find` matters for a scheduler that outlives the dispatcher.
+
+`logs` and `close`:
+
+- `logs` may return `None`, for example while the job has no output yet. `LocalJobBackend` keeps
+  the last 8000 characters of stderr of each failed job, until `close`.
+- `close` must be safe to call twice, and the backend must work again if a later `dispatch_all`
+  submits more jobs. A failing `close` is logged, and it does not replace the run's error.
+
+This backend wraps `LocalJobBackend`, adds `find`, and reports a failed job with only its exit
+code, as most schedulers do. The output of branch `b` reaches the error through `logs`:
+
+```python
+--8<-- "docs/examples/dispatch_failing_pipeline.py"
+```
+
+```python
+--8<-- "docs/examples/dispatch_hooks.py"
+```
+
+```text
+succeeded: ['a', 'c']
+b: exit code 1
+last output of job local-2:
+error: row b has no value
+{'find': 3, 'submit': 3, 'close': 1}
+```
+
+A backend that starts a server makes it on the first `submit` and deletes it in `close`.
+A sketch, not run in CI (`cloud` stands for your provider's client):
+
+```python
+class ServerBackend:
+    def __init__(self, cloud) -> None:
+        self.cloud = cloud
+        self.server = None
+
+    def submit(self, job: BranchJob) -> str:
+        if self.server is None:
+            self.server = self.cloud.create_server()  # on first use, not in __init__
+        return self.server.start(list(job.command()), name=job.name())
+
+    def close(self) -> None:
+        if self.server is not None:  # safe to call twice
+            self.server.delete()
+            self.server = None
 
 Build the dispatcher and pass it to `execute()`. This uses the AWS Batch backend below:
 
@@ -210,6 +291,24 @@ class AwsBatchBackend:
     def cancel(self, job_ids):
         for job_id in job_ids:
             self.client.terminate_job(jobId=job_id, reason="cancelled by adag")
+
+    # Optional: lets a rerun reattach to a job that an earlier run left alive.
+    def find(self, name):
+        # With a JOB_NAME filter, list_jobs returns jobs of any status, newest first.
+        filters = [{"name": "JOB_NAME", "values": [name]}]
+        jobs = self.client.list_jobs(jobQueue=self.queue, filters=filters)["jobSummaryList"]
+        return jobs[0]["jobId"] if jobs else None
+
+    # Optional: the end of a failed job's output goes into the error.
+    def logs(self, job_id):
+        container = self.client.describe_jobs(jobs=[job_id])["jobs"][0].get("container", {})
+        stream = container.get("logStreamName")
+        if stream is None:  # the job never started
+            return None
+        events = boto3.client("logs").get_log_events(  # the default log group of Batch jobs
+            logGroupName="/aws/batch/job", logStreamName=stream, limit=50, startFromHead=False
+        )["events"]
+        return "\n".join(event["message"] for event in events)
 ```
 
 ### SLURM
@@ -219,6 +318,7 @@ A recipe, not shipped and not run in CI:
 ```python
 import shlex
 import subprocess
+from pathlib import Path
 
 from adag.dispatch import BranchJob, JobState, JobStatus
 
@@ -235,6 +335,7 @@ class SlurmBackend:
     def submit(self, job: BranchJob) -> str:
         r = job.resources
         args = ["sbatch", "--parsable", "--no-requeue", f"--job-name={job.name()}"]
+        args.append("--output=adag-%j.log")  # %j is the job id: logs() reads this file
         if r.cpus is not None:
             args.append(f"--cpus-per-task={int(r.cpus)}")
         if r.memory_mb is not None:
@@ -260,15 +361,30 @@ class SlurmBackend:
 
     def cancel(self, job_ids):
         subprocess.run(["scancel", *job_ids], check=False)
+
+    # Optional: lets a rerun reattach to a job that an earlier run left alive.
+    def find(self, name):
+        found = subprocess.run(
+            ["sacct", "-n", "-X", "-P", "-S", "now-7days", "-o", "JobID", f"--name={name}"],
+            capture_output=True, text=True, check=True,
+        ).stdout.split()
+        return found[-1] if found else None  # the newest job with that name
+
+    # Optional: the end of a failed job's output goes into the error.
+    def logs(self, job_id):
+        path = Path(f"adag-{job_id}.log")  # written by sbatch --output in the submit directory
+        return path.read_text(errors="replace") if path.exists() else None
 ```
 
 ## Known limits
 
 - A shared upstream step that is not cached yet is computed by every worker that needs it.
   Run the pipeline up to that step first, or cache it before you dispatch.
-- If the main process crashes, jobs that are still running are submitted again on the rerun.
+- If the main process crashes, a backend without `find` submits the branches again on the rerun.
   If an old job finishes first, the rerun finds its result in the cache and cancels the new job.
+  A backend with `find` reattaches to the old jobs instead.
 - A result that appears after the dispatcher has decided a branch failed is too late. The run
   raises `FanOutBranchError`, and the next run finds the result in the cache.
-- A worker's stderr reaches you only through `JobStatus.detail`.
+- A worker's output reaches you through `JobStatus.detail`, and through `logs` when the backend
+  has it.
 - `MemoryCacheStore`, a disk local to one machine, and SQLite on NFS cannot be the shared cache.

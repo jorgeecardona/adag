@@ -8,6 +8,8 @@ same keys. Each branch is cached like any other step.
   you build the graph.
 - `template`: a [`Template`](#template) that builds each branch. Use it when the keys come from
   an upstream step.
+- `resources`: what each branch asks a scheduler for when you dispatch it (see
+  [Dispatch](dispatch.md)). It is not part of any cache key.
 - `max_workers`: deprecated, removed in 1.0. Use `max_concurrency` and `runs_on` instead (see
   [Async and parallel](async-parallel.md)).
 

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2026-11-20
+
+### Added
+
+- A job backend can add `find(name)`. After a crash, a rerun reattaches to a job that is still
+  PENDING or RUNNING instead of submitting a second one.
+- A job backend can add `logs(job_id)`. The end of a failed job's output is in the
+  `FanOutBranchError`.
+- A job backend can add `close()`. The dispatcher calls it once when `dispatch_all` ends, also
+  after an error or Ctrl-C, so a backend can delete a server it created.
+- `FanOutStep(resources=Resources(...))` sets what one fan-out asks the scheduler for. It does
+  not change any cache key.
+- `LocalJobBackend` keeps the stderr of failed jobs for `logs`, and `close()` stops its jobs.
+
 ## [0.3.14] - 2026-11-19
 
 ### Deprecated
