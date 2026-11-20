@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A `BatchStep` resume no longer rebuilds the item schema digest for every item. `ItemCache` computes
+  it once. Before, each load and save spent about 19 ms on a nested model (#13).
+
 ### Changed
 
 - `FileSource`, `LinesSource`, `JSONLSource` and `DirSource` accept a `pathlib.Path` as well as a

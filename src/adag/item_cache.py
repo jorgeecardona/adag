@@ -81,6 +81,7 @@ class ItemCache(Generic[R]):
         self.cache_dir = cache_dir
         self.namespace = namespace
         self.schema: type[R] = schema
+        self._schema_digest: str | None = None
         self.store: CacheStore = (
             store if store is not None else FileSystemCacheStore(Path(cache_dir).joinpath(".items"))
         )
@@ -106,9 +107,16 @@ class ItemCache(Generic[R]):
         Encodes the field names, types, requireds, and nesting. If the
         schema changes (field added, renamed, retyped) the digest changes,
         old caches become stale, and partition() treats them as misses.
+
+        Computed on the first call and kept on the cache: building the JSON schema of a nested model
+        takes about 19 ms, and ``load`` and ``save`` ask for it once per item (#13).
         """
-        spec = self.schema.model_json_schema()
-        return hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest()[:12]
+        if self._schema_digest is None:
+            spec = self.schema.model_json_schema()
+            self._schema_digest = hashlib.sha256(
+                json.dumps(spec, sort_keys=True).encode()
+            ).hexdigest()[:12]
+        return self._schema_digest
 
     def exists(self, item_key: str) -> bool:
         """Check if an item is cached."""

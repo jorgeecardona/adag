@@ -1,6 +1,7 @@
 """Tests for ItemCache — per-item disk cache."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
@@ -242,3 +243,15 @@ def test_positional_signature_is_frozen(tmp_path: Path) -> None:
     cache = ItemCache(tmp_path, "ns", NoteEntry)
     cache.save("k", NoteEntry(code="c", note="n"))
     assert tmp_path.joinpath(".items", "ns", "k.json").exists()
+
+
+def test_schema_digest_is_computed_once_per_cache(base: Path):
+    """Load and save must not rebuild the JSON schema for every item (#13)."""
+    cache = ItemCache[NoteEntry](base, "notes", NoteEntry)
+    keys = [cache.key(str(n)) for n in range(5)]
+    with patch.object(NoteEntry, "model_json_schema", wraps=NoteEntry.model_json_schema) as spy:
+        for key in keys:
+            cache.save(key, NoteEntry(code=key, note="x"))
+        loaded = [cache.load(key) for key in keys]
+    assert loaded == [NoteEntry(code=key, note="x") for key in keys]
+    assert spy.call_count == 1
