@@ -57,6 +57,14 @@ class Expansion:
     shape: str
     template: Template
     note: str
+    binds: tuple[tuple[str, str], ...] = ()
+    """``(outer input, template input)`` pairs: which wired input feeds which template input."""
+    feedback: str = ""
+    """For a loop: the template input that receives the body's result for the next round."""
+    caption: str = ""
+    """A short sentence the frame shows under its body."""
+    count: int | None = None
+    """The number of branches when it is known before the run (a fan-out over a static dict)."""
 
 
 _VALUE_WIDTH = 80

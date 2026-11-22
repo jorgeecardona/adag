@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Expansion` (what `Step.expansion()` returns) says how a template node binds its inputs: `binds`,
+  `feedback`, `caption` and `count`. `FanOutStep` and `LoopStep` fill them. The graph drawing will
+  use them to draw the body of a fan-out or a loop as a frame.
 - `SvgOptions(corners="round" | "sharp")`: round corners (default) or almost square ones, for
   `blueprint` and `band`. Boxes go from 8 px to 2 px and edge bends from 14 px to 8 px. `classic`
   ignores it.

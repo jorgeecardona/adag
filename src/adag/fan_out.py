@@ -57,6 +57,10 @@ _FACTORY_CANNOT_BE_WIRED = (
 _TEMPLATE_INPUTS = 2  # a fan-out template takes (key, item)
 
 
+def _items(count: int) -> str:
+    return f"{count} item" if count == 1 else f"{count} items"
+
+
 def _no_items() -> dict[Any, Any]:
     return {}
 
@@ -388,10 +392,15 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         """A template fan-out builds its branches at run time; a factory fan-out does not."""
         if self.template is None:
             return None
+        count = len(self.over) if isinstance(self.over, dict) and self.over else None
+        caption = "one branch per item" if count is None else _items(count)
         return Expansion(
             shape="mapped",
             template=self.template,
             note="one branch per item of 'over'; the number of branches is known at run time",
+            binds=(("over", "item"),),
+            caption=caption,
+            count=count,
         )
 
     def content_hash(self) -> str | None:

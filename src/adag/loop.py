@@ -180,7 +180,15 @@ class LoopStep(Step[Any]):
                 f"up to {self.max_rounds} rounds; each round is cached under the key of the "
                 "state it starts from"
             ),
+            binds=(("init", "state"),),
+            feedback="state",
+            caption=self._caption(),
         )
+
+    def _caption(self) -> str:
+        """The sentence a frame shows: when the loop stops and what it returns at the limit."""
+        text = f"until {self.until.__qualname__}, at most {self.max_rounds} rounds"
+        return text + (", then returns the last state" if self.on_max == "return" else "")
 
     def content_hash(self) -> str | None:
         """Identity = the body template, ``until`` and its version, the limits, and a static init.
