@@ -51,6 +51,7 @@ from adag.deferred import (
 )
 from adag.deprecation import warn_deprecated
 from adag.hashing import UnhashableValueError
+from adag.hooks import HOOK_NAMES, takes_any_keyword
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
 from adag.key import KeyExplanation
@@ -80,8 +81,21 @@ class CyclicPipelineError(ValueError):
     """Raised at construction when the Deferred graph contains a cycle (a step transitively depends on itself)."""
 
 
+# Hooks that adag calls with the item or the results as their first positional argument.
+_POSITIONAL_FIRST = frozenset({"process_item", "assemble"})
+
+
 class UnboundInputError(ValueError):
     """Raised by Pipeline.validate() when a step has a required run() input that is neither wired nor a dataclass field."""
+
+
+class UnacceptedInputError(TypeError):
+    """Raised by Pipeline.validate() when a step wires an input that a hook does not accept.
+
+    The hook (``run``, ``arun``, ``items_data``, ``process_item`` or ``assemble``) does not name
+    the input and has no ``**kwargs``, so ``execute()`` would fail with the same message as a
+    ``TypeError`` for an unexpected keyword argument.
+    """
 
 
 class Pipeline(Generic[Out]):
@@ -341,31 +355,58 @@ class Pipeline(Generic[Out]):
             )
 
     def _check_inputs_bound(self, node: StepResult[Any]) -> None:
-        """Raise UnboundInputError if ``node.step`` has a required ``run()`` parameter that is
-        neither a wired source nor one of its dataclass fields, both feed ``run()`` (see
-        ``StepResult._merge_step_defaults``), so either satisfies the parameter.
+        """Check the step's hooks against what ``execute()`` passes them.
+
+        Raises ``UnboundInputError`` if a hook has a required parameter that is neither a wired
+        source nor one of the step's dataclass fields: both feed the hook (see
+        ``StepResult._merge_step_defaults``), so either satisfies the parameter. Raises
+        ``UnacceptedInputError`` if a wired source is not accepted by a hook that has no
+        ``**kwargs``. A dataclass field that a hook does not name is allowed: the hook reads it
+        from ``self`` (#15).
         """
+        step_cls = type(node.step)
         field_names = {field.name for field in dataclasses.fields(node.step)}
         available = set(node.sources.keys()) | field_names
-        try:
-            signature = inspect.signature(type(node.step).run)
-        except (ValueError, TypeError):
-            return
-        required: set[str] = set()
-        for name, parameter in signature.parameters.items():
-            if name == "self" or parameter.kind in (
-                inspect.Parameter.VAR_KEYWORD,
-                inspect.Parameter.VAR_POSITIONAL,
-            ):
+        label = step_cls.label or step_cls.__name__
+        # A custom execute() decides itself which inputs reach which method.
+        standard_execute = getattr(step_cls.execute, "__module__", "") in (
+            "adag.step",
+            "adag.batch",
+        )
+        for hook_name in HOOK_NAMES:
+            hook = getattr(step_cls, hook_name, None)
+            if hook is None:
                 continue
-            if parameter.default is inspect.Parameter.empty:
-                required.add(name)
-        missing = required - available
-        if missing:
-            label = type(node.step).label or type(node.step).__name__
-            raise UnboundInputError(
-                f"Step {label!r} has unbound required input(s): {sorted(missing)}"
-            )
+            try:
+                parameters = list(inspect.signature(hook).parameters.values())
+            except (ValueError, TypeError):
+                continue
+            # The first parameter is self; process_item and assemble also get the item or the
+            # results positionally from adag.
+            supplied = 2 if hook_name in _POSITIONAL_FIRST else 1
+            named = {
+                p.name
+                for p in parameters[supplied:]
+                if p.kind not in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+            }
+            required = {
+                p.name
+                for p in parameters[supplied:]
+                if p.kind not in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+                and p.default is inspect.Parameter.empty
+            }
+            missing = required - available
+            if missing:
+                raise UnboundInputError(
+                    f"Step {label!r} has unbound required input(s): {sorted(missing)}"
+                )
+            if standard_execute and not takes_any_keyword(hook):
+                unaccepted = set(node.sources) - named
+                if unaccepted:
+                    raise UnacceptedInputError(
+                        f"Step {label!r}: {hook_name}() does not accept the wired input(s) "
+                        f"{sorted(unaccepted)}. Add the parameter or **kwargs."
+                    )
 
     @property
     def input_names(self) -> set[str]:

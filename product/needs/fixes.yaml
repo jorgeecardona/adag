@@ -103,3 +103,18 @@ needs:
       - "test:tests/test_override_typing.py::test_named_parameter_overrides_run"
       - "test:tests/test_override_typing.py::test_named_parameter_override_of_arun"
       - "test:tests/test_override_typing.py::test_named_parameter_overrides_of_the_batch_hooks"
+
+  - id: FX-12
+    text: >
+      When a step has a field that run, arun or a batch hook does not name, the developer can run
+      the step and read the field from self, with the field still part of the cache key.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "https://gitlab.com/cardona-oss/adag/-/issues/15"}
+    proofs:
+      - "test:tests/test_unnamed_fields.py::test_a_field_that_run_does_not_name_is_read_from_self"
+      - "test:tests/test_unnamed_fields.py::test_the_unnamed_field_still_changes_the_step_key"
+      - "test:tests/test_unnamed_fields.py::test_an_async_step_may_leave_a_field_unnamed"
+      - "test:tests/test_unnamed_fields.py::test_a_process_step_may_leave_a_field_unnamed"
+      - "test:tests/test_unnamed_fields.py::test_the_batch_hooks_may_leave_fields_unnamed"
+      - "test:tests/test_unnamed_fields.py::test_item_keys_are_the_same_as_before_the_hooks_were_wrapped"
+      - "test:tests/test_unnamed_fields.py::test_validate_names_a_wired_input_that_run_does_not_accept"

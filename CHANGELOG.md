@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A step that overrides `run`, `arun`, `items_data`, `process_item` or `assemble` with named
-  parameters, as the docs show, now passes pyright strict. No `pyright: ignore` comment is needed (#14).
+  parameters, as the docs show, now passes pyright strict. No `pyright: ignore` comment is
+  needed (#14).
+- A step method no longer has to name every dataclass field. `run(self, sessions)` works on a step
+  with a `level` field: read it from `self.level`. The field still changes the cache key (#15).
+- `Pipeline.validate()` now checks `arun` and the batch hooks too, and raises
+  `UnacceptedInputError` for a wired input that a method does not accept.
 
 ## [0.3.18] - 2026-11-20
 

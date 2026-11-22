@@ -61,6 +61,7 @@ from adag.hashing import (
     is_list,
     is_tuple,
 )
+from adag.hooks import wrap_hooks
 from adag.io import FileSource, atomic_write_text
 from adag.key import ComponentKind, Expansion, KeyComponent, KeyExplanation
 
@@ -236,6 +237,7 @@ class Step(Generic[Out]):
                 f"{cls.__name__} overrides only one of save_result/load_result; override both, "
                 "so a cached result can be read back."
             )
+        wrap_hooks(cls)
         for parent in getattr(cls, "__orig_bases__", []):
             origin = get_origin(parent)
             # Accept both `Step[X]` and any subclass of Step that's also generic

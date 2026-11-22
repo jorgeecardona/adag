@@ -4,7 +4,7 @@ This module exports every public name of the package, including the lower-level 
 (executors, dispatchers, ``ResolveContext``, ``walk``).
 """
 
-__version__ = "0.3.20"
+__version__ = "0.3.21"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
@@ -40,6 +40,7 @@ from adag.pipeline import (
     CyclicPipelineError,
     JsonValue,
     Pipeline,
+    UnacceptedInputError,
     UnboundInputError,
     aresolve_all,
 )
@@ -111,6 +112,7 @@ __all__ = [
     "SubprocessDispatcher",
     "SvgOptions",
     "Template",
+    "UnacceptedInputError",
     "UnboundInputError",
     "UnhashableValueError",
     "WriteJSONL",
