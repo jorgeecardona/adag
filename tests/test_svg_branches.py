@@ -1,10 +1,9 @@
 """A branch of a connection is a square corner with a dot, so it does not look like an accident."""
 
-from tests.graphs_fixtures import all_graphs
-
 from adag import svg_layout as lay
 from adag import svg_paint as paint
 from adag.visualization import SvgOptions, render_graph_svg
+from graphs_fixtures import GRAPHS
 
 
 def _route(source: str, target: str, *points: lay.Point) -> lay.Route:
@@ -30,7 +29,7 @@ def test_edges_of_different_sources_never_branch() -> None:
 
 
 def test_blueprint_draws_junction_dots_and_other_styles_do_not() -> None:
-    graph = all_graphs()["ml_training"]
+    graph = GRAPHS["ml_training"]
     blueprint = render_graph_svg(list(graph.nodes), list(graph.edges), options=SvgOptions())
     band = render_graph_svg(list(graph.nodes), list(graph.edges), options=SvgOptions(style="band"))
     assert 'class="dag-junction"' in blueprint
