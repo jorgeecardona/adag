@@ -12,8 +12,12 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
+from adag.svg_route import BOX_MARGIN, Plan, Request, assign_slots, plan_all
+
 OUTPUT = "__output__"
 _EPS = 0.5
+SNAP_SPACING = 8.0
+KINK = 14.0
 
 Point = tuple[float, float]
 
@@ -66,18 +70,16 @@ class Placed:
 
 @dataclass(frozen=True)
 class Route:
-    """An edge: the points it passes (start at the source, end at the target's top edge).
+    """An edge: the corners of its path, from the bottom of the source to the top of the target.
 
-    ``jogs`` has one y per consecutive pair of points: where a right-angle edge moves sideways.
+    The path is made of vertical and horizontal runs. A horizontal run is a sideways move, and it
+    lies in the gap between two rows.
     """
 
     source: str
     target: str
     points: tuple[Point, ...]
-    jogs: tuple[float, ...]
     dashed: bool = False
-    rows: tuple[tuple[float, float] | None, ...] = ()
-    """For each point: the top and bottom of the row it crosses (a virtual point), else ``None``."""
 
 
 @dataclass(frozen=True)
@@ -344,37 +346,103 @@ def layout(
             order[0] = reordered
             x = _place_x(order, left, right, virtual, parents, children, settings)
 
-    # Sideways jogs between two rows share a slot (a y) when their spans do not overlap.
-    slot_of: dict[tuple[tuple[str, str], int], int] = {}
-    slot_count: dict[int, int] = {}
-    pending: dict[int, list[tuple[tuple[str, str], int, float, float]]] = {}
+    # Ports: departures spread along the source's bottom edge, arrivals along the target's top edge.
+    out_edges: dict[str, list[tuple[str, str]]] = {}
+    in_edges: dict[str, list[tuple[str, str]]] = {}
     for key, chain in chains.items():
-        for i, (u, w) in enumerate(itertools.pairwise(chain)):
-            if abs(x[u] - x[w]) > _EPS:
-                pending.setdefault(level[u], []).append((key, i, x[u], x[w]))
-    for lvl, segs in pending.items():
-        # The jog that ends furthest right goes highest, so the verticals of the others cross less.
-        ordered = sorted((s for s in segs if s[3] > s[2]), key=lambda s: -s[3])
-        ordered += sorted((s for s in segs if s[3] < s[2]), key=lambda s: s[3])
-        slots: list[list[tuple[float, float]]] = []
-        for key, i, sx, tx in ordered:
-            span = (min(sx, tx) - 6, max(sx, tx) + 6)
-            for index, taken in enumerate(slots):
-                if all(span[1] < lo or span[0] > hi for lo, hi in taken):
-                    taken.append(span)
-                    slot_of[(key, i)] = index
-                    break
-            else:
-                slots.append([span])
-                slot_of[(key, i)] = len(slots) - 1
-        slot_count[lvl] = len(slots)
+        out_edges.setdefault(chain[0], []).append(key)
+        in_edges.setdefault(chain[-1], []).append(key)
+    depart: dict[tuple[str, str], float] = {}
+    arrive: dict[tuple[str, str], float] = {}
+    out_range: dict[str, tuple[float, float]] = {}
+    in_range: dict[str, tuple[float, float]] = {}
+    for src, group in out_edges.items():
+        group.sort(key=lambda k: x[chains[k][1]])
+        half = sizes[src].width / 2 * (1 - 2 * settings.port_margin)
+        out_range[src] = (x[src] - half, x[src] + half)
+        ports = _spread(len(group), *out_range[src], settings.min_port_spacing)
+        depart.update(zip(group, ports, strict=False))
+    for dst, group in in_edges.items():
+        group.sort(key=lambda k: x[chains[k][-2]])
+        node = sizes[dst]
+        if node.arrive_lo or node.arrive_hi:
+            in_range[dst] = (x[dst] + node.arrive_lo, x[dst] + node.arrive_hi)
+        else:
+            reach = node.width * (0.5 - settings.port_margin)
+            in_range[dst] = (x[dst] - reach, x[dst] + reach)
+        ports = _spread(len(group), *in_range[dst], settings.min_port_spacing)
+        arrive.update(zip(group, ports, strict=False))
+
+    # Rows: the x ranges that boxes cover, which no vertical stretch may enter.
+    levels = sorted(order)
+    row_blocked: dict[int, list[tuple[float, float]]] = {
+        lvl: [(x[n] - left[n], x[n] + right[n]) for n in row if n not in virtual]
+        for lvl, row in order.items()
+    }
+
+    def column_is_free(column: float, first: int, last: int) -> bool:
+        """True when a vertical line at ``column`` meets no box in the rows between two levels."""
+        return all(
+            not any(low - BOX_MARGIN < column < high + BOX_MARGIN for low, high in row_blocked[row])
+            for row in range(first + 1, last)
+        )
+
+    # An edge whose two ports can share one x runs straight down: move the ports to that x.
+    for key in sorted(chains, key=lambda k: abs(depart[k] - arrive[k])):
+        src, dst = key
+        if abs(depart[key] - arrive[key]) < _EPS:
+            continue
+        low = max(out_range[src][0], in_range[dst][0])
+        high = min(out_range[src][1], in_range[dst][1])
+        if low > high:
+            continue
+        column = min(max(depart[key], low), high)
+        others = [depart[k] for k in out_edges[src] if k != key]
+        others += [arrive[k] for k in in_edges[dst] if k != key]
+        if any(abs(column - o) < SNAP_SPACING for o in others):
+            continue
+        if column_is_free(column, level[src], level[dst]):
+            depart[key] = arrive[key] = column
+
+    requests = [
+        Request(
+            key,
+            level[key[0]],
+            level[key[1]],
+            depart[key],
+            arrive[key],
+            tuple(x[v] for v in chain[1:-1]),
+        )
+        for key, chain in chains.items()
+    ]
+    plans = plan_all(requests, row_blocked)
+    # A tiny sideways move next to a port is a kink: move the port to the column instead.
+    for key, plan in list(plans.items()):
+        src, dst = key
+        columns, jogs = list(plan.columns), list(plan.jogs)
+        last_gap = level[dst] - 1
+        if jogs and jogs[-1].gap == last_gap and abs(jogs[-1].x_to - jogs[-1].x_from) <= KINK:
+            moved = jogs[-1].x_from
+            low, high = in_range[dst]
+            near = [arrive[k] for k in in_edges[dst] if k != key]
+            if low <= moved <= high and all(abs(moved - o) >= SNAP_SPACING for o in near):
+                arrive[key] = columns[-1] = moved
+                jogs.pop()
+        if jogs and jogs[0].gap == level[src] and abs(jogs[0].x_to - jogs[0].x_from) <= KINK:
+            moved = jogs[0].x_to
+            low, high = out_range[src]
+            near = [depart[k] for k in out_edges[src] if k != key]
+            if low <= moved <= high and all(abs(moved - o) >= SNAP_SPACING for o in near):
+                depart[key] = columns[0] = moved
+                jogs.pop(0)
+        plans[key] = Plan(key, tuple(columns), tuple(jogs))
+    slot_of, slot_count = assign_slots(list(plans.values()))
 
     # Row heights, then the gap under each row: it grows with the slots it must hold.
     row_height: dict[int, float] = {}
     for lvl, row in order.items():
         real = [sizes[n].height + sizes[n].top_extra for n in row if n in sizes]
         row_height[lvl] = max(real) if real else 0.0
-    levels = sorted(order)
     gap_after = {
         lvl: max(
             settings.gap_y,
@@ -402,70 +470,25 @@ def layout(
                 top_of_box[n] = box_top
                 y_center[n] = box_top + node.height / 2
 
-    # Ports: departures spread along the source's bottom edge, arrivals along the target's top edge.
-    out_edges: dict[str, list[tuple[str, str]]] = {}
-    in_edges: dict[str, list[tuple[str, str]]] = {}
-    for key, chain in chains.items():
-        out_edges.setdefault(chain[0], []).append(key)
-        in_edges.setdefault(chain[-1], []).append(key)
-    depart: dict[tuple[str, str], float] = {}
-    arrive: dict[tuple[str, str], float] = {}
-    for src, group in out_edges.items():
-        group.sort(key=lambda k: x[chains[k][1]])
-        half = sizes[src].width / 2
-        lo, hi = (
-            x[src] - half * (1 - 2 * settings.port_margin),
-            x[src] + half * (1 - 2 * settings.port_margin),
-        )
-        ports = _spread(len(group), lo, hi, settings.min_port_spacing)
-        depart.update(zip(group, ports, strict=False))
-    for dst, group in in_edges.items():
-        group.sort(key=lambda k: x[chains[k][-2]])
-        node = sizes[dst]
-        lo = x[dst] + (
-            node.arrive_lo
-            if node.arrive_lo or node.arrive_hi
-            else -node.width * (0.5 - settings.port_margin)
-        )
-        hi = x[dst] + (
-            node.arrive_hi
-            if node.arrive_lo or node.arrive_hi
-            else node.width * (0.5 - settings.port_margin)
-        )
-        ports = _spread(len(group), lo, hi, settings.min_port_spacing)
-        arrive.update(zip(group, ports, strict=False))
-
-    # Raw point lists, then jog slots per gap.
-    raw: dict[tuple[str, str], list[Point]] = {}
-    for key, chain in chains.items():
-        src, dst = key
-        pts: list[Point] = [(depart[key], top_of_box[src] + sizes[src].height)]
-        pts.extend((x[v], y_center[v]) for v in chain[1:-1])
-        pts.append((arrive[key], top_of_box[dst]))
-        raw[key] = pts
-
     jog_y: dict[tuple[tuple[str, str], int], float] = {}
-    for lvl, count in slot_count.items():
-        bottom = row_top[lvl] + row_height[lvl]
-        lo = bottom + settings.slot * 2
-        hi = bottom + gap_after[lvl] - settings.slot * 2 - settings.arrow
-        positions = _spread(count, lo, max(lo, hi), settings.slot)
-        for (key, i), index in slot_of.items():
-            if level[chains[key][i]] == lvl:
-                jog_y[(key, i)] = positions[index]
+    for gap, count in slot_count.items():
+        bottom = row_top[gap] + row_height[gap]
+        low = bottom + settings.slot * 2
+        high = bottom + gap_after[gap] - settings.slot * 2 - settings.arrow
+        positions = _spread(count, low, max(low, high), settings.slot)
+        for (key, index), number in slot_of.items():
+            if plans[key].jogs[index].gap == gap:
+                jog_y[(key, index)] = positions[number]
 
     routes: list[Route] = []
-    for key, chain in chains.items():
-        pts = raw[key]
-        jogs = tuple(
-            jog_y.get((key, i), (pts[i][1] + pts[i + 1][1]) / 2) for i in range(len(pts) - 1)
-        )
-        rows_of: list[tuple[float, float] | None] = [None]
-        rows_of.extend(
-            (row_top[level[v]], row_top[level[v]] + row_height[level[v]]) for v in chain[1:-1]
-        )
-        rows_of.append(None)
-        routes.append(Route(key[0], key[1], tuple(pts), jogs, key in dashed, tuple(rows_of)))
+    for key, plan in plans.items():
+        src, dst = key
+        points: list[Point] = [(depart[key], top_of_box[src] + sizes[src].height)]
+        for index, jog in enumerate(plan.jogs):
+            y = jog_y[(key, index)]
+            points += [(jog.x_from, y), (jog.x_to, y)]
+        points.append((arrive[key], top_of_box[dst]))
+        routes.append(Route(src, dst, tuple(points), key in dashed))
 
     # Canvas.
     placed: dict[str, Placed] = {}
@@ -485,14 +508,7 @@ def layout(
         for n, p in placed.items()
     }
     out_routes = [
-        Route(
-            r.source,
-            r.target,
-            tuple((px + dx, py + dy) for px, py in r.points),
-            tuple(j + dy for j in r.jogs),
-            r.dashed,
-            tuple(None if row is None else (row[0] + dy, row[1] + dy) for row in r.rows),
-        )
+        Route(r.source, r.target, tuple((px + dx, py + dy) for px, py in r.points), r.dashed)
         for r in routes
     ]
     max_x = max((p.x + p.width / 2 for p in shifted.values()), default=0.0)

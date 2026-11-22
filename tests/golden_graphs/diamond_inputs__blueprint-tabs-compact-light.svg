@@ -135,16 +135,16 @@
 </style>
 <rect class="dag-canvas" width="410" height="360" />
 <path d="M20 0V360M40 0V360M60 0V360M80 0V360M100 0V360M120 0V360M140 0V360M160 0V360M180 0V360M200 0V360M220 0V360M240 0V360M260 0V360M280 0V360M300 0V360M320 0V360M340 0V360M360 0V360M380 0V360M400 0V360M0 20H410M0 40H410M0 60H410M0 80H410M0 100H410M0 120H410M0 140H410M0 160H410M0 180H410M0 200H410M0 220H410M0 240H410M0 260H410M0 280H410M0 300H410M0 320H410M0 340H410" class="dag-grid" />
-<path d="M258 64 L258 79 Q258 93 244 93 L209 93 Q200 93 200 102 L200 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="195,111 205,111 200,120" class="dag-arrow" />
-<path d="M272 64 L272 73 Q272 82 281 82 L316 82 Q330 82 330 96 L330 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="325,111 335,111 330,120" class="dag-arrow" />
-<path d="M200 154 L200 163 Q200 172 209 172 L244 172 Q258 172 258 186 L258 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="253,201 263,201 258,210" class="dag-arrow" />
-<path d="M330 154 L330 169 Q330 183 316 183 L281 183 Q272 183 272 192 L272 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="267,201 277,201 272,210" class="dag-arrow" />
 <path d="M265 244 L265 291" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="260,291 270,291 265,300" class="dag-arrow dag-arrow--output" />
+<path d="M258 64 L258 75.8 Q258 87.5 246.2 87.5 L211.8 87.5 Q200 87.5 200 99.2 L200 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="195,111 205,111 200,120" class="dag-arrow" />
+<path d="M272 64 L272 75.8 Q272 87.5 283.8 87.5 L318.2 87.5 Q330 87.5 330 99.2 L330 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="325,111 335,111 330,120" class="dag-arrow" />
+<path d="M200 154 L200 165.8 Q200 177.5 211.8 177.5 L246.2 177.5 Q258 177.5 258 189.2 L258 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="253,201 263,201 258,210" class="dag-arrow" />
+<path d="M330 154 L330 165.8 Q330 177.5 318.2 177.5 L283.8 177.5 Q272 177.5 272 189.2 L272 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="267,201 277,201 272,210" class="dag-arrow" />
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="load">
 <title>Load (cached)
 Read the CSV file.

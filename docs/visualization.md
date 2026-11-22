@@ -238,6 +238,20 @@ str True
   from `adag`. Their names and fields stay stable. The old private name `_render_graph_svg`
   works until 1.0.
 
+## How edges are routed
+
+Each edge is routed on its own. The rule is: fewest bends, then the shortest length, then fewest
+crossings. A crossing costs less than an extra bend.
+
+1. A free edge drops straight from the source to the target.
+2. Else it makes one sideways move in the gap just above the target (a Z in `blueprint`, one
+   S curve in `band`).
+3. A second sideways move appears only when a box blocks the plain Z.
+
+Edges of different sources stay at least 4 px apart. Edges that leave one source may share a
+segment. No edge runs through a box. The tests count the bends of every edge (`BEND_BASELINE` in
+`tests/test_svg_layout.py`).
+
 ## Test a drawing change
 
 The tests draw every graph in `tests/graphs_fixtures.py` in every style, input mode and density,

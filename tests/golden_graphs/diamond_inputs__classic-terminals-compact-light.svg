@@ -134,20 +134,20 @@
 }
 </style>
 <rect class="dag-canvas" width="312" height="450" />
-<path d="M101.8 62 C101.8 86 124.9 86 124.9 110" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="121.7,110 128.1,110 124.9,118" class="dag-arrow" />
-<path d="M231.8 62 C231.8 85 216.6 85 216.6 108 L216.6 162 L217 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="213.8,200 220.2,200 217,208" class="dag-arrow" />
-<path d="M131.9 152 C131.9 176 203 176 203 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="199.8,200 206.2,200 203,208" class="dag-arrow" />
-<path d="M117.9 152 C117.9 176 80 176 80 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="76.8,200 83.2,200 80,208" class="dag-arrow" />
-<path d="M210 242 C210 266 149.1 266 149.1 290" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="145.9,290 152.3,290 149.1,298" class="dag-arrow" />
-<path d="M80 242 C80 266 135.1 266 135.1 290" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="131.9,290 138.3,290 135.1,298" class="dag-arrow" />
+<path d="M101.8 62 L101.8 110" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="98.6,110 105,110 101.8,118" class="dag-arrow" />
+<path d="M110 152 L110 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="106.8,200 113.2,200 110,208" class="dag-arrow" />
 <path d="M142.1 332 L142.1 380" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="138.9,380 145.3,380 142.1,388" class="dag-arrow dag-arrow--output" />
+<path d="M231.8 62 L231.8 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="228.6,200 235,200 231.8,208" class="dag-arrow" />
+<path d="M131.9 152 L131.9 152 C131.9 176 203 176 203 200 L203 200" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="199.8,200 206.2,200 203,208" class="dag-arrow" />
+<path d="M210 242 L210 242 C210 266 149.1 266 149.1 290 L149.1 290" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="145.9,290 152.3,290 149.1,298" class="dag-arrow" />
+<path d="M80 242 L80 242 C80 266 135.1 266 135.1 290 L135.1 290" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="131.9,290 138.3,290 135.1,298" class="dag-arrow" />
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="path">
 <title>path
 'data.csv'</title>

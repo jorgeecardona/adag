@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   edges, a state square with the state word, and the cache key in each box. Pass
   `SvgOptions(style="classic")` to keep the colours and box shapes of 0.3.22. Corners are rounded
   (boxes 8 px, terminals and tabs 6 px, edge bends 14 px).
-- Edges no longer run under boxes. A long edge keeps a lane between the boxes, and a graph of 40
-  nodes draws in about 0.1 s instead of seconds.
+- Edges no longer run under boxes. Each edge is routed on its own: the fewest bends first, then the
+  shortest way. It drops straight when the way is free, else it makes one sideways move just above
+  its target, and a second one only when a box blocks the first. There are no staircases and no
+  shared trunks. Corners on the training example fell from 108 to 30, and a graph of 40 nodes draws
+  in about 0.1 s instead of seconds.
 - Input nodes (`inputs="terminals"`, the default) all sit in the top row of the image, ordered by
   where their steps are, with their edges running down to the steps. The compact density also uses
   input nodes now, not labels to the left of the step. `tabs` and `rows` keep their folded forms.

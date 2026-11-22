@@ -134,16 +134,16 @@
 }
 </style>
 <rect class="dag-canvas" width="430" height="360" />
-<path d="M268 64 C268 87.5 205 87.5 205 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="200,111 210,111 205,120" class="dag-arrow" />
-<path d="M282 64 C282 87.5 345 87.5 345 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="340,111 350,111 345,120" class="dag-arrow" />
-<path d="M205 154 C205 177.5 268 177.5 268 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="263,201 273,201 268,210" class="dag-arrow" />
-<path d="M345 154 C345 177.5 282 177.5 282 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="277,201 287,201 282,210" class="dag-arrow" />
 <path d="M275 244 L275 291" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="270,291 280,291 275,300" class="dag-arrow dag-arrow--output" />
+<path d="M268 64 L268 64 C268 87.5 205 87.5 205 111 L205 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="200,111 210,111 205,120" class="dag-arrow" />
+<path d="M282 64 L282 64 C282 87.5 345 87.5 345 111 L345 111" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="340,111 350,111 345,120" class="dag-arrow" />
+<path d="M205 154 L205 154 C205 177.5 268 177.5 268 201 L268 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="263,201 273,201 268,210" class="dag-arrow" />
+<path d="M345 154 L345 154 C345 177.5 282 177.5 282 201 L282 201" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="277,201 287,201 282,210" class="dag-arrow" />
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="load">
 <title>Load (cached)
 Read the CSV file.

@@ -18,7 +18,6 @@ import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import partial
-from itertools import pairwise
 from typing import Literal
 
 from adag import svg_layout as lay
@@ -43,6 +42,7 @@ _PAD_X = 14
 _MAX_LINES = 6
 _EPS = 0.5
 _LANE_MARGIN = 10
+_S_REACH = 26.0  # half the height of the S of a sideways move
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
 _BOX_R = 8  # blueprint: step boxes and the output box
@@ -877,41 +877,41 @@ def _end_points(route: lay.Route, arrow: float) -> list[lay.Point]:
 
 
 def curve_path(route: lay.Route, arrow: float) -> str:
-    """Cubic Béziers through the route, vertical at every point, so a long edge bends smoothly.
+    """Straight runs and one smooth S for each sideways move, in the gap where the move happens.
 
-    An edge that crosses a row (a virtual point) runs straight down through the whole row first, so
-    it never sweeps under a box of that row.
+    The S has a vertical tangent at both ends, so it joins the straight runs without a corner.
     """
     pts = _end_points(route, arrow)
-    expanded: list[lay.Point] = []
-    for point, row in zip(pts, route.rows or (None,) * len(pts), strict=False):
-        if row is None:
-            expanded.append(point)
+    parts = [f"M{_num(pts[0][0])} {_num(pts[0][1])}"]
+    index = 1
+    while index < len(pts):
+        a = pts[index]
+        b = pts[index + 1] if index + 1 < len(pts) else None
+        if b is not None and abs(a[1] - b[1]) < _EPS and abs(a[0] - b[0]) >= _EPS:
+            before = pts[index - 1][1]
+            after = pts[index + 2][1] if index + 2 < len(pts) else b[1] + _S_REACH
+            reach = min(_S_REACH, a[1] - before, after - a[1])
+            top, bottom = a[1] - reach, a[1] + reach
+            parts.append(f"L{_num(a[0])} {_num(top)}")
+            parts.append(
+                f"C{_num(a[0])} {_num(a[1])} {_num(b[0])} {_num(a[1])} {_num(b[0])} {_num(bottom)}"
+            )
+            index += 2
         else:
-            expanded.extend([(point[0], row[0] - _LANE_MARGIN), (point[0], row[1] + _LANE_MARGIN)])
-    parts = [f"M{_num(expanded[0][0])} {_num(expanded[0][1])}"]
-    for (x0, y0), (x1, y1) in pairwise(expanded):
-        if abs(x0 - x1) < _EPS:
-            parts.append(f"L{_num(x1)} {_num(y1)}")
-            continue
-        k = (y1 - y0) * 0.5
-        parts.append(f"C{_num(x0)} {_num(y0 + k)} {_num(x1)} {_num(y1 - k)} {_num(x1)} {_num(y1)}")
+            parts.append(f"L{_num(a[0])} {_num(a[1])}")
+            index += 1
     return " ".join(parts)
 
 
 def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
-    """Right angles with rounded corners: down, sideways in the gap, down."""
-    pts = _end_points(route, arrow)
-    vertices: list[lay.Point] = [pts[0]]
-    for i, (a, b) in enumerate(pairwise(pts)):
-        if abs(a[0] - b[0]) > _EPS:
-            jy = route.jogs[i]
-            vertices.extend([(a[0], jy), (b[0], jy)])
-        vertices.append(b)
+    """Right angles with rounded corners: down, sideways in a gap, down."""
+    vertices = _end_points(route, arrow)
     parts = [f"M{_num(vertices[0][0])} {_num(vertices[0][1])}"]
     for i in range(1, len(vertices) - 1):
         prev, cur, nxt = vertices[i - 1], vertices[i], vertices[i + 1]
-        if (prev[0] == cur[0] == nxt[0]) or (prev[1] == cur[1] == nxt[1]):
+        if (abs(prev[0] - cur[0]) < _EPS and abs(cur[0] - nxt[0]) < _EPS) or (
+            abs(prev[1] - cur[1]) < _EPS and abs(cur[1] - nxt[1]) < _EPS
+        ):
             continue
         d1 = math.hypot(cur[0] - prev[0], cur[1] - prev[1])
         d2 = math.hypot(nxt[0] - cur[0], nxt[1] - cur[1])

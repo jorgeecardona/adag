@@ -12,6 +12,7 @@ levels. They are copies of the structure, not imports of the consumer.
 from __future__ import annotations
 
 import hashlib
+import random
 from dataclasses import dataclass, replace
 
 from adag.visualization import NodeMetadata
@@ -348,6 +349,126 @@ def _stateless(graph: GraphFixture, name: str) -> GraphFixture:
     return GraphFixture(name, nodes, graph.edges, graph.final, graph.output_label, graph.note)
 
 
+def ml_training() -> GraphFixture:
+    n = [
+        file_input("dataset", "data/train.parquet"),
+        param("seed", "42"),
+        param("lr", "0.001"),
+        param("holdout", "0.2"),
+        step("ingest", "Ingest", "Read the parquet file and check the schema.", "CACHED"),
+        step("clean", "Clean", "Drop duplicates and rows with missing labels.", "CACHED"),
+        step("split", "Split", "Hold out a validation set by group.", "CACHED"),
+        step("tokenize", "Tokenize", "Turn text into token ids.", "CACHED"),
+        step("embed", "Embed", "Look up pretrained vectors.", "CACHED"),
+        step("features", "Features", "Join tabular and text features.", "PENDING"),
+        step("train_a", "Train baseline", "Gradient boosting on the features.", "PENDING"),
+        step("train_b", "Train network", "Small transformer on the token ids.", "PENDING"),
+        step("evaluate_a", "Evaluate baseline", "AUC and calibration on the holdout.", "PENDING"),
+        step("evaluate_b", "Evaluate network", "AUC and calibration on the holdout.", "PENDING"),
+        step("compare", "Compare", "Pick the better model by AUC, break ties by size.", "PENDING"),
+        step("report", "Report", "Write the model card and the plots.", "PENDING"),
+    ]
+    e = (
+        ("dataset", "ingest"),
+        ("ingest", "clean"),
+        ("clean", "split"),
+        ("holdout", "split"),
+        ("split", "tokenize"),
+        ("tokenize", "embed"),
+        ("split", "features"),
+        ("embed", "features"),
+        ("features", "train_a"),
+        ("seed", "train_a"),
+        ("embed", "train_b"),
+        ("seed", "train_b"),
+        ("lr", "train_b"),
+        ("train_a", "evaluate_a"),
+        ("split", "evaluate_a"),
+        ("train_b", "evaluate_b"),
+        ("split", "evaluate_b"),
+        ("evaluate_a", "compare"),
+        ("evaluate_b", "compare"),
+        ("compare", "report"),
+        ("split", "report"),
+    )
+    return GraphFixture(
+        "ml_training",
+        tuple(n),
+        e,
+        "report",
+        "model_card.md",
+        "A training run: two models, one comparison. 16 nodes.",
+    )
+
+
+def etl_fan_in() -> GraphFixture:
+    srcs = ["orders", "customers", "products", "refunds", "shipping", "reviews"]
+    n = [file_input(s, f"raw/{s}.csv") for s in srcs] + [param("month", "2026-10")]
+    e: list[tuple[str, str]] = []
+    for s in srcs:
+        n.append(step(f"load_{s}", f"Load {s}", f"Read {s}.csv for the month.", "CACHED"))
+        e += [(s, f"load_{s}"), ("month", f"load_{s}")]
+    n += [
+        step("join", "Join", "Join orders, customers and products.", "CACHED"),
+        step("net", "Net revenue", "Subtract refunds and shipping.", "PENDING"),
+        step("sentiment", "Sentiment", "Score the reviews per product.", "PENDING"),
+        step("kpis", "KPIs", "Revenue, margin, return rate, sentiment.", "PENDING"),
+        step("publish", "Publish", "Write the table and notify the team.", "BLOCKED"),
+    ]
+    e += [
+        ("load_orders", "join"),
+        ("load_customers", "join"),
+        ("load_products", "join"),
+        ("join", "net"),
+        ("load_refunds", "net"),
+        ("load_shipping", "net"),
+        ("load_reviews", "sentiment"),
+        ("load_products", "sentiment"),
+        ("net", "kpis"),
+        ("sentiment", "kpis"),
+        ("join", "kpis"),
+        ("kpis", "publish"),
+    ]
+    return GraphFixture(
+        "etl_fan_in",
+        tuple(n),
+        tuple(e),
+        "publish",
+        "kpis_2026_10.csv",
+        "Six sources feed one join. 20 nodes, one blocked step at the end.",
+    )
+
+
+def layered_40() -> GraphFixture:
+    rnd = random.Random(7)  # noqa: S311 (a fixed seed makes the graph the same every run)
+    levels = [3, 5, 6, 6, 6, 5, 4, 3, 2, 1]
+    names: list[list[str]] = []
+    n: list[NodeMetadata] = []
+    e: list[tuple[str, str]] = []
+    for li, w in enumerate(levels):
+        row: list[str] = []
+        for i in range(w):
+            nm = f"s{li}_{i}"
+            row.append(nm)
+            st = "CACHED" if li < 4 else "PENDING"
+            n.append(step(nm, f"Step {li}.{i}", "", st))
+        names.append(row)
+    for li in range(1, len(levels)):
+        for nm in names[li]:
+            k = min(len(names[li - 1]), rnd.choice([1, 2, 2]))
+            e.extend((src, nm) for src in rnd.sample(names[li - 1], k=k))
+            if li > 2 and rnd.random() < 0.25:
+                e.append((rnd.choice(names[li - 2]), nm))
+    return GraphFixture(
+        "layered_40",
+        tuple(n),
+        tuple(dict.fromkeys(e)),
+        names[-1][0],
+        "result",
+        "A generated layered graph, 41 nodes with skip edges. A stress test.",
+    )
+
+
 def all_graphs() -> dict[str, GraphFixture]:
     """Every fixture by name."""
     graphs = [
@@ -362,6 +483,9 @@ def all_graphs() -> dict[str, GraphFixture]:
         _namecheck(),
         _namecheck_big(),
         _dataset_middle(),
+        ml_training(),
+        etl_fan_in(),
+        layered_40(),
     ]
     graphs += [
         _stateless(_diamond_inputs(), "diamond_stateless"),

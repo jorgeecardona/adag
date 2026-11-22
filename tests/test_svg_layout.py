@@ -220,43 +220,100 @@ def _id(combo: Combo) -> str:
 # The crossings of the first good render of each big graph (terminals in the top row), per style, input mode and density.
 # A change that adds more than two is a regression in the layout.
 CROSSING_BASELINE: dict[str, int] = {
-    "namecheck/blueprint-terminals-normal": 7,
-    "namecheck/blueprint-terminals-compact": 7,
+    "namecheck/blueprint-terminals-normal": 9,
+    "namecheck/blueprint-terminals-compact": 6,
     "namecheck/blueprint-tabs-normal": 0,
     "namecheck/blueprint-tabs-compact": 0,
     "namecheck/blueprint-rows-normal": 0,
     "namecheck/blueprint-rows-compact": 0,
-    "namecheck/band-terminals-normal": 7,
-    "namecheck/band-terminals-compact": 7,
+    "namecheck/band-terminals-normal": 9,
+    "namecheck/band-terminals-compact": 6,
     "namecheck/band-tabs-normal": 0,
     "namecheck/band-tabs-compact": 0,
     "namecheck/band-rows-normal": 0,
     "namecheck/band-rows-compact": 0,
-    "namecheck/classic-terminals-normal": 7,
-    "namecheck/classic-terminals-compact": 7,
+    "namecheck/classic-terminals-normal": 9,
+    "namecheck/classic-terminals-compact": 6,
     "namecheck/classic-tabs-normal": 7,
     "namecheck/classic-tabs-compact": 7,
     "namecheck/classic-rows-normal": 7,
     "namecheck/classic-rows-compact": 7,
     "namecheck_big/blueprint-terminals-normal": 8,
-    "namecheck_big/blueprint-terminals-compact": 8,
+    "namecheck_big/blueprint-terminals-compact": 9,
     "namecheck_big/blueprint-tabs-normal": 0,
     "namecheck_big/blueprint-tabs-compact": 0,
     "namecheck_big/blueprint-rows-normal": 0,
     "namecheck_big/blueprint-rows-compact": 0,
     "namecheck_big/band-terminals-normal": 8,
-    "namecheck_big/band-terminals-compact": 8,
+    "namecheck_big/band-terminals-compact": 9,
     "namecheck_big/band-tabs-normal": 0,
     "namecheck_big/band-tabs-compact": 0,
     "namecheck_big/band-rows-normal": 0,
     "namecheck_big/band-rows-compact": 0,
-    "namecheck_big/classic-terminals-normal": 8,
-    "namecheck_big/classic-terminals-compact": 8,
+    "namecheck_big/classic-terminals-normal": 10,
+    "namecheck_big/classic-terminals-compact": 9,
     "namecheck_big/classic-tabs-normal": 8,
     "namecheck_big/classic-tabs-compact": 8,
     "namecheck_big/classic-rows-normal": 8,
     "namecheck_big/classic-rows-compact": 8,
 }
+
+
+# Corners of the first good render (the per-edge router), plus a small margin. Blueprint counts the
+# rounded corners of every edge, band counts the curves (two per sideways move).
+BEND_BASELINE: dict[str, int] = {
+    "ml_training/blueprint-normal": 33,
+    "ml_training/blueprint-compact": 27,
+    "ml_training/band-normal": 18,
+    "ml_training/band-compact": 16,
+    "etl_fan_in/blueprint-normal": 35,
+    "etl_fan_in/blueprint-compact": 41,
+    "etl_fan_in/band-normal": 18,
+    "etl_fan_in/band-compact": 18,
+    "layered_40/blueprint-normal": 152,
+    "layered_40/blueprint-compact": 154,
+    "layered_40/band-normal": 78,
+    "layered_40/band-compact": 77,
+    "namecheck/blueprint-normal": 41,
+    "namecheck/blueprint-compact": 39,
+    "namecheck/band-normal": 21,
+    "namecheck/band-compact": 20,
+    "namecheck_big/blueprint-normal": 47,
+    "namecheck_big/blueprint-compact": 47,
+    "namecheck_big/band-normal": 24,
+    "namecheck_big/band-compact": 24,
+}
+
+
+def _bends_per_edge(svg: str, style: Style) -> list[int]:
+    """The corners of each edge: ``Q`` commands in blueprint, ``C`` commands in band."""
+    mark = "Q" if style == "blueprint" else "C"
+    return [
+        p.get("d", "").count(mark)
+        for p in ET.fromstring(svg).iter(f"{SVG_NS}path")  # noqa: S314
+        if "dag-edge" in p.get("class", "").split()
+    ]
+
+
+@pytest.mark.parametrize("graph", sorted(GRAPHS))
+@pytest.mark.parametrize("style", ["blueprint", "band"])
+@pytest.mark.parametrize("density", DENSITIES)
+def test_no_edge_bends_more_than_a_blocked_z_does(
+    graph: str, style: Style, density: Density
+) -> None:
+    """An edge has at most one sideways move, or two when a box blocks the plain one."""
+    bends = _bends_per_edge(render(GRAPHS[graph], style, "terminals", density), style)
+    assert max(bends, default=0) <= (4 if style == "blueprint" else 2), bends
+
+
+@pytest.mark.parametrize("graph", ["ml_training", "etl_fan_in", "layered_40", *BIG])
+@pytest.mark.parametrize("style", ["blueprint", "band"])
+@pytest.mark.parametrize("density", DENSITIES)
+def test_total_bends_stay_near_the_first_good_render(
+    graph: str, style: Style, density: Density
+) -> None:
+    total = sum(_bends_per_edge(render(GRAPHS[graph], style, "terminals", density), style))
+    assert total <= BEND_BASELINE[f"{graph}/{style}-{density}"], total
 
 
 @pytest.mark.parametrize("graph", sorted(GRAPHS))
@@ -396,13 +453,13 @@ def straight_segments(d: str) -> list[Segment]:
     return segments
 
 
-MIN_LANE_GAP = 8.0
+MIN_LANE_GAP = 4.0
 MIN_BOX_GAP = 6.0
 
 
 @pytest.mark.parametrize("graph", ["namecheck", "namecheck_big"])
 def test_lanes_keep_apart_from_each_other_and_from_boxes(graph: str) -> None:
-    """In blueprint, parallel lanes are at least 8 px apart and a lane is 6 px from any box."""
+    """In blueprint, parallel lanes are 4 px apart (unless they leave one source) and 6 px from a box."""
     root = ET.fromstring(render(GRAPHS[graph], "blueprint", "terminals", "normal"))  # noqa: S314
     drawing = read_drawing(ET.tostring(root, encoding="unicode"))
     edges = [
@@ -411,15 +468,18 @@ def test_lanes_keep_apart_from_each_other_and_from_boxes(graph: str) -> None:
         if "dag-edge" in p.get("class", "").split()
     ]
     for (i, first), (j, second) in itertools.combinations(enumerate(edges), 2):
+        same_source = (
+            _ends(drawing.edges[i], drawing.boxes)[0] == _ends(drawing.edges[j], drawing.boxes)[0]
+        )
         for ax1, ay1, ax2, ay2 in first:
             for bx1, by1, bx2, by2 in second:
                 if ax1 == ax2 and bx1 == bx2:  # two vertical lanes that share some height
                     shared = min(max(ay1, ay2), max(by1, by2)) - max(min(ay1, ay2), min(by1, by2))
-                    if shared > 2:
+                    if shared > 2 and not (same_source and ax1 == bx1):
                         assert abs(ax1 - bx1) >= MIN_LANE_GAP, (i, j, ax1, bx1)
                 if ay1 == ay2 and by1 == by2:  # two horizontal runs that share some width
                     shared = min(max(ax1, ax2), max(bx1, bx2)) - max(min(ax1, ax2), min(bx1, bx2))
-                    if shared > 2:
+                    if shared > 2 and not (same_source and ay1 == by1):
                         assert abs(ay1 - by1) >= MIN_LANE_GAP, (i, j, ay1, by1)
     for points, segments in zip(drawing.edges, edges, strict=True):
         source, target = _ends(points, drawing.boxes)
