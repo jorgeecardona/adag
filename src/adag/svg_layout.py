@@ -46,6 +46,12 @@ class LNode:
     """Where edges may arrive on the top edge, as an offset from the box centre."""
     arrive_hi: float = 0.0
     kind: str = "step"
+    arrive_at: tuple[tuple[str, float], ...] = ()
+    """``(source name, x offset from the box centre)``: the edge from that source ends exactly
+    there, on the top edge. The node takes no edge on a side face. A frame uses it to land each
+    edge on an input inside the frame."""
+    depart_at: float | None = None
+    """The x offset from the box centre where every edge leaves this node (a frame's exit)."""
 
 
 @dataclass(frozen=True)
@@ -378,10 +384,19 @@ def layout(
     arrive: dict[tuple[str, str], float] = {}
     out_range: dict[str, tuple[float, float]] = {}
     in_range: dict[str, tuple[float, float]] = {}
+    # Edges whose departure or arrival a node asked for: nothing moves that port.
+    fixed_out: set[tuple[str, str]] = set()
+    fixed_in: set[tuple[str, str]] = set()
     for src, group in out_edges.items():
         group.sort(key=lambda k: x[chains[k][1]])
         half = sizes[src].width / 2 * (1 - 2 * settings.port_margin)
         out_range[src] = (x[src] - half, x[src] + half)
+        exit_at = sizes[src].depart_at
+        if exit_at is not None:
+            for key in group:
+                depart[key] = x[src] + exit_at
+                fixed_out.add(key)
+            continue
         ports = _spread(len(group), *out_range[src], settings.min_port_spacing)
         depart.update(zip(group, ports, strict=False))
     for dst, group in in_edges.items():
@@ -392,8 +407,19 @@ def layout(
         else:
             reach = node.width * (0.5 - settings.port_margin)
             in_range[dst] = (x[dst] - reach, x[dst] + reach)
-        ports = _spread(len(group), *in_range[dst], settings.min_port_spacing)
-        arrive.update(zip(group, ports, strict=False))
+        asked = dict(node.arrive_at)
+        for key in group:
+            if chains[key][-2] in asked:  # the edge ends where the node said, not where it fits
+                arrive[key] = x[dst] + asked[chains[key][-2]]
+                fixed_in.add(key)
+        loose = [k for k in group if k not in fixed_in]
+        if loose:
+            ports = _spread(len(loose), *in_range[dst], settings.min_port_spacing)
+            taken = [arrive[k] for k in group if k in fixed_in]
+            arrive.update(
+                (k, _clear_of(p, taken, in_range[dst], SNAP_SPACING))
+                for k, p in zip(loose, ports, strict=False)
+            )
 
     # Rows: the x ranges that boxes cover, which no vertical stretch may enter.
     levels = sorted(order)
@@ -412,7 +438,7 @@ def layout(
     # An edge whose two ports can share one x runs straight down: move the ports to that x.
     for key in sorted(chains, key=lambda k: abs(depart[k] - arrive[k])):
         src, dst = key
-        if abs(depart[key] - arrive[key]) < _EPS:
+        if abs(depart[key] - arrive[key]) < _EPS or key in fixed_in or key in fixed_out:
             continue
         room = settings.corner_room
         src_lo, src_hi = x[src] - sizes[src].width / 2 + room, x[src] + sizes[src].width / 2 - room
@@ -457,7 +483,13 @@ def layout(
     side_requests: list[SideRequest] = []
     for key in chains:
         src, dst = key
-        if key in dashed or abs(depart[key] - arrive[key]) < _EPS or sizes[dst].left_extra:
+        if (
+            key in dashed
+            or abs(depart[key] - arrive[key]) < _EPS
+            or sizes[dst].left_extra
+            or sizes[dst].arrive_at
+            or sizes[src].depart_at is not None
+        ):
             continue
         reach = sizes[src].width / 2 - settings.corner_room
         side_requests.append(
@@ -475,15 +507,15 @@ def layout(
     # The edges still to route end on top: spread their ports again, now that others left.
     top_edges = [k for k in chains if k not in first.plans]
     for dst, group in in_edges.items():
-        rest = [k for k in group if k in top_edges]
+        rest = [k for k in group if k in top_edges and k not in fixed_in]
         if not rest or len(rest) == len(group):
             continue
-        taken_ports = [arrive[k] for k in group if k not in top_edges]
+        taken_ports = [arrive[k] for k in group if k not in rest]
         ports = _spread(len(rest), *in_range[dst], settings.min_port_spacing)
         for key, port in zip(rest, ports, strict=False):
             arrive[key] = _clear_of(port, taken_ports, in_range[dst], SNAP_SPACING)
     for src, group in out_edges.items():
-        rest = [k for k in group if k in top_edges]
+        rest = [k for k in group if k in top_edges and k not in fixed_out]
         if not rest or len(rest) == len(group):
             continue
         taken_ports = first.departures.get(src, [])
@@ -496,7 +528,7 @@ def layout(
             depart[key] = plan.columns[0]
     # A tiny sideways move next to a port is a kink: move the port to the column instead.
     for key, plan in list(plans.items()):
-        if plan.entry:
+        if plan.entry or key in fixed_in or key in fixed_out:
             continue
         src, dst = key
         columns, jogs = list(plan.columns), list(plan.jogs)
