@@ -260,7 +260,8 @@ def _first_doc_line(step: Step[Any]) -> str:
         if cls is Step or cls is object:
             break
         doc = getattr(cls, "__doc__", None)
-        if doc:
+        # ``dataclass`` fills a missing docstring with the signature, "Name(field: int = 1)".
+        if doc and not doc.startswith(f"{cls.__name__}("):
             return doc.strip().split("\n")[0].strip().rstrip(".")
     return getattr(type(step), "description", "") or getattr(type(step), "label", "")
 
@@ -1353,7 +1354,9 @@ def _render_svg(
     if isinstance(output, StepResult):
         result_type = output.step.result_model()
         output_label = _camel_to_words(result_type.__name__) if result_type else "output"
-        final_step_name = type(output.step).__name__
+        # The name walk() gave this instance: it differs from the class name for a node_label or a
+        # "#2" suffix, and the output edge needs the node's real name.
+        final_step_name = next((n.name for n in graph_nodes if n.step is output.step), None)
 
     if not options.show_params:
         nodes = {name: replace(node, params=()) for name, node in nodes.items()}

@@ -409,3 +409,46 @@ def test_dag_colors_cached_steps_apart_from_pending_steps(tmp_path: Path) -> Non
         assert "is-cached" in stylesheet
         assert "is-cached" in drawing  # Base kept its result
         assert "is-pending" in drawing  # Top has a new field
+
+
+def test_a_step_with_no_docstring_has_no_description() -> None:
+    """``dataclass`` writes "Name(field: int = 1)" as the docstring: it is not a description."""
+    from adag.visualization import node_metadata
+
+    @dataclass(frozen=True)
+    class Undocumented(Step[Result]):
+        case: str = "lower"
+
+        def run(self, x: int) -> Result:
+            return Result(value=x)
+
+    nodes, _ = walk(Undocumented()(x=InputParam[int]("x")))
+    meta = next(m for m in node_metadata(nodes) if m.kind == "step")
+    assert meta.description == ""
+
+
+def test_a_documented_step_keeps_its_first_docstring_line() -> None:
+    from adag.visualization import node_metadata
+
+    nodes, _ = walk(LeafStep()(x=InputParam[int]("x")))
+    meta = next(m for m in node_metadata(nodes) if m.kind == "step")
+    assert meta.description == "Leaf step with no upstream"
+
+
+def test_a_labelled_final_step_keeps_the_edge_to_the_output() -> None:
+    """The output edge uses the name walk() gave the node, not the class name."""
+    from adag import dag
+
+    @dataclass(frozen=True)
+    class Labelled(Step[Result]):
+        """A step with a per-instance label."""
+
+        node_label: str = ""
+
+        def run(self, x: int) -> Result:
+            return Result(value=x)
+
+    labelled = Labelled(node_label="cluster")(x=InputParam[int]("x"))
+    plain = LeafStep()(x=InputParam[int]("x"))
+    # Two edges into the output box means two edge paths ending at it.
+    assert str(dag(labelled)).count("<path") == str(dag(plain)).count("<path")

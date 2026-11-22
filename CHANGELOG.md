@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `dag()` no longer shows "Name(field: int = 1)" as the description of a step that has no
+  docstring. The box shows no description line.
+- `dag()` draws the edge to the output box when the last step has a `node_label` or a `#2` name
+  suffix. Before, the edge was dropped.
+
 ## [0.3.22] - 2026-11-22
 
 ### Fixed
