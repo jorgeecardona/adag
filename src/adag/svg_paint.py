@@ -46,6 +46,8 @@ _MAX_LINES = 6
 _EPS = 0.5
 _LANE_MARGIN = 10
 _S_REACH = 26.0  # half the height of the S of a sideways move
+_S_REACH_MAX = 60.0  # and at most this, for a very long move
+_BAND_SLOT = 22.0  # curves need more room between two sideways moves than right angles do
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
 _LEGEND_HEIGHT = 34
@@ -952,7 +954,9 @@ def curve_path(route: lay.Route, arrow: float, reach_max: float = _S_REACH) -> s
             and abs(pts[index + 2][0] - b[0]) < _EPS
         )
         if between_drops:
-            reach = min(reach_max, a[1] - pts[index - 1][1], pts[index + 2][1] - a[1])
+            # A long sideways move gets a long, gentle S, so the curve never looks like a hook.
+            wanted = min(max(reach_max, abs(b[0] - a[0]) / 3), _S_REACH_MAX)
+            reach = min(wanted, a[1] - pts[index - 1][1], pts[index + 2][1] - a[1])
             top, bottom = a[1] - reach, a[1] + reach
             parts.append(f"L{_num(a[0])} {_num(top)}")
             parts.append(
@@ -998,7 +1002,13 @@ def paint_route(
     cls = "dag-edge dag-edge--output" if route.dashed else "dag-edge"
     if flow:
         cls += " dag-edge--flow"
-    attrs = {"stroke-width": "1.5", "stroke-linejoin": "round", "stroke-linecap": "round"}
+    attrs = {
+        "stroke-width": "1.5",
+        "stroke-linejoin": "round",
+        "stroke-linecap": "round",
+        "data-source": _clean(route.source),
+        "data-target": _clean(route.target),
+    }
     if route.dashed:
         attrs["stroke-dasharray"] = "6,4"
     _path(parent, d, cls, **attrs)
@@ -1020,6 +1030,27 @@ def paint_route(
         "polygon",
         {"points": points, "class": "dag-arrow dag-arrow--output" if route.dashed else "dag-arrow"},
     )
+
+
+def fit_to_ports(
+    measured: dict[str, Measured],
+    edges: Sequence[tuple[str, str]],
+    skip: frozenset[str] = frozenset(),
+) -> dict[str, Measured]:
+    """Widen a box that has too many edges for its width: ports stay a lane apart on its edges."""
+    settings = lay.LayoutSettings()
+    usable = 1 - 2 * settings.port_margin  # the part of an edge of the box that takes ports
+    degree_in: dict[str, int] = {}
+    degree_out: dict[str, int] = {}
+    for source, target in edges:
+        degree_in[target] = degree_in.get(target, 0) + 1
+        degree_out[source] = degree_out.get(source, 0) + 1
+    fitted: dict[str, Measured] = {}
+    for name, m in measured.items():
+        busiest = max(degree_in.get(name, 0), degree_out.get(name, 0))
+        need = (busiest - 1) * settings.min_port_spacing / usable + 2 * settings.corner_room
+        fitted[name] = m if name in skip or m.width >= need else replace(m, width=math.ceil(need))
+    return fitted
 
 
 def settings_for(look: Look) -> lay.LayoutSettings:
@@ -1101,6 +1132,8 @@ def draw(
     fold = look.style != "classic" and look.inputs != "terminals"
     shown, shown_edges = _fold_inputs(nodes, edges, fold=fold)
     measured = {n.name: measure(n, look) for n in shown}
+    if look.style != "classic":
+        measured = fit_to_ports(measured, shown_edges)
     sizes = [
         lay.LNode(
             n.name,
@@ -1140,7 +1173,11 @@ def draw(
             final=final,
             top=top,
             settings=lay.LayoutSettings(
-                gap_y=settings.gap_y, gap_x=settings.gap_x, arrow=_arrow_size(look.style)[0]
+                gap_y=settings.gap_y,
+                gap_x=settings.gap_x,
+                arrow=_arrow_size(look.style)[0],
+                side_entry=look.style != "band",
+                slot=_BAND_SLOT if look.style == "band" else 12.0,
             ),
         )
         placed, result_w, result_h = result.nodes, result.width, result.height

@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   staircases, no shared trunks, and sideways runs of different edges are at least 12 px apart.
   Bends on the training example fell from 108 to 21, and a graph of 40 nodes draws in about 0.1 s
   instead of seconds.
+- Edges of one source branch and never merge: edges that leave one step share one trunk and split at
+  a corner. Edges of different sources keep their sideways runs 12 px apart, down to 4 px when a
+  wider gap would cost another bend. An edge has at most four bends (blueprint) or two curves
+  (band). Edges of different sources can still cross.
+- In `band`, a long sideways move is one long, gentle S, not a short hook. `band` keeps 22 px
+  between two sideways moves so the curves have room, and it no longer ends an edge on the side
+  of a box.
 - `style="classic"` is the drawing of 0.3.22 again: the same layout, the same curved edges, inputs
   as ellipses and boxes where they were. It ignores `inputs`, `density` and `corners`. It stays slow
   on big graphs (about a second for 12 nodes). Colours as variables, data attributes, text escaping

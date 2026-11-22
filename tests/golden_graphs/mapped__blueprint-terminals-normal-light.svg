@@ -72,6 +72,14 @@
 .dag--band .dag-text--output { fill: #333333; }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
+.dag-frame__border { fill: #8e24aa; fill-opacity: 0.05; stroke: #8e24aa; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: #00897b; stroke: #00897b; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: #8e24aa; }
+.dag-frame--loop .dag-frame__tag { fill: #00897b; }
+.dag-frame__caption { fill: #5f6368; }
+.dag--blueprint .dag-frame__caption { fill: #1f3d8f; }
+.dag .dag-edge.dag-edge--feedback { stroke: #00897b; }
+.dag .dag-arrow.dag-arrow--feedback { fill: #00897b; stroke: #00897b; }
 @supports (--a: 0) {
 .dag-canvas { fill: var(--adag-canvas, #ffffff); }
 .dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
@@ -113,6 +121,14 @@
 .dag--band .dag-text--output { fill: var(--adag-text, #333333); }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+.dag-frame__border { fill: var(--adag-mapped, #8e24aa); fill-opacity: 0.05; stroke: var(--adag-mapped, #8e24aa); stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: var(--adag-mapped, #8e24aa); }
+.dag-frame--loop .dag-frame__tag { fill: var(--adag-loop, #00897b); }
+.dag-frame__caption { fill: var(--adag-muted, #5f6368); }
+.dag--blueprint .dag-frame__caption { fill: var(--adag-ink, #1f3d8f); }
+.dag .dag-edge.dag-edge--feedback { stroke: var(--adag-loop, #00897b); }
+.dag .dag-arrow.dag-arrow--feedback { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); }
 .dag-item {
   --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
 }
@@ -135,11 +151,11 @@
 </style>
 <rect class="dag-canvas" width="286" height="573" />
 <path d="M20 0V573M40 0V573M60 0V573M80 0V573M100 0V573M120 0V573M140 0V573M160 0V573M180 0V573M200 0V573M220 0V573M240 0V573M260 0V573M280 0V573M0 20H286M0 40H286M0 60H286M0 80H286M0 100H286M0 120H286M0 140H286M0 160H286M0 180H286M0 200H286M0 220H286M0 240H286M0 260H286M0 280H286M0 300H286M0 320H286M0 340H286M0 360H286M0 380H286M0 400H286M0 420H286M0 440H286M0 460H286M0 480H286M0 500H286M0 520H286M0 540H286M0 560H286" class="dag-grid" />
-<path d="M143 120 L143 175" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M143 120 L143 175" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="docs" data-target="embed" />
 <polygon points="138,175 148,175 143,184" class="dag-arrow" />
-<path d="M143 295 L143 350" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M143 295 L143 350" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="embed" data-target="index" />
 <polygon points="138,350 148,350 143,359" class="dag-arrow" />
-<path d="M143 449 L143 504" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
+<path d="M143 449 L143 504" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="index" data-target="__output__" stroke-dasharray="6,4" />
 <polygon points="138,504 148,504 143,513" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--step is-cached is-leaf" data-state="cached" data-kind="step" data-name="docs">
 <title>List documents (cached)

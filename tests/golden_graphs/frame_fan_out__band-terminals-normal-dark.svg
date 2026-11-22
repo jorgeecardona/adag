@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--band" width="277" height="1010" viewBox="0 0 277 1010">
+<style>.dag-canvas { fill: #14161a; }
+.dag--blueprint .dag-canvas { fill: #0b1322; }
+.dag-grid { fill: none; stroke: #17233b; stroke-width: 1; }
+.dag-text { fill: #e6e8eb; font-family: -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif; }
+.dag--blueprint .dag-text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: #a3aab2; }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: #9db8ff; }
+.dag-text--input { fill: #d9a7e3; font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--input { fill: #9db8ff; }
+.dag-item--step .dag-text--state { fill: #a3aab2; font-weight: bold; letter-spacing: 0.05em; }
+.dag-item--step.is-pending .dag-text--state { fill: #f0c75a; }
+.dag-item--step.is-cached .dag-text--state { fill: #7dd9a5; }
+.dag-item--step.is-blocked .dag-text--state { fill: #f5918b; }
+.dag--stateless .dag-item--step .dag-text--state { fill: #a3aab2; }
+.dag-edge { fill: none; stroke: #8a96a3; }
+.dag-arrow { fill: #8a96a3; }
+.dag--blueprint .dag-edge { stroke: #9db8ff; }
+.dag--blueprint .dag-arrow { fill: #9db8ff; stroke: #9db8ff; stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: #1d2127; stroke: #6b7683; }
+.dag--classic .dag-item--step.is-pending .dag-node { fill: #2a2317; stroke: #b58900; }
+.dag--classic .dag-item--step.is-leaf .dag-node { fill: #1e2030; stroke: #6b74a8; }
+.dag--classic .dag-item--step.is-cached .dag-node { fill: #16261a; stroke: #4f9a5b; }
+.dag--classic .dag-item--step.is-blocked .dag-node { fill: #2d1a1c; stroke: #d05a5a; }
+.dag--classic.dag--stateless .dag-item--step .dag-node { fill: #1d2127; stroke: #6b7683; }
+.dag--blueprint .dag-node { fill: #0b1322; stroke: #9db8ff; }
+.dag--band .dag-item--step .dag-node { fill: #1c242d; stroke: #6b7683; }
+.dag--band .dag-item--step.is-pending .dag-node { stroke: #b58900; }
+.dag--band .dag-item--step.is-leaf .dag-node { stroke: #6b74a8; }
+.dag--band .dag-item--step.is-cached .dag-node { stroke: #4f9a5b; }
+.dag--band .dag-item--step.is-blocked .dag-node { stroke: #d05a5a; }
+.dag--band.dag--stateless .dag-item--step .dag-node { stroke: #6b7683; }
+.dag--band .dag-item--step .dag-head { fill: #1d2127; stroke: none; }
+.dag--band .dag-item--step.is-pending .dag-head { fill: #2a2317; }
+.dag--band .dag-item--step.is-leaf .dag-head { fill: #1e2030; }
+.dag--band .dag-item--step.is-cached .dag-head { fill: #16261a; }
+.dag--band .dag-item--step.is-blocked .dag-head { fill: #2d1a1c; }
+.dag--band.dag--stateless .dag-item--step .dag-head { fill: #1d2127; }
+.dag--band .dag-item--step .dag-rule { stroke: #6b7683; stroke-width: 2; }
+.dag--band .dag-item--step.is-pending .dag-rule { stroke: #b58900; }
+.dag--band .dag-item--step.is-leaf .dag-rule { stroke: #6b74a8; }
+.dag--band .dag-item--step.is-cached .dag-rule { stroke: #4f9a5b; }
+.dag--band .dag-item--step.is-blocked .dag-rule { stroke: #d05a5a; }
+.dag--band.dag--stateless .dag-item--step .dag-rule { stroke: #6b7683; }
+.dag--blueprint .dag-rule { stroke: #9db8ff; stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: #8795a4; stroke: none; }
+.dag-item--step.is-pending .dag-state { fill: #e3b341; }
+.dag-item--step.is-cached .dag-state { fill: #4cc283; }
+.dag-item--step.is-blocked .dag-state { fill: #ef6b63; }
+.dag--stateless .dag-item--step .dag-state { fill: #8795a4; }
+.dag--band .dag-item--step .dag-tab { fill: #1c242d; stroke: #6b7683; stroke-width: 1.5; }
+.dag--band .dag-item--step.is-pending .dag-tab { stroke: #b58900; }
+.dag--band .dag-item--step.is-leaf .dag-tab { stroke: #6b74a8; }
+.dag--band .dag-item--step.is-cached .dag-tab { stroke: #4f9a5b; }
+.dag--band .dag-item--step.is-blocked .dag-tab { stroke: #d05a5a; }
+.dag--band.dag--stateless .dag-item--step .dag-tab { stroke: #6b7683; }
+.dag--blueprint .dag-tab { fill: #0b1322; stroke: #9db8ff; stroke-width: 1.5; }
+.dag-node--param { fill: #271c2b; stroke: #9a63a6; }
+.dag-node--file { fill: #241f1d; stroke: #8a7466; }
+.dag-node--output { fill: #16232e; stroke: #4a90c4; }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: #0b1322; stroke: #9db8ff; }
+.dag--blueprint .dag-node--output { fill: #0b1322; stroke: #9db8ff; stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: #1c242d; stroke: #8a96a3; }
+.dag-pin { fill: #9db8ff; stroke: none; }
+.dag-text--param-node { fill: #d9a7e3; }
+.dag-text--file { fill: #cbb2a3; }
+.dag-text--output { fill: #9ecbf0; }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: #9db8ff; }
+.dag--band .dag-text--output { fill: #e6e8eb; }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #c58ad6; }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #4db6ac; }
+.dag-frame__border { fill: #c58ad6; fill-opacity: 0.05; stroke: #c58ad6; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: #4db6ac; stroke: #4db6ac; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: #c58ad6; }
+.dag-frame--loop .dag-frame__tag { fill: #4db6ac; }
+.dag-frame__caption { fill: #a3aab2; }
+.dag--blueprint .dag-frame__caption { fill: #9db8ff; }
+.dag .dag-edge.dag-edge--feedback { stroke: #4db6ac; }
+.dag .dag-arrow.dag-arrow--feedback { fill: #4db6ac; stroke: #4db6ac; }
+@supports (--a: 0) {
+.dag-canvas { fill: var(--adag-canvas, #14161a); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #0b1322); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #17233b); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #e6e8eb); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #a3aab2); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #9db8ff); }
+.dag-text--input { fill: var(--adag-input-ink, #d9a7e3); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #9db8ff); }
+.dag-item--step .dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #8a96a3); }
+.dag-arrow { fill: var(--adag-edge, #8a96a3); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #9db8ff); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); stroke: var(--adag-ink, #9db8ff); stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); }
+.dag--band .dag-item--step .dag-node { fill: var(--adag-card, #1c242d); stroke: var(--st-border); }
+.dag--band .dag-item--step .dag-head { fill: var(--st-bg); stroke: none; }
+.dag--band .dag-item--step .dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #9db8ff); stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: var(--st); stroke: none; }
+.dag--band .dag-item--step .dag-tab { fill: var(--adag-card, #1c242d); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); stroke-width: 1.5; }
+.dag-node--param { fill: var(--adag-input-bg, #271c2b); stroke: var(--adag-input-border, #9a63a6); }
+.dag-node--file { fill: var(--adag-file-bg, #241f1d); stroke: var(--adag-file-border, #8a7466); }
+.dag-node--output { fill: var(--adag-output-bg, #16232e); stroke: var(--adag-output-border, #4a90c4); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #1c242d); stroke: var(--adag-edge, #8a96a3); }
+.dag-pin { fill: var(--adag-ink, #9db8ff); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #d9a7e3); }
+.dag-text--file { fill: var(--adag-file-ink, #cbb2a3); }
+.dag-text--output { fill: var(--adag-output-ink, #9ecbf0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #9db8ff); }
+.dag--band .dag-text--output { fill: var(--adag-text, #e6e8eb); }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #c58ad6); }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #4db6ac); }
+.dag-frame__border { fill: var(--adag-mapped, #c58ad6); fill-opacity: 0.05; stroke: var(--adag-mapped, #c58ad6); stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: var(--adag-loop, #4db6ac); stroke: var(--adag-loop, #4db6ac); stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: var(--adag-mapped, #c58ad6); }
+.dag-frame--loop .dag-frame__tag { fill: var(--adag-loop, #4db6ac); }
+.dag-frame__caption { fill: var(--adag-muted, #a3aab2); }
+.dag--blueprint .dag-frame__caption { fill: var(--adag-ink, #9db8ff); }
+.dag .dag-edge.dag-edge--feedback { stroke: var(--adag-loop, #4db6ac); }
+.dag .dag-arrow.dag-arrow--feedback { fill: var(--adag-loop, #4db6ac); stroke: var(--adag-loop, #4db6ac); }
+.dag-item {
+  --st: var(--adag-neutral, #8795a4); --st-ink: var(--adag-muted, #a3aab2); --st-bg: var(--adag-step-bg, #1d2127); --st-border: var(--adag-step-border, #6b7683);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #e3b341); --st-ink: var(--adag-pending-ink, #f0c75a); --st-bg: var(--adag-pending-bg, #2a2317); --st-border: var(--adag-pending-border, #b58900);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #1e2030); --st-border: var(--adag-leaf-border, #6b74a8);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #4cc283); --st-ink: var(--adag-cached-ink, #7dd9a5); --st-bg: var(--adag-cached-bg, #16261a); --st-border: var(--adag-cached-border, #4f9a5b);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #ef6b63); --st-ink: var(--adag-blocked-ink, #f5918b); --st-bg: var(--adag-blocked-bg, #2d1a1c); --st-border: var(--adag-blocked-border, #d05a5a);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #8795a4); --st-ink: var(--adag-muted, #a3aab2); --st-bg: var(--adag-step-bg, #1d2127); --st-border: var(--adag-step-border, #6b7683);
+}
+}
+</style>
+<rect class="dag-canvas" width="277" height="1010" />
+<g class="dag-item dag-item--step dag-item--frame dag-frame dag-frame--mapped is-pending" data-state="pending" data-kind="frame" data-shape="mapped" data-name="each" data-depth="1">
+<title>Each part (pending)
+one branch per item
+key bec1687971e3
+one branch per item</title>
+<rect x="30" y="328" width="217" height="362" rx="8" class="dag-frame__border" stroke-width="1.5" stroke-dasharray="8 4" />
+<text x="42" y="341" class="dag-text dag-frame__tag" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central" font-weight="bold">each</text>
+<text x="235" y="341" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">PENDING</text>
+<text x="111" y="677" class="dag-text dag-frame__caption" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" dominant-baseline="central">one branch per item</text>
+</g>
+<path d="M138.5 68 L138.5 156" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="text" data-target="split" />
+<polygon points="133.5,156 143.5,156 138.5,165" class="dag-arrow" />
+<path d="M138.5 853 L138.5 941" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="join" data-target="__output__" stroke-dasharray="6,4" />
+<polygon points="133.5,941 143.5,941 138.5,950" class="dag-arrow dag-arrow--output" />
+<path d="M138.5 231 L138.5 249 C138.5 275 99 275 99 301 L99 353" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="split" data-target="each" />
+<polygon points="94,353 104,353 99,362" class="dag-arrow" />
+<path d="M99 690 L99 708 C99 734 138.5 734 138.5 760 L138.5 778" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="each" data-target="join" />
+<polygon points="133.5,778 143.5,778 138.5,787" class="dag-arrow" />
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="text">
+<title>text
+'a;b;c'</title>
+<rect x="98.5" y="30" width="80" height="38" rx="19" class="dag-node dag-node--param" stroke-width="1.5" />
+<text x="138.5" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">text</text>
+<text x="138.5" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">'a;b;c'</text>
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="split">
+<title>Split (cached)
+Cut the text into parts.
+key ad1a64057f9a</title>
+<rect x="38.5" y="165" width="200" height="66" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<path d="M38.5 173 A8 8 0 0 1 46.5 165 H230.5 A8 8 0 0 1 238.5 173 V195 H38.5 Z" class="dag-head" />
+<line x1="38.5" y1="195" x2="238.5" y2="195" class="dag-rule" />
+<text x="52.5" y="180.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Split</text>
+<text x="224.5" y="180.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">CACHED</text>
+<text x="52.5" y="213" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Cut the text into parts.</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="join">
+<title>Join (pending)
+Collect the scores.
+key 58393216032b</title>
+<rect x="38.5" y="787" width="200" height="66" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<path d="M38.5 795 A8 8 0 0 1 46.5 787 H230.5 A8 8 0 0 1 238.5 795 V817 H38.5 Z" class="dag-head" />
+<line x1="38.5" y1="817" x2="238.5" y2="817" class="dag-rule" />
+<text x="52.5" y="802.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Join</text>
+<text x="224.5" y="802.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">PENDING</text>
+<text x="52.5" y="835" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Collect the scores.</text>
+</g>
+<g class="dag-frame-body" data-parent="each">
+<line x1="99" y1="654" x2="99" y2="690" class="dag-edge" stroke-width="1.5" />
+<path d="M99 392 L99 480" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="each/item" data-target="each/measure" />
+<polygon points="94,480 104,480 99,489" class="dag-arrow" />
+<path d="M99 523 L99 611" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="each/measure" data-target="each/score" />
+<polygon points="94,611 104,611 99,620" class="dag-arrow" />
+<g class="dag-item dag-item--template_input" data-state="none" data-kind="template_input" data-name="each/item" data-parent="each">
+<title>item</title>
+<rect x="59" y="362" width="80" height="30" rx="15" class="dag-node dag-node--param" stroke-width="1.5" />
+<text x="99" y="377" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">item</text>
+</g>
+<g class="dag-item dag-item--step is-none" data-state="none" data-kind="step" data-name="each/measure" data-parent="each">
+<title>Measure
+Count the characters.</title>
+<rect x="44" y="489" width="110" height="34" rx="8" class="dag-node dag-node--step is-none" stroke-width="1.5" />
+<path d="M44 497 A8 8 0 0 1 52 489 H146 A8 8 0 0 1 154 497 V498 H44 Z" class="dag-head" />
+<text x="99" y="510" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Measure</text>
+</g>
+<g class="dag-item dag-item--step is-none" data-state="none" data-kind="step" data-name="each/score" data-parent="each">
+<title>Score
+Rate the part.</title>
+<rect x="44" y="620" width="110" height="34" rx="8" class="dag-node dag-node--step is-none" stroke-width="1.5" />
+<path d="M44 628 A8 8 0 0 1 52 620 H146 A8 8 0 0 1 154 628 V629 H44 Z" class="dag-head" />
+<text x="99" y="641" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Score</text>
+</g>
+</g>
+<g class="dag-item dag-item--output" data-state="none" data-kind="output">
+<title>Scores</title>
+<rect x="78.5" y="950" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="138.5" y="965" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="bold">Scores</text>
+</g>
+</svg>

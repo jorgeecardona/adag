@@ -13,14 +13,19 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 BOX_MARGIN = 8.0
 """A vertical stretch stays this far from a box (the test asks for 6)."""
-LANE_GAP = 4.0
-"""Two vertical stretches of different sources in one row stay this far apart."""
+LANE_GAP = 12.0
+"""Two vertical stretches of different sources in one row want to stay this far apart. Two
+stretches of one source are one stretch (they share a trunk) or are this far apart."""
+LANE_MIN = 4.0
+"""Closer than this is never taken, whatever it saves."""
 _BEND = 1000.0
-_CONFLICT = 50.0
+_CONFLICT = 150.0
+_CLOSE = 900.0
+# A lane that is too close costs less than a bend: a calm picture has fewer bends first.
 _SAME = 0.5
 _BIG = 1.0e9
 _EDGE_STEP = 1.0
@@ -125,11 +130,19 @@ def plan_edge(
     request: Request,
     row_blocked: Mapping[int, Blocked],
     occupied: dict[int, list[tuple[float, str]]],
+    columns_of: dict[tuple[str, str], dict[int, float]] | None = None,
 ) -> Plan:
     """Plan one edge: the columns with the fewest sideways moves, then the least sideways travel."""
     first, last = request.source_level, request.target_level
     rows = list(range(first + 1, last))
-    hints = [request.source_x, request.target_x, *request.lane_hint]
+    # A column another edge of the same source already runs in: sharing it makes one trunk.
+    trunks = [
+        other
+        for row in range(first + 1, last)
+        for other, source in occupied.get(row, ())
+        if source == request.key[0]
+    ]
+    hints = [request.source_x, request.target_x, *request.lane_hint, *trunks]
     free_rows = {row: _free_intervals(row_blocked.get(row, ())) for row in rows}
     near = (min(request.source_x, request.target_x), max(request.source_x, request.target_x))
     # A column a little to the side of one that is taken lets a second edge run beside the first.
@@ -155,19 +168,32 @@ def plan_edge(
         layer: dict[float, tuple[float, float]] = {}
         for x in options:
             conflict = 0.0
+            sharing: list[dict[int, float]] = []  # same-source edges that run in this column
             if row != last:
-                conflict = sum(
-                    _CONFLICT
-                    for other, source in occupied.get(row, ())
-                    if abs(other - x) < LANE_GAP and not (source == request.key[0] and other == x)
-                )
+                for other, source in occupied.get(row, ()):
+                    if abs(other - x) >= LANE_GAP:
+                        continue
+                    if source == request.key[0] and other == x:
+                        sharing.extend(
+                            c
+                            for k, c in (columns_of or {}).items()
+                            if k[0] == source and c.get(row) == x
+                        )
+                    else:
+                        conflict += _CLOSE if abs(other - x) < LANE_MIN else _CONFLICT
             choice: tuple[float, float] | None = None
             for prior, (cost, _) in best[previous_row].items():
                 step = 0.0
                 if abs(prior - x) >= _SAME:
                     # Later gaps are slightly cheaper: the move prefers the gap above the target.
                     step = _BEND + abs(prior - x) * 0.01 + (last - 1 - previous_row) * 0.1
-                total = cost + step + conflict
+                # A column that an edge of the same source already uses is a trunk, but only when
+                # this edge has been in that edge's columns since the source: else it is a merge.
+                merge = 0.0
+                if sharing and row != first + 1:
+                    joined = any(c.get(previous_row) == prior for c in sharing)
+                    merge = 0.0 if joined else _CONFLICT
+                total = cost + step + conflict + merge
                 if choice is None or total < choice[0]:
                     choice = (total, prior)
             if choice is not None:
@@ -189,6 +215,8 @@ def plan_edge(
     )
     for row, column in zip(rows, columns[1:-1], strict=True):
         occupied.setdefault(row, []).append((column, request.key[0]))
+    if columns_of is not None:
+        columns_of[request.key] = dict(zip(rows, columns[1:-1], strict=True))
     return Plan(request.key, tuple(columns), jogs)
 
 
@@ -217,7 +245,7 @@ class SideRequest:
     target_right: float
 
 
-SPACING = 10.0
+SPACING = 12.0
 """Departure points on one source bottom stay this far apart."""
 HMIN = 24.0
 """The sideways run into a target is at least this long (a bend and an arrowhead need it)."""
@@ -261,7 +289,7 @@ def _channel_free(
             ):
                 return False
         for other, source in occupied.get(row, ()):
-            if abs(other - channel) < LANE_GAP and not (
+            if abs(other - channel) < LANE_MIN and not (
                 source == request.key[0] and other == channel
             ):
                 return False
@@ -391,6 +419,9 @@ class Taken:
     plans: dict[tuple[str, str], Plan]
     occupied: dict[int, list[tuple[float, str]]]
     departures: dict[str, list[float]]
+    columns: dict[tuple[str, str], dict[int, float]] = field(
+        default_factory=dict[tuple[str, str], dict[int, float]]
+    )
 
 
 def plan_first(
@@ -403,12 +434,19 @@ def plan_first(
     plans: dict[tuple[str, str], Plan] = {}
     occupied: dict[int, list[tuple[float, str]]] = {}
     departures: dict[str, list[float]] = {}
+    columns_of: dict[tuple[str, str], dict[int, float]] = {}
     straight = [r for r in requests if abs(r.source_x - r.target_x) < _SAME]
     for request in sorted(straight, key=lambda r: r.target_level - r.source_level):
-        plans[request.key] = plan_edge(request, row_blocked, occupied)
+        plans[request.key] = plan_edge(request, row_blocked, occupied, columns_of)
         departures.setdefault(request.key[0], []).append(request.source_x)
-    plans.update(plan_sides([r for r in sides if r.key not in plans], rows, occupied, departures))
-    return Taken(plans, occupied, departures)
+    side = plan_sides([r for r in sides if r.key not in plans], rows, occupied, departures)
+    for request in sides:
+        if request.key in side:  # a side entry drops in one channel through every row
+            columns_of[request.key] = dict.fromkeys(
+                range(request.source_level + 1, request.target_level + 1), side[request.key].channel
+            )
+    plans.update(side)
+    return Taken(plans, occupied, departures, columns_of)
 
 
 def plan_rest(
@@ -417,7 +455,7 @@ def plan_rest(
     """Plan the edges that end on the top of their target, keeping off the columns taken."""
     plans = dict(first.plans)
     for request in sorted(requests, key=lambda r: r.target_level - r.source_level):
-        plans[request.key] = plan_edge(request, row_blocked, first.occupied)
+        plans[request.key] = plan_edge(request, row_blocked, first.occupied, first.columns)
     return plans
 
 
@@ -439,15 +477,22 @@ def assign_slots(
         ordered = sorted((j for j in jogs if j[2].x_to > j[2].x_from), key=lambda j: -j[2].x_to)
         ordered += sorted((j for j in jogs if j[2].x_to < j[2].x_from), key=lambda j: j[2].x_to)
         slots: list[list[tuple[float, float]]] = []
+        placed: dict[tuple[str, float, float], int] = {}  # a run that one source already drew
         for key, index, jog in ordered:
+            same = (key[0], jog.x_from, jog.x_to)
+            if same in placed:  # the same run of one source is one line: it shares the slot
+                slot_of[(key, index)] = placed[same]
+                continue
             span = (min(jog.x_from, jog.x_to) - LANE_GAP, max(jog.x_from, jog.x_to) + LANE_GAP)
             for number, taken in enumerate(slots):
                 if all(span[1] < low or span[0] > high for low, high in taken):
                     taken.append(span)
                     slot_of[(key, index)] = number
+                    placed[same] = number
                     break
             else:
                 slots.append([span])
                 slot_of[(key, index)] = len(slots) - 1
+                placed[same] = len(slots) - 1
         count[gap] = len(slots)
     return slot_of, count

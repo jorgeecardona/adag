@@ -195,6 +195,13 @@ def build_level(
             )
         measured[n.name] = m
 
+    for n in shown:  # widen a box that has too many edges, but not a frame (its size is its body)
+        if n.name not in bodies:
+            measured.update(paint.fit_to_ports({n.name: measured[n.name]}, shown_edges))
+    sizes = [
+        replace(size, width=measured[size.name].width) if size.name not in bodies else size
+        for size in sizes
+    ]
     fed = {target for _, target in shown_edges}
     top = [n.name for n in shown if n.kind in _INPUT_KINDS and n.name not in fed]
     output = (
@@ -214,6 +221,8 @@ def build_level(
             gap_x=settings.gap_x,
             arrow=paint._arrow_size(look.style)[0],
             margin=margin,
+            side_entry=look.style != "band",
+            slot=paint._BAND_SLOT if look.style == "band" else 12.0,
         ),
     )
     routes = [_into_frame(r, result, bodies, enter) for r in result.routes]
@@ -514,8 +523,9 @@ def _paint_feedback(
 ) -> None:
     points = [(px + dx, py + dy) for px, py in feedback.points]
     parts = [f"M{paint._num(points[0][0])} {paint._num(points[0][1])}"]
+    radius = 26.0 if look.style == "band" else 14.0  # a corner is a curve, never a hook
     parts.extend(
-        paint._quarter(points[i - 1], points[i], points[i + 1], 8.0)
+        paint._quarter(points[i - 1], points[i], points[i + 1], radius)
         for i in range(1, len(points) - 1)
     )
     parts.append(f"L{paint._num(points[-1][0])} {paint._num(points[-1][1])}")

@@ -10,14 +10,16 @@ from __future__ import annotations
 import itertools
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from adag.svg_route import (
     BOX_MARGIN,
+    Jog,
     Plan,
     Request,
     RowBox,
     SideRequest,
+    Taken,
     assign_slots,
     plan_first,
     plan_rest,
@@ -25,7 +27,8 @@ from adag.svg_route import (
 
 OUTPUT = "__output__"
 _EPS = 0.5
-SNAP_SPACING = 8.0
+SNAP_SPACING = 12.0
+_PORT_AND_ARRIVAL = 2  # a plan with no row between the two levels has just these two columns
 KINK = 14.0
 
 Point = tuple[float, float]
@@ -67,6 +70,8 @@ class LayoutSettings:
     port_margin: float = 0.2
     corner_room: float = 12.0
     min_port_spacing: float = 14.0
+    side_entry: bool = True
+    """False: every edge ends on the top of its target (the band style has only curves)."""
 
 
 @dataclass(frozen=True)
@@ -297,6 +302,95 @@ def _clear_of(
     return port
 
 
+def _share_ports(
+    plans: dict[tuple[str, str], Plan],
+    out_edges: Mapping[str, list[tuple[str, str]]],
+    out_range: Mapping[str, tuple[float, float]],
+    depart: dict[tuple[str, str], float],
+    level: Mapping[str, int],
+    fixed: set[tuple[str, str]],
+) -> None:
+    """One line leaves a source: edges that run in one column under it share their port.
+
+    Two edges of one source that drop in the same column are one trunk that forks later. They
+    must not leave at two ports and join in that column, which would look like a merge.
+    """
+    for source, group in out_edges.items():
+        by_column: dict[float, list[tuple[str, str]]] = {}
+        for key in group:
+            plan = plans.get(key)
+            if plan is None or key in fixed:
+                continue
+            if plan.entry:  # an edge into a side face drops down its channel
+                by_column.setdefault(round(plan.channel, 1), []).append(key)
+            elif len(plan.columns) > _PORT_AND_ARRIVAL:
+                by_column.setdefault(round(plan.columns[1], 1), []).append(key)
+        low, high = out_range[source]
+        for column, keys in by_column.items():
+            if len(keys) == 1:
+                continue
+            port = min(max(column, low), high)
+            for key in keys:
+                plan = plans[key]
+                jogs = [j for j in plan.jogs if j.gap != level[source]]
+                if abs(port - column) >= _EPS:
+                    jogs.insert(0, Jog(level[source], port, column))
+                plans[key] = replace(plan, columns=(port, *plan.columns[1:]), jogs=tuple(jogs))
+                depart[key] = port
+
+
+def _cap_side_entries(first: Taken, sizes: Mapping[str, LNode], settings: LayoutSettings) -> None:
+    """A face holds only as many side entries as fit a lane apart: the others end on top."""
+    entering: dict[tuple[str, int], list[tuple[str, str]]] = {}
+    for key, plan in first.plans.items():
+        if plan.entry:
+            entering.setdefault((key[1], plan.entry), []).append(key)
+    for (target, _side), keys in entering.items():
+        height = sizes[target].height
+        room = height - 2 * min(12.0, height / 4)
+        capacity = max(1, int(room / settings.slot) + 1)
+        keys.sort(key=lambda k: abs(first.plans[k].channel - first.plans[k].face_x))
+        for key in keys[capacity:]:
+            del first.plans[key]
+
+
+def _next_column(plan: Plan) -> float:
+    """The column an edge drops in after it leaves its source."""
+    if plan.entry:
+        return plan.channel
+    columns = plan.columns
+    return columns[min(1, len(columns) - 1)]
+
+
+def _order_ports(
+    plans: dict[tuple[str, str], Plan],
+    out_edges: Mapping[str, list[tuple[str, str]]],
+    depart: dict[tuple[str, str], float],
+    level: Mapping[str, int],
+    fixed: set[tuple[str, str]],
+) -> None:
+    """The ports of one source go in the order of the columns their edges drop in: no crossing."""
+    for source, group in out_edges.items():
+        keys = [k for k in group if k in plans and k not in fixed]
+        if len(keys) == 1:
+            continue
+        by_port: dict[float, list[tuple[str, str]]] = {}
+        for key in keys:
+            by_port.setdefault(round(plans[key].columns[0], 1), []).append(key)
+        ordered = sorted(by_port.values(), key=lambda ks: min(_next_column(plans[k]) for k in ks))
+        for port, members in zip(sorted(by_port), ordered, strict=True):
+            for key in members:
+                plan = plans[key]
+                if abs(plan.columns[0] - port) < _EPS:
+                    continue
+                jogs = [j for j in plan.jogs if j.gap != level[source]]
+                ahead = _next_column(plan)
+                if abs(port - ahead) >= _EPS:
+                    jogs.insert(0, Jog(level[source], port, ahead))
+                plans[key] = replace(plan, columns=(port, *plan.columns[1:]), jogs=tuple(jogs))
+                depart[key] = port
+
+
 def layout(
     nodes: Sequence[LNode],
     edges: Sequence[tuple[str, str]],
@@ -484,7 +578,8 @@ def layout(
     for key in chains:
         src, dst = key
         if (
-            key in dashed
+            not settings.side_entry
+            or key in dashed
             or abs(depart[key] - arrive[key]) < _EPS
             or sizes[dst].left_extra
             or sizes[dst].arrive_at
@@ -504,24 +599,35 @@ def layout(
             )
         )
     first = plan_first([request_for(k) for k in chains], row_blocked, side_requests, row_boxes)
+    _cap_side_entries(first, sizes, settings)
     # The edges still to route end on top: spread their ports again, now that others left.
     top_edges = [k for k in chains if k not in first.plans]
     for dst, group in in_edges.items():
         rest = [k for k in group if k in top_edges and k not in fixed_in]
         if not rest or len(rest) == len(group):
             continue
-        taken_ports = [arrive[k] for k in group if k not in rest]
+        # An edge on a side face takes no place on the top edge. The others keep their port.
+        taken_ports = [
+            arrive[k]
+            for k in group
+            if k not in rest and not (k in first.plans and first.plans[k].entry)
+        ]
         ports = _spread(len(rest), *in_range[dst], settings.min_port_spacing)
         for key, port in zip(rest, ports, strict=False):
             arrive[key] = _clear_of(port, taken_ports, in_range[dst], SNAP_SPACING)
+            taken_ports.append(arrive[key])
     for src, group in out_edges.items():
         rest = [k for k in group if k in top_edges and k not in fixed_out]
         if not rest or len(rest) == len(group):
             continue
-        taken_ports = first.departures.get(src, [])
+        taken_ports = [
+            *first.departures.get(src, []),
+            *(depart[k] for k in group if k in fixed_out),
+        ]
         ports = _spread(len(rest), *out_range[src], settings.min_port_spacing)
         for key, port in zip(rest, ports, strict=False):
             depart[key] = _clear_of(port, taken_ports, out_range[src], SNAP_SPACING)
+            taken_ports.append(depart[key])
     plans = plan_rest([request_for(k) for k in top_edges], row_blocked, first)
     for key, plan in first.plans.items():
         if plan.entry:
@@ -548,6 +654,8 @@ def layout(
                 depart[key] = columns[0] = moved
                 jogs.pop(0)
         plans[key] = Plan(key, tuple(columns), tuple(jogs))
+    _share_ports(plans, out_edges, out_range, depart, level, fixed_in | fixed_out)
+    _order_ports(plans, out_edges, depart, level, fixed_in | fixed_out)
     slot_of, slot_count = assign_slots(list(plans.values()))
 
     # Row heights, then the gap under each row: it grows with the slots it must hold.

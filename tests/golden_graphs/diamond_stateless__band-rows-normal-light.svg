@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--band dag--stateless" width="496" height="518" viewBox="0 0 496 518">
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--band dag--stateless" width="496" height="617" viewBox="0 0 496 617">
 <style>.dag-canvas { fill: #ffffff; }
 .dag--blueprint .dag-canvas { fill: #eef3fc; }
 .dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
@@ -72,6 +72,14 @@
 .dag--band .dag-text--output { fill: #333333; }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
+.dag-frame__border { fill: #8e24aa; fill-opacity: 0.05; stroke: #8e24aa; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: #00897b; stroke: #00897b; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: #8e24aa; }
+.dag-frame--loop .dag-frame__tag { fill: #00897b; }
+.dag-frame__caption { fill: #5f6368; }
+.dag--blueprint .dag-frame__caption { fill: #1f3d8f; }
+.dag .dag-edge.dag-edge--feedback { stroke: #00897b; }
+.dag .dag-arrow.dag-arrow--feedback { fill: #00897b; stroke: #00897b; }
 @supports (--a: 0) {
 .dag-canvas { fill: var(--adag-canvas, #ffffff); }
 .dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
@@ -113,6 +121,14 @@
 .dag--band .dag-text--output { fill: var(--adag-text, #333333); }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+.dag-frame__border { fill: var(--adag-mapped, #8e24aa); fill-opacity: 0.05; stroke: var(--adag-mapped, #8e24aa); stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: var(--adag-mapped, #8e24aa); }
+.dag-frame--loop .dag-frame__tag { fill: var(--adag-loop, #00897b); }
+.dag-frame__caption { fill: var(--adag-muted, #5f6368); }
+.dag--blueprint .dag-frame__caption { fill: var(--adag-ink, #1f3d8f); }
+.dag .dag-edge.dag-edge--feedback { stroke: var(--adag-loop, #00897b); }
+.dag .dag-arrow.dag-arrow--feedback { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); }
 .dag-item {
   --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
 }
@@ -133,17 +149,17 @@
 }
 }
 </style>
-<rect class="dag-canvas" width="496" height="518" />
-<path d="M218 115 L218 170" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="213,170 223,170 218,179" class="dag-arrow" />
-<path d="M278 115 L278 179.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="273,179.5 283,179.5 278,188.5" class="dag-arrow" />
-<path d="M160 264 L160 319" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="155,319 165,319 160,328" class="dag-arrow" />
-<path d="M336 254.5 L336 319" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="331,319 341,319 336,328" class="dag-arrow" />
-<path d="M248 394 L248 449" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
-<polygon points="243,449 253,449 248,458" class="dag-arrow dag-arrow--output" />
+<rect class="dag-canvas" width="496" height="617" />
+<path d="M218 115 L218 203" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="load" data-target="clean" />
+<polygon points="213,203 223,203 218,212" class="dag-arrow" />
+<path d="M278 115 L278 212.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="load" data-target="count" />
+<polygon points="273,212.5 283,212.5 278,221.5" class="dag-arrow" />
+<path d="M160 297 L160 385" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="clean" data-target="report" />
+<polygon points="155,385 165,385 160,394" class="dag-arrow" />
+<path d="M336 287.5 L336 385" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="count" data-target="report" />
+<polygon points="331,385 341,385 336,394" class="dag-arrow" />
+<path d="M248 460 L248 548" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="report" data-target="__output__" stroke-dasharray="6,4" />
+<polygon points="243,548 253,548 248,557" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--step is-pending" data-state="none" data-kind="step" data-name="load">
 <title>Load
 Read the CSV file.
@@ -161,36 +177,36 @@ key 0cf67fc72b3c</title>
 Normalize the text.
 case = 'lower'
 key 3b066804f6d1</title>
-<rect x="30" y="179" width="200" height="85" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<path d="M30 187 A8 8 0 0 1 38 179 H222 A8 8 0 0 1 230 187 V209 H30 Z" class="dag-head" />
-<line x1="30" y1="209" x2="230" y2="209" class="dag-rule" />
-<text x="44" y="194.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Clean</text>
-<text x="44" y="227" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Normalize the text.</text>
-<text x="44" y="246.5" class="dag-text dag-text--input" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">case = 'lower'</text>
+<rect x="30" y="212" width="200" height="85" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<path d="M30 220 A8 8 0 0 1 38 212 H222 A8 8 0 0 1 230 220 V242 H30 Z" class="dag-head" />
+<line x1="30" y1="242" x2="230" y2="242" class="dag-rule" />
+<text x="44" y="227.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Clean</text>
+<text x="44" y="260" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Normalize the text.</text>
+<text x="44" y="279.5" class="dag-text dag-text--input" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">case = 'lower'</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="none" data-kind="step" data-name="count">
 <title>Count
 Count the rows.
 key 6c35493a2b93</title>
-<rect x="266" y="188.5" width="200" height="66" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<path d="M266 196.5 A8 8 0 0 1 274 188.5 H458 A8 8 0 0 1 466 196.5 V218.5 H266 Z" class="dag-head" />
-<line x1="266" y1="218.5" x2="466" y2="218.5" class="dag-rule" />
-<text x="280" y="204" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Count</text>
-<text x="280" y="236.5" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Count the rows.</text>
+<rect x="266" y="221.5" width="200" height="66" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<path d="M266 229.5 A8 8 0 0 1 274 221.5 H458 A8 8 0 0 1 466 229.5 V251.5 H266 Z" class="dag-head" />
+<line x1="266" y1="251.5" x2="466" y2="251.5" class="dag-rule" />
+<text x="280" y="237" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Count</text>
+<text x="280" y="269.5" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Count the rows.</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="none" data-kind="step" data-name="report">
 <title>Report
 Write the summary.
 key 845e91831319</title>
-<rect x="148" y="328" width="200" height="66" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
-<path d="M148 336 A8 8 0 0 1 156 328 H340 A8 8 0 0 1 348 336 V358 H148 Z" class="dag-head" />
-<line x1="148" y1="358" x2="348" y2="358" class="dag-rule" />
-<text x="162" y="343.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Report</text>
-<text x="162" y="376" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Write the summary.</text>
+<rect x="148" y="394" width="200" height="66" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<path d="M148 402 A8 8 0 0 1 156 394 H340 A8 8 0 0 1 348 402 V424 H148 Z" class="dag-head" />
+<line x1="148" y1="424" x2="348" y2="424" class="dag-rule" />
+<text x="162" y="409.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Report</text>
+<text x="162" y="442" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Write the summary.</text>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>report.md</title>
-<rect x="188" y="458" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
-<text x="248" y="473" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="bold">report.md</text>
+<rect x="188" y="557" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="248" y="572" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="bold">report.md</text>
 </g>
 </svg>

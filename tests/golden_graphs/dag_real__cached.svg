@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--band" width="260" height="620" viewBox="0 0 260 620">
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--band" width="260" height="752" viewBox="0 0 260 752">
 <style>.dag-canvas { fill: #ffffff; }
 .dag--blueprint .dag-canvas { fill: #eef3fc; }
 .dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
@@ -72,6 +72,14 @@
 .dag--band .dag-text--output { fill: #333333; }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
+.dag-frame__border { fill: #8e24aa; fill-opacity: 0.05; stroke: #8e24aa; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: #00897b; stroke: #00897b; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: #8e24aa; }
+.dag-frame--loop .dag-frame__tag { fill: #00897b; }
+.dag-frame__caption { fill: #5f6368; }
+.dag--blueprint .dag-frame__caption { fill: #1f3d8f; }
+.dag .dag-edge.dag-edge--feedback { stroke: #00897b; }
+.dag .dag-arrow.dag-arrow--feedback { fill: #00897b; stroke: #00897b; }
 @supports (--a: 0) {
 .dag-canvas { fill: var(--adag-canvas, #ffffff); }
 .dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
@@ -113,6 +121,14 @@
 .dag--band .dag-text--output { fill: var(--adag-text, #333333); }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+.dag-frame__border { fill: var(--adag-mapped, #8e24aa); fill-opacity: 0.05; stroke: var(--adag-mapped, #8e24aa); stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: var(--adag-mapped, #8e24aa); }
+.dag-frame--loop .dag-frame__tag { fill: var(--adag-loop, #00897b); }
+.dag-frame__caption { fill: var(--adag-muted, #5f6368); }
+.dag--blueprint .dag-frame__caption { fill: var(--adag-ink, #1f3d8f); }
+.dag .dag-edge.dag-edge--feedback { stroke: var(--adag-loop, #00897b); }
+.dag .dag-arrow.dag-arrow--feedback { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); }
 .dag-item {
   --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
 }
@@ -133,51 +149,51 @@
 }
 }
 </style>
-<rect class="dag-canvas" width="260" height="620" />
-<path d="M130 68 L130 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="125,123 135,123 130,132" class="dag-arrow" />
-<path d="M130 198 L130 253" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="125,253 135,253 130,262" class="dag-arrow" />
-<path d="M130 347 L130 402" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="125,402 135,402 130,411" class="dag-arrow" />
-<path d="M130 496 L130 551" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
-<polygon points="125,551 135,551 130,560" class="dag-arrow dag-arrow--output" />
+<rect class="dag-canvas" width="260" height="752" />
+<path d="M130 68 L130 156" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="x" data-target="Source" />
+<polygon points="125,156 135,156 130,165" class="dag-arrow" />
+<path d="M130 231 L130 319" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="Source" data-target="Scale#2" />
+<polygon points="125,319 135,319 130,328" class="dag-arrow" />
+<path d="M130 413 L130 501" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="Scale#2" data-target="Scale" />
+<polygon points="125,501 135,501 130,510" class="dag-arrow" />
+<path d="M130 595 L130 683" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="Scale" data-target="__output__" stroke-dasharray="6,4" />
+<polygon points="125,683 135,683 130,692" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="Scale">
 <title>Scale (pending)
 Multiply the number
 factor = 5
 key 6c810ce78d34</title>
-<rect x="30" y="411" width="200" height="85" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
-<path d="M30 419 A8 8 0 0 1 38 411 H222 A8 8 0 0 1 230 419 V441 H30 Z" class="dag-head" />
-<line x1="30" y1="441" x2="230" y2="441" class="dag-rule" />
-<text x="44" y="426.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Scale</text>
-<text x="216" y="426.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">PENDING</text>
-<text x="44" y="459" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Multiply the number</text>
-<text x="44" y="478.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">factor = 5</text>
+<rect x="30" y="510" width="200" height="85" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<path d="M30 518 A8 8 0 0 1 38 510 H222 A8 8 0 0 1 230 518 V540 H30 Z" class="dag-head" />
+<line x1="30" y1="540" x2="230" y2="540" class="dag-rule" />
+<text x="44" y="525.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Scale</text>
+<text x="216" y="525.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">PENDING</text>
+<text x="44" y="558" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Multiply the number</text>
+<text x="44" y="577.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">factor = 5</text>
 </g>
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="Scale#2">
 <title>Scale#2 (cached)
 Multiply the number
 factor = 2
 key f771cfb014be</title>
-<rect x="30" y="262" width="200" height="85" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
-<path d="M30 270 A8 8 0 0 1 38 262 H222 A8 8 0 0 1 230 270 V292 H30 Z" class="dag-head" />
-<line x1="30" y1="292" x2="230" y2="292" class="dag-rule" />
-<text x="44" y="277.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Scale#2</text>
-<text x="216" y="277.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">CACHED</text>
-<text x="44" y="310" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Multiply the number</text>
-<text x="44" y="329.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">factor = 2</text>
+<rect x="30" y="328" width="200" height="85" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<path d="M30 336 A8 8 0 0 1 38 328 H222 A8 8 0 0 1 230 336 V358 H30 Z" class="dag-head" />
+<line x1="30" y1="358" x2="230" y2="358" class="dag-rule" />
+<text x="44" y="343.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Scale#2</text>
+<text x="216" y="343.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">CACHED</text>
+<text x="44" y="376" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Multiply the number</text>
+<text x="44" y="395.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">factor = 2</text>
 </g>
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="Source">
 <title>Source (cached)
 Read a number
 key 42cb9d3b36a9</title>
-<rect x="30" y="132" width="200" height="66" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
-<path d="M30 140 A8 8 0 0 1 38 132 H222 A8 8 0 0 1 230 140 V162 H30 Z" class="dag-head" />
-<line x1="30" y1="162" x2="230" y2="162" class="dag-rule" />
-<text x="44" y="147.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Source</text>
-<text x="216" y="147.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">CACHED</text>
-<text x="44" y="180" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Read a number</text>
+<rect x="30" y="165" width="200" height="66" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<path d="M30 173 A8 8 0 0 1 38 165 H222 A8 8 0 0 1 230 173 V195 H30 Z" class="dag-head" />
+<line x1="30" y1="195" x2="230" y2="195" class="dag-rule" />
+<text x="44" y="180.5" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" dominant-baseline="central" font-weight="bold">Source</text>
+<text x="216" y="180.5" class="dag-text dag-text--state" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="end" dominant-baseline="central">CACHED</text>
+<text x="44" y="213" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="start" dominant-baseline="central">Read a number</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="x">
 <title>x
@@ -188,7 +204,7 @@ key 42cb9d3b36a9</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Num</title>
-<rect x="70" y="560" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
-<text x="130" y="575" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="bold">Num</text>
+<rect x="70" y="692" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="130" y="707" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="13" text-anchor="middle" dominant-baseline="central" font-weight="bold">Num</text>
 </g>
 </svg>
