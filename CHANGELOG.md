@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frame end on them, and one edge leaves the bottom. A loop also has a dashed edge "next round"
   back to its `state` input. `SvgOptions(frames=False)` and `style="classic"` keep the single
   dashed box.
+- `dag(cache_dir=)` writes counts in the caption of a frame: `3 items, 2 cached` for a fan-out,
+  `last run: 5 rounds, 5 cached` for a loop. They come from the key record of the last run, or from
+  the items of a fan-out over a dict.
 - A fan-out with a template and a loop write a key record after each run, with
   `expansion.children`: the key of each branch or round that ran. `ResolveContext` gets
   `record_children(step, keys)` and `children_of(step)`.

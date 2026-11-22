@@ -560,6 +560,53 @@ def _nested_params(expansion: Expansion) -> tuple[tuple[str, str], ...]:
     return ((label, text),) if names else ()
 
 
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"
+
+
+def _children_keys(node: Node, cache_dir: Path) -> tuple[list[str], bool] | None:
+    """The keys of the branches or rounds of a node, and whether they come from the last run.
+
+    The key record of the last run lists them. Without a record, a fan-out over a dict gives
+    its branches from the dict. ``None`` when neither is known.
+    """
+    key = _node_key(node)
+    if key:
+        try:
+            record = json.loads(cache_dir.joinpath(".keys", f"{key}.json").read_text())
+            children = record["expansion"]["children"]
+            if isinstance(children, list):
+                return [str(c) for c in cast("list[Any]", children)], True
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    step: Any = node.step
+    over = cast("dict[Any, Any] | None", getattr(step, "over", None))
+    if getattr(step, "template", None) is not None and isinstance(over, dict) and over:
+        try:
+            keys = [step._branch(k, v).content_hash() for k, v in over.items()]
+        except (TypeError, ValueError):
+            return None
+        return [k for k in keys if k is not None], False
+    return None
+
+
+def _run_note(node: Node, expansion: Expansion, cache_dir: Path | None) -> str:
+    """What the cache says about the branches or rounds: ``3 items, 2 cached``.
+
+    A count that comes from the last run starts with ``last run:``. Empty when nothing is known.
+    """
+    if cache_dir is None:
+        return ""
+    found = _children_keys(node, cache_dir)
+    if found is None:
+        return ""
+    keys, from_run = found
+    word = "round" if expansion.shape == "loop" else "item"
+    cached = sum(1 for k in keys if cache_dir.joinpath(f"{k}.done").exists())
+    text = f"{_plural(len(keys), word)}, {cached} cached"
+    return f"last run: {text}" if from_run else text
+
+
 def _node_key(node: Node) -> str:
     """The cache key of a step node, empty when it has none (a blocked step)."""
     if node.result is None:
@@ -589,6 +636,11 @@ def _walk_to_metadata(
                 params = _nested_params(expansion)
                 if node.name in frames:
                     caption = expansion.caption
+                    note = "" if node.parent else _run_note(node, expansion, cache_dir)
+                    if note and expansion.shape == "loop":
+                        caption = f"{caption}; {note}"
+                    elif note:
+                        caption = note
                     feedback = f"{node.name}/{expansion.feedback}" if expansion.feedback else ""
         else:
             title = node.title or node.name

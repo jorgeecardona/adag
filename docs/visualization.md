@@ -39,6 +39,10 @@ edge, so the feedback is a dashed arrow labelled "next round".
 
 ![A loop frame](assets/frame_loop.svg)
 
+With `cache_dir=` the caption also says what the cache holds. A fan-out says `3 items, 2 cached`
+(or `last run: 3 items, 2 cached` when the last run wrote a key record). A loop adds
+`last run: 5 rounds, 5 cached`. Without a cache or a record, the caption stays as it was.
+
 The frame is `mapped` (long dashes) for a fan-out and `loop` (short dashes) for a loop. Frames
 nest: a loop inside a fan-out is a frame inside a frame, up to three levels. A step outside the
 template that the body uses enters through an input node named after it. `classic` and
