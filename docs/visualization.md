@@ -4,7 +4,7 @@
 with CSS variables.
 
 ```python
---8<-- "docs/examples/visualization.py"
+--8 < --"docs/examples/visualization.py"
 ```
 
 ![The quickstart graph](assets/graph.svg)
@@ -42,7 +42,7 @@ input nodes.
 
 | Field | Values | What it does |
 | --- | --- | --- |
-| `style` | `"blueprint"` (default), `"band"`, `"classic"` | The look of the boxes and edges. |
+| `style` | `"blueprint"` (default), `"band"`, `"classic"` | The look of the boxes and edges. `classic` keeps the layout of 0.3.22 and ignores `inputs`, `density` and `corners`. |
 | `inputs` | `"terminals"` (default), `"tabs"`, `"rows"` | Where `InputParam` and file inputs go. |
 | `density` | `"normal"` (default), `"compact"` | How much each box shows. |
 | `corners` | `"round"` (default), `"sharp"` | Round corners (boxes 8 px, edge bends 14 px) or almost square ones (2 px, 8 px). `classic` ignores it. |
@@ -67,8 +67,8 @@ each box has the state and the cache key.
 
 ![Band style](assets/look_band.svg)
 
-`classic` has the colours and box shapes of 0.3.22: centred text in rounded boxes. Use it to keep
-the old images. It always draws inputs as nodes.
+`classic` is the drawing of 0.3.22: its colours, box shapes, layout and curved edges. Use it to
+keep the old images.
 
 ![Classic style](assets/look_classic.svg)
 
@@ -230,7 +230,7 @@ Each node is a group, `<g class="dag-item ...">`. A host can target it by class 
 4. `render_graph_svg(metadata, pairs)` returns the SVG text. `pairs` are `(source, target)` names.
 
 ```python
---8<-- "docs/examples/custom_drawing.py"
+--8 < --"docs/examples/custom_drawing.py"
 ```
 
 ```text
@@ -248,17 +248,26 @@ str True
 
 ## How edges are routed
 
-Each edge is routed on its own. The rule is: fewest bends, then the shortest length, then fewest
-crossings. A crossing costs less than an extra bend.
+This applies to `blueprint` and `band`. Each edge is routed on its own: fewest bends first, then the
+shortest length, then fewest crossings. A crossing costs less than an extra bend.
 
-1. A free edge drops straight from the source to the target.
-2. Else it makes one sideways move in the gap just above the target (a Z in `blueprint`, one
-   S curve in `band`).
-3. A second sideways move appears only when a box blocks the plain Z.
+1. A free edge drops straight from the bottom of the source to the top of the target.
+2. Else it leaves the bottom of the source, drops down a free channel to the middle of the target
+   and goes sideways into the target's left or right face. That is one bend (an L). The arrow
+   points sideways.
+3. When a box blocks the channel, the edge takes a short sideways move under the source to the
+   nearest free channel, then enters the face.
+4. Only when no channel exists does it end on the top of the target, with a sideways move just above
+   it.
 
-Edges of different sources stay at least 4 px apart. Edges that leave one source may share a
-segment. No edge runs through a box. The tests count the bends of every edge (`BEND_BASELINE` in
-`tests/test_svg_layout.py`).
+The edges that leave one source are ordered by target, so their drops do not cross. Edges of
+different sources stay at least 4 px apart, and two sideways runs that share some width are at
+least 12 px apart. No edge runs through a box. The tests count the bends of every edge
+(`BEND_BASELINE` in `tests/test_svg_layout.py`).
+
+`classic` does not use this. It keeps the layout and the curved edges of 0.3.22, so its drawing is
+the same as before (an edge can pass over a box, as it did). It ignores `inputs`, `density` and
+`corners`, and it draws inputs as ellipses and boxes in the rows where 0.3.22 put them.
 
 ## Test a drawing change
 

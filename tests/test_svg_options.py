@@ -534,8 +534,10 @@ def test_sharp_corners_make_edge_bends_smaller() -> None:
                 return abs(cx - ax) + abs(cy - ay)
         raise AssertionError("no bent edge")
 
-    assert radius(_drawn("blueprint", "round")) > radius(_drawn("blueprint", "sharp"))
-    assert radius(_drawn("blueprint", "sharp")) <= 8.0
+    round_radius = radius(_drawn("blueprint", "round", "ml_training"))
+    sharp_radius = radius(_drawn("blueprint", "sharp", "ml_training"))
+    assert round_radius > sharp_radius
+    assert sharp_radius <= 8.0
 
 
 def test_classic_ignores_corners() -> None:

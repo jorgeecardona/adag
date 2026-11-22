@@ -12,7 +12,16 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from adag.svg_route import BOX_MARGIN, Plan, Request, assign_slots, plan_all
+from adag.svg_route import (
+    BOX_MARGIN,
+    Plan,
+    Request,
+    RowBox,
+    SideRequest,
+    assign_slots,
+    plan_first,
+    plan_rest,
+)
 
 OUTPUT = "__output__"
 _EPS = 0.5
@@ -47,9 +56,10 @@ class LayoutSettings:
     gap_x: float = 36.0
     lane_x: float = 22.0
     gap_y: float = 64.0
-    slot: float = 9.0
+    slot: float = 12.0
     arrow: float = 9.0
     port_margin: float = 0.2
+    corner_room: float = 12.0
     min_port_spacing: float = 14.0
 
 
@@ -268,6 +278,19 @@ def _spread(count: int, lo: float, hi: float, spacing: float) -> list[float]:
     return [start + span * i / (count - 1) for i in range(count)]
 
 
+def _clear_of(
+    port: float, taken: Sequence[float], span: tuple[float, float], spacing: float
+) -> float:
+    """``port``, or the nearest point of ``span`` that is ``spacing`` from every taken point."""
+    if all(abs(port - t) >= spacing for t in taken):
+        return port
+    steps = [port + sign * k * spacing / 2 for k in range(1, 40) for sign in (1, -1)]
+    for candidate in steps:
+        if span[0] <= candidate <= span[1] and all(abs(candidate - t) >= spacing for t in taken):
+            return candidate
+    return port
+
+
 def layout(
     nodes: Sequence[LNode],
     edges: Sequence[tuple[str, str]],
@@ -391,32 +414,90 @@ def layout(
         src, dst = key
         if abs(depart[key] - arrive[key]) < _EPS:
             continue
-        low = max(out_range[src][0], in_range[dst][0])
-        high = min(out_range[src][1], in_range[dst][1])
+        room = settings.corner_room
+        src_lo, src_hi = x[src] - sizes[src].width / 2 + room, x[src] + sizes[src].width / 2 - room
+        dst_lo, dst_hi = in_range[dst]
+        if not (sizes[dst].arrive_lo or sizes[dst].arrive_hi):
+            dst_lo, dst_hi = (
+                x[dst] - sizes[dst].width / 2 + room,
+                x[dst] + sizes[dst].width / 2 - room,
+            )
+        low, high = max(src_lo, dst_lo), min(src_hi, dst_hi)
         if low > high:
             continue
-        column = min(max(depart[key], low), high)
         others = [depart[k] for k in out_edges[src] if k != key]
         others += [arrive[k] for k in in_edges[dst] if k != key]
-        if any(abs(column - o) < SNAP_SPACING for o in others):
-            continue
-        if column_is_free(column, level[src], level[dst]):
-            depart[key] = arrive[key] = column
+        wanted = min(max(depart[key], low), high)
+        candidates = sorted(
+            (low + (high - low) * i / 40 for i in range(41)), key=lambda c: abs(c - wanted)
+        )
+        for column in candidates:
+            if all(abs(column - o) >= SNAP_SPACING for o in others) and column_is_free(
+                column, level[src], level[dst]
+            ):
+                depart[key] = arrive[key] = column
+                break
 
-    requests = [
-        Request(
+    # Edges that end on the side of their target (rows of boxes: the room a channel may not enter).
+    row_boxes: dict[int, list[RowBox]] = {
+        lvl: [RowBox(x[n] - left[n], x[n] + right[n], n) for n in row if n not in virtual]
+        for lvl, row in order.items()
+    }
+
+    def request_for(key: tuple[str, str]) -> Request:
+        return Request(
             key,
             level[key[0]],
             level[key[1]],
             depart[key],
             arrive[key],
-            tuple(x[v] for v in chain[1:-1]),
+            tuple(x[v] for v in chains[key][1:-1]),
         )
-        for key, chain in chains.items()
-    ]
-    plans = plan_all(requests, row_blocked)
+
+    side_requests: list[SideRequest] = []
+    for key in chains:
+        src, dst = key
+        if key in dashed or abs(depart[key] - arrive[key]) < _EPS or sizes[dst].left_extra:
+            continue
+        reach = sizes[src].width / 2 - settings.corner_room
+        side_requests.append(
+            SideRequest(
+                key,
+                level[src],
+                level[dst],
+                (x[src] - max(reach, 0.0), x[src] + max(reach, 0.0)),
+                x[src],
+                x[dst] - sizes[dst].width / 2,
+                x[dst] + sizes[dst].width / 2,
+            )
+        )
+    first = plan_first([request_for(k) for k in chains], row_blocked, side_requests, row_boxes)
+    # The edges still to route end on top: spread their ports again, now that others left.
+    top_edges = [k for k in chains if k not in first.plans]
+    for dst, group in in_edges.items():
+        rest = [k for k in group if k in top_edges]
+        if not rest or len(rest) == len(group):
+            continue
+        taken_ports = [arrive[k] for k in group if k not in top_edges]
+        ports = _spread(len(rest), *in_range[dst], settings.min_port_spacing)
+        for key, port in zip(rest, ports, strict=False):
+            arrive[key] = _clear_of(port, taken_ports, in_range[dst], SNAP_SPACING)
+    for src, group in out_edges.items():
+        rest = [k for k in group if k in top_edges]
+        if not rest or len(rest) == len(group):
+            continue
+        taken_ports = first.departures.get(src, [])
+        ports = _spread(len(rest), *out_range[src], settings.min_port_spacing)
+        for key, port in zip(rest, ports, strict=False):
+            depart[key] = _clear_of(port, taken_ports, out_range[src], SNAP_SPACING)
+    plans = plan_rest([request_for(k) for k in top_edges], row_blocked, first)
+    for key, plan in first.plans.items():
+        if plan.entry:
+            depart[key] = plan.columns[0]
     # A tiny sideways move next to a port is a kink: move the port to the column instead.
     for key, plan in list(plans.items()):
+        if plan.entry:
+            continue
         src, dst = key
         columns, jogs = list(plan.columns), list(plan.jogs)
         last_gap = level[dst] - 1
@@ -479,6 +560,24 @@ def layout(
             if plans[key].jogs[index].gap == gap:
                 jog_y[(key, index)] = positions[number]
 
+    # Where edges enter a side face: along the face, the farthest channel lowest (no crossings).
+    side_y: dict[tuple[str, str], float] = {}
+    entering: dict[tuple[str, int], list[tuple[str, str]]] = {}
+    for key, plan in plans.items():
+        if plan.entry:
+            entering.setdefault((key[1], plan.entry), []).append(key)
+    for (dst, _face_side), group in entering.items():
+        group.sort(key=lambda k: abs(plans[k].channel - plans[k].face_x))
+        top_edge = top_of_box[dst]
+        margin = min(12.0, sizes[dst].height / 4)
+        ys = _spread(
+            len(group),
+            top_edge + margin,
+            top_edge + sizes[dst].height - margin,
+            settings.min_port_spacing,
+        )
+        side_y.update(zip(group, ys, strict=False))
+
     routes: list[Route] = []
     for key, plan in plans.items():
         src, dst = key
@@ -486,7 +585,10 @@ def layout(
         for index, jog in enumerate(plan.jogs):
             y = jog_y[(key, index)]
             points += [(jog.x_from, y), (jog.x_to, y)]
-        points.append((arrive[key], top_of_box[dst]))
+        if plan.entry:
+            points += [(plan.channel, side_y[key]), (plan.face_x, side_y[key])]
+        else:
+            points.append((arrive[key], top_of_box[dst]))
         routes.append(Route(src, dst, tuple(points), key in dashed))
 
     # Canvas.

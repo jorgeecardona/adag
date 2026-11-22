@@ -90,7 +90,9 @@ class SvgOptions:
     header strip with the state word, curved edges) or ``"classic"`` (the look of adag 0.3.22).
     ``inputs`` says where ``InputParam`` and file inputs go: ``"terminals"`` (small nodes with an
     edge, all in the top row), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step).
-    ``classic`` has the colours and box shapes of 0.3.22 and always draws terminals.
+    ``classic`` is the drawing of 0.3.22: its colours, box shapes, layout and edge curves. It has no
+    input modes, densities or corner shapes, and draws inputs as ellipses and boxes where it put
+    them.
     ``density="compact"`` draws only the title of each step. With ``tabs`` or ``rows`` the inputs
     are labels to its left.
 
@@ -460,12 +462,14 @@ def _draw(
     stateless: bool,
 ) -> str:
     # classic keeps the colours of 0.3.22, which paint a graph with no state as pending
+    classic = options.style == "classic"
+    # classic is the drawing of 0.3.22: it has no input modes, densities or corner shapes
     look = _Look(
         options.style,
-        options.inputs,
-        options.density,
-        stateless and options.style != "classic",
-        options.corners,
+        "terminals" if classic else options.inputs,
+        "normal" if classic else options.density,
+        stateless and not classic,
+        "round" if classic else options.corners,
     )
     return _draw_graph(
         _to_render_nodes(nodes, edges, final_step_name, options),

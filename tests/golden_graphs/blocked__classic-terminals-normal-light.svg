@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--classic" width="440" height="428" viewBox="0 0 440 428">
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--classic" width="440" height="416" viewBox="0 0 440 416">
 <style>.dag-canvas { fill: #ffffff; }
 .dag--blueprint .dag-canvas { fill: #eef3fc; }
 .dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
@@ -133,13 +133,13 @@
 }
 }
 </style>
-<rect class="dag-canvas" width="440" height="428" />
-<path d="M220 62 L220 118" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="216.8,118 223.2,118 220,126" class="dag-arrow" />
-<path d="M220 182 L220 238" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="216.8,238 223.2,238 220,246" class="dag-arrow" />
-<path d="M220 302 L220 358" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
-<polygon points="216.8,358 223.2,358 220,366" class="dag-arrow dag-arrow--output" />
+<rect class="dag-canvas" width="440" height="416" />
+<line x1="220.0" y1="62.0" x2="220.0" y2="114.0" class="dag-edge" stroke-width="1.5" />
+<polygon points="220.00,122.00 216.88,114.63 223.12,114.63" class="dag-arrow" />
+<line x1="220.0" y1="178.0" x2="220.0" y2="230.0" class="dag-edge" stroke-width="1.5" />
+<polygon points="220.00,238.00 216.88,230.63 223.12,230.63" class="dag-arrow" />
+<line x1="220.0" y1="294.0" x2="220.0" y2="346.0" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-dasharray="6,4" />
+<polygon points="220.00,354.00 216.88,346.63 223.12,346.63" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--file" data-state="none" data-kind="file" data-name="sales.csv">
 <title>sales.csv
 data/sales.csv</title>
@@ -149,21 +149,21 @@ data/sales.csv</title>
 <g class="dag-item dag-item--step is-blocked" data-state="blocked" data-kind="step" data-name="load">
 <title>Load (blocked)
 The file is missing.</title>
-<rect x="30" y="126" width="380" height="56" rx="10" class="dag-node dag-node--step is-blocked" stroke-width="1.5" />
-<text x="220" y="144" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Load</text>
-<text x="220" y="164" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" dominant-baseline="central">The file is missing.</text>
+<rect x="30" y="122" width="380" height="56" rx="10" class="dag-node dag-node--step is-blocked" stroke-width="1.5" />
+<text x="220" y="140" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Load</text>
+<text x="220" y="160" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" dominant-baseline="central">The file is missing.</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="sum">
 <title>Sum (pending)
 Add the amounts.
 key 09f5ffef2830</title>
-<rect x="30" y="246" width="380" height="56" rx="10" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<text x="220" y="264" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Sum</text>
-<text x="220" y="284" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" dominant-baseline="central">Add the amounts.</text>
+<rect x="30" y="238" width="380" height="56" rx="10" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="220" y="256" class="dag-text dag-text--title" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Sum</text>
+<text x="220" y="276" class="dag-text dag-text--desc" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="10" text-anchor="middle" dominant-baseline="central">Add the amounts.</text>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Total</title>
-<rect x="170" y="366" width="100" height="32" rx="8" class="dag-node dag-node--output" stroke-width="2" />
-<text x="220" y="382" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">Total</text>
+<rect x="170" y="354" width="100" height="32" rx="8" class="dag-node dag-node--output" stroke-width="2" />
+<text x="220" y="370" class="dag-text dag-text--output" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">Total</text>
 </g>
 </svg>

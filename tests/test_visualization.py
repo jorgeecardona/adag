@@ -252,9 +252,10 @@ def test_render_pipeline_svg_no_pipeline_json_returns_none(tmp_path: Path) -> No
     assert render_pipeline_svg(pipeline_dir) is None
 
 
-def test_every_edge_arrives_vertically_at_the_arrow_base() -> None:
-    """An edge ends on the base of its arrowhead, moving straight down, in every style.
+def test_every_edge_ends_on_the_base_of_its_arrowhead() -> None:
+    """An edge ends on the base of its arrowhead, moving in the direction the arrow points.
 
+    The arrow points down into the top of a box, or sideways into a face (blueprint and band).
     Regression: an early router cut the curve above the arrow and added a stub, which left a kink
     where the diagonal met the vertical.
     """
@@ -269,17 +270,34 @@ def test_every_edge_arrives_vertically_at_the_arrow_base() -> None:
         svg = render_graph_svg(nodes, edges, options=SvgOptions(style=style))
         root = ET.fromstring(svg)  # noqa: S314
         ns = "{http://www.w3.org/2000/svg}"
-        paths = [e for e in root.iter(f"{ns}path") if "dag-edge" in e.get("class", "")]
+        drawn = [
+            e
+            for e in root.iter()
+            if e.tag in (f"{ns}path", f"{ns}line") and "dag-edge" in e.get("class", "")
+        ]
         arrows = list(root.iter(f"{ns}polygon"))
-        assert len(paths) == len(arrows) == len(edges)
-        for path, arrow in zip(paths, arrows, strict=True):
-            numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", path.get("d", ""))]
+        assert len(drawn) == len(arrows) == len(edges)
+        for element, arrow in zip(drawn, arrows, strict=True):
+            if element.tag == f"{ns}line":  # classic draws a straight edge as a line
+                numbers = [float(element.get(k, "0")) for k in ("x1", "y1", "x2", "y2")]
+            else:
+                numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", element.get("d", ""))]
             end_x, end_y = numbers[-2], numbers[-1]
-            tip = [
+            points = [
                 tuple(float(v) for v in pt.split(",")) for pt in arrow.get("points", "").split()
-            ][2]
-            assert end_x == tip[0] and end_y < tip[1]  # on the arrow base, straight above the tip
-            assert numbers[-4] == end_x  # the last control point or the previous point: same x
+            ]
+            tip = points[0] if style == "classic" else points[2]  # 0.3.22 lists the tip first
+            sideways = style != "classic" and abs(points[0][0] - points[1][0]) < 0.05
+            if sideways:
+                assert (
+                    end_y == tip[1] and abs(end_x - tip[0]) > 0
+                )  # on the base, level with the tip
+                assert numbers[-3] == end_y  # the last run is horizontal
+            else:
+                assert abs(end_x - tip[0]) < 0.06 and end_y < tip[1]  # on the base, above the tip
+                assert (
+                    style == "classic" or numbers[-4] == end_x
+                )  # the 0.3.22 curve ends on a sample
 
 
 def test_render_pipeline_svg_carries_classes_not_colours(tmp_path: Path) -> None:

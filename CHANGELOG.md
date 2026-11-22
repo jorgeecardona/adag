@@ -13,12 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   edges, a state square with the state word, and the cache key in each box. Pass
   `SvgOptions(style="classic")` to keep the colours and box shapes of 0.3.22. Corners are rounded
   (boxes 8 px, terminals and tabs 6 px, edge bends 14 px).
-- Edges no longer run under boxes. Each edge is routed on its own: the fewest bends first, then the
-  shortest way. It drops straight when the way is free, else it makes one sideways move just above
-  its target, and a second one only when a box blocks the first. There are no staircases and no
-  shared trunks. Corners on the training example fell from 108 to 30, and a graph of 40 nodes draws
-  in about 0.1 s instead of seconds.
-- Input nodes (`inputs="terminals"`, the default) all sit in the top row of the image, ordered by
+- Edges no longer run under boxes (`blueprint` and `band`). Each edge is routed on its own: fewest
+  bends first, then the shortest way. It drops straight when the way is free. Else it leaves the
+  bottom of its source, drops down a free channel and goes sideways into the face of its target, with
+  the arrow pointing sideways. Only when no channel exists does it end on the top of the target. No
+  staircases, no shared trunks, and sideways runs of different edges are at least 12 px apart.
+  Bends on the training example fell from 108 to 21, and a graph of 40 nodes draws in about 0.1 s
+  instead of seconds.
+- `style="classic"` is the drawing of 0.3.22 again: the same layout, the same curved edges, inputs
+  as ellipses and boxes where they were. It ignores `inputs`, `density` and `corners`. It stays slow
+  on big graphs (about a second for 12 nodes). Colours as variables, data attributes, text escaping
+  and the output edge for a labelled final step stay fixed.
+- Input nodes (`inputs="terminals"`, the default; `blueprint` and `band`) all sit in the top row, ordered by
   where their steps are, with their edges running down to the steps. The compact density also uses
   input nodes now, not labels to the left of the step. `tabs` and `rows` keep their folded forms.
 - A graph with no cache state (`dag()` without `cache_dir`) is drawn in neutral colours with no state

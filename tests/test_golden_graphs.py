@@ -66,7 +66,7 @@ def _specs() -> list[Spec]:
         ("blueprint", "band"), ("terminals", "tabs", "rows"), ("normal", "compact")
     ):
         specs.append(Spec("diamond_inputs", style, inputs, density))
-    specs += [Spec("diamond_inputs", "classic", "terminals", d) for d in ("normal", "compact")]
+    specs.append(Spec("diamond_inputs", "classic"))
     for graph in ("namecheck", "namecheck_big"):
         specs += [
             Spec(graph),

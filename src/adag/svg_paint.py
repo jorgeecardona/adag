@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Literal
 
+from adag import svg_classic
 from adag import svg_layout as lay
 from adag.svg_theme import FONT_MONO, FONT_SANS
 
@@ -537,7 +538,8 @@ def _box_classes(node: RNode) -> str:
 def paint_node(parent: ET.Element, node: RNode, p: lay.Placed, m: Measured, look: Look) -> None:
     """Draw one node as a group with its tooltip."""
     group = _group(parent, node, look)
-    if node.kind != "step":
+    # 0.3.22 drew any kind it did not know (``dataset``) as a step box
+    if node.kind != "step" and (look.style != "classic" or node.kind in ("param", "file")):
         _paint_input(group, node, p, m, look)
     elif look.density == "compact":
         _paint_compact(group, node, p, m, look)
@@ -902,41 +904,69 @@ def _arrow_size(style: str) -> tuple[float, float]:
 
 
 def _end_points(route: lay.Route, arrow: float) -> list[lay.Point]:
+    """The vertices of the route, cut short by the arrowhead (down, or sideways into a face)."""
     points = list(route.points)
     tip_x, tip_y = points[-1]
-    points[-1] = (tip_x, tip_y - arrow)
+    prev_x, prev_y = points[-2]
+    if abs(tip_y - prev_y) < _EPS and abs(tip_x - prev_x) >= _EPS:
+        points[-1] = (tip_x - math.copysign(arrow, tip_x - prev_x), tip_y)
+    else:
+        points[-1] = (tip_x, tip_y - arrow)
     return points
 
 
+def _quarter(prev: lay.Point, cur: lay.Point, nxt: lay.Point, radius: float) -> str:
+    """A rounded corner at ``cur``: a straight run up to it, then a curve to the next run."""
+    d1 = math.hypot(cur[0] - prev[0], cur[1] - prev[1])
+    d2 = math.hypot(nxt[0] - cur[0], nxt[1] - cur[1])
+    r = min(radius, d1 / 2, d2 / 2)
+    ax = cur[0] - (cur[0] - prev[0]) / d1 * r
+    ay = cur[1] - (cur[1] - prev[1]) / d1 * r
+    bx = cur[0] + (nxt[0] - cur[0]) / d2 * r
+    by = cur[1] + (nxt[1] - cur[1]) / d2 * r
+    return f"L{_num(ax)} {_num(ay)} Q{_num(cur[0])} {_num(cur[1])} {_num(bx)} {_num(by)}"
+
+
 def curve_path(route: lay.Route, arrow: float, reach_max: float = _S_REACH) -> str:
-    """Straight runs and one smooth S for each sideways move, in the gap where the move happens.
+    """Straight runs, one smooth S for each sideways move between two drops, and a rounded corner
+    where a drop turns into the sideways run that ends on a face.
 
     The S has a vertical tangent at both ends, so it joins the straight runs without a corner.
     """
     pts = _end_points(route, arrow)
     parts = [f"M{_num(pts[0][0])} {_num(pts[0][1])}"]
+    last = len(pts) - 1
     index = 1
-    while index < len(pts):
-        a = pts[index]
-        b = pts[index + 1] if index + 1 < len(pts) else None
-        if b is not None and abs(a[1] - b[1]) < _EPS and abs(a[0] - b[0]) >= _EPS:
-            before = pts[index - 1][1]
-            after = pts[index + 2][1] if index + 2 < len(pts) else b[1] + reach_max
-            reach = min(reach_max, a[1] - before, after - a[1])
+    while index < last:
+        a, b = pts[index], pts[index + 1]
+        between_drops = (
+            abs(a[1] - b[1]) < _EPS
+            and abs(a[0] - b[0]) >= _EPS
+            and abs(pts[index - 1][0] - a[0]) < _EPS
+            and index + 2 <= last
+            and abs(pts[index + 2][0] - b[0]) < _EPS
+        )
+        if between_drops:
+            reach = min(reach_max, a[1] - pts[index - 1][1], pts[index + 2][1] - a[1])
             top, bottom = a[1] - reach, a[1] + reach
             parts.append(f"L{_num(a[0])} {_num(top)}")
             parts.append(
                 f"C{_num(a[0])} {_num(a[1])} {_num(b[0])} {_num(a[1])} {_num(b[0])} {_num(bottom)}"
             )
             index += 2
-        else:
-            parts.append(f"L{_num(a[0])} {_num(a[1])}")
-            index += 1
+            continue
+        prev = pts[index - 1]
+        straight = (abs(prev[0] - a[0]) < _EPS and abs(a[0] - b[0]) < _EPS) or (
+            abs(prev[1] - a[1]) < _EPS and abs(a[1] - b[1]) < _EPS
+        )
+        parts.append(f"L{_num(a[0])} {_num(a[1])}" if straight else _quarter(prev, a, b, reach_max))
+        index += 1
+    parts.append(f"L{_num(pts[last][0])} {_num(pts[last][1])}")
     return " ".join(parts)
 
 
 def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
-    """Right angles with rounded corners: down, sideways in a gap, down."""
+    """Right angles with rounded corners: down, sideways, down (or sideways into a face)."""
     vertices = _end_points(route, arrow)
     parts = [f"M{_num(vertices[0][0])} {_num(vertices[0][1])}"]
     for i in range(1, len(vertices) - 1):
@@ -945,14 +975,7 @@ def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
             abs(prev[1] - cur[1]) < _EPS and abs(cur[1] - nxt[1]) < _EPS
         ):
             continue
-        d1 = math.hypot(cur[0] - prev[0], cur[1] - prev[1])
-        d2 = math.hypot(nxt[0] - cur[0], nxt[1] - cur[1])
-        r = min(corner, d1 / 2, d2 / 2)
-        ax = cur[0] - (cur[0] - prev[0]) / d1 * r
-        ay = cur[1] - (cur[1] - prev[1]) / d1 * r
-        bx = cur[0] + (nxt[0] - cur[0]) / d2 * r
-        by = cur[1] + (nxt[1] - cur[1]) / d2 * r
-        parts.append(f"L{_num(ax)} {_num(ay)} Q{_num(cur[0])} {_num(cur[1])} {_num(bx)} {_num(by)}")
+        parts.append(_quarter(prev, cur, nxt, corner))
     parts.append(f"L{_num(vertices[-1][0])} {_num(vertices[-1][1])}")
     return " ".join(parts)
 
@@ -975,10 +998,18 @@ def paint_route(
         attrs["stroke-dasharray"] = "6,4"
     _path(parent, d, cls, **attrs)
     tip_x, tip_y = route.points[-1]
-    points = (
-        f"{_num(tip_x - half)},{_num(tip_y - arrow)} {_num(tip_x + half)},{_num(tip_y - arrow)} "
-        f"{_num(tip_x)},{_num(tip_y)}"
-    )
+    prev_x, prev_y = route.points[-2]
+    if abs(tip_y - prev_y) < _EPS and abs(tip_x - prev_x) >= _EPS:
+        base = tip_x - math.copysign(arrow, tip_x - prev_x)
+        points = (
+            f"{_num(base)},{_num(tip_y - half)} {_num(base)},{_num(tip_y + half)} "
+            f"{_num(tip_x)},{_num(tip_y)}"
+        )
+    else:
+        points = (
+            f"{_num(tip_x - half)},{_num(tip_y - arrow)} {_num(tip_x + half)},{_num(tip_y - arrow)} "
+            f"{_num(tip_x)},{_num(tip_y)}"
+        )
     ET.SubElement(
         parent,
         "polygon",
@@ -1084,23 +1115,39 @@ def draw(
         for n in shown
     ]
     settings = settings_for(look)
-    fed = {target for _, target in shown_edges}
-    top = [n.name for n in shown if n.kind in ("param", "file") and n.name not in fed]
     has_output = bool(output_label) and final is not None
-    result = lay.layout(
-        sizes,
-        shown_edges,
-        output=measure_output(output_label, look) if has_output else None,
-        final=final,
-        top=top,
-        settings=lay.LayoutSettings(
-            gap_y=settings.gap_y, gap_x=settings.gap_x, arrow=_arrow_size(look.style)[0]
-        ),
-    )
+    output_node = measure_output(output_label, look) if has_output else None
+    classic = None
+    result = None
+    if look.style == "classic":
+        # classic keeps the layout and the edge curves of 0.3.22
+        classic = svg_classic.place(
+            shown,
+            shown_edges,
+            measured,
+            output_label=output_label,
+            output=output_node,
+            final=final,
+        )
+        placed, result_w, result_h = classic.nodes, classic.width, classic.height
+    else:
+        fed = {target for _, target in shown_edges}
+        top = [n.name for n in shown if n.kind in ("param", "file") and n.name not in fed]
+        result = lay.layout(
+            sizes,
+            shown_edges,
+            output=output_node,
+            final=final,
+            top=top,
+            settings=lay.LayoutSettings(
+                gap_y=settings.gap_y, gap_x=settings.gap_x, arrow=_arrow_size(look.style)[0]
+            ),
+        )
+        placed, result_w, result_h = result.nodes, result.width, result.height
 
     legend_states = _legend_states(shown, look) if legend else []
-    canvas_h = result.height + (_LEGEND_HEIGHT if legend_states else 0)
-    canvas_w = max(result.width, _legend_width(legend_states) + 2 * lay.LayoutSettings().margin)
+    canvas_h = result_h + (_LEGEND_HEIGHT if legend_states else 0)
+    canvas_w = max(result_w, _legend_width(legend_states) + 2 * lay.LayoutSettings().margin)
     root_class = f"dag dag--{look.style}"
     if look.density == "compact":
         root_class += " dag--compact"
@@ -1127,14 +1174,17 @@ def draw(
         if look.style == "blueprint":
             _path(svg, _grid(canvas_w, canvas_h), "dag-grid")
     pending = {n.name for n in shown if n.state == "PENDING" and not look.stateless}
-    for route in result.routes:
-        paint_route(svg, route, look, flow=animate and route.target in pending)
+    if classic is not None:
+        svg_classic.paint_edges(svg, classic)
+    elif result is not None:
+        for route in result.routes:
+            paint_route(svg, route, look, flow=animate and route.target in pending)
     for n in shown:
-        paint_node(svg, n, result.nodes[n.name], measured[n.name], look)
-    if has_output and lay.OUTPUT in result.nodes:
-        paint_output(svg, output_label, result.nodes[lay.OUTPUT], look)
+        paint_node(svg, n, placed[n.name], measured[n.name], look)
+    if has_output and lay.OUTPUT in placed:
+        paint_output(svg, output_label, placed[lay.OUTPUT], look)
     if legend_states:
-        _paint_legend(svg, legend_states, result.height + _LEGEND_HEIGHT / 2)
+        _paint_legend(svg, legend_states, result_h + _LEGEND_HEIGHT / 2)
     return ET.tostring(svg, encoding="unicode")
 
 
