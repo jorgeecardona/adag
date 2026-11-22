@@ -167,7 +167,20 @@ def test_compact_draws_the_title_and_moves_the_rest_to_the_tooltip() -> None:
     svg = _svg("diamond_inputs", density="compact")
     assert "Normalize the text." not in _texts(svg)  # the description is not drawn
     assert "Normalize the text." in _drawing(svg)  # but it is in the tooltip
-    assert "case = 'lower'" in _texts(svg)  # the input is a label to the left of the step
+
+
+def test_compact_with_terminals_draws_small_input_nodes_in_the_top_row() -> None:
+    svg = _svg("diamond_inputs", density="compact")
+    assert "dag-node--param" in _drawing(svg)
+    assert "case = 'lower'" not in _texts(svg)  # no label to the left of a step
+    assert "'lower'" in _texts(svg)  # the value sits under the name on the terminal
+
+
+@pytest.mark.parametrize("inputs", ["tabs", "rows"])
+def test_compact_with_tabs_or_rows_keeps_the_labels_left_of_the_step(inputs: str) -> None:
+    svg = _svg("diamond_inputs", density="compact", inputs=inputs)
+    assert "dag-node--param" not in _drawing(svg)
+    assert "case = 'lower'" in _texts(svg)
 
 
 def test_a_list_of_inputs_longer_than_six_lines_ends_with_a_count() -> None:

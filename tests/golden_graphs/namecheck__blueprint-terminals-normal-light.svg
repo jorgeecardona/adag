@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--blueprint" width="863" height="964" viewBox="0 0 863 964">
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--blueprint" width="899" height="985" viewBox="0 0 899 985">
 <style>.dag-canvas { fill: #ffffff; }
 .dag--blueprint .dag-canvas { fill: #eef3fc; }
 .dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
@@ -133,158 +133,158 @@
 }
 }
 </style>
-<rect class="dag-canvas" width="863" height="964" />
-<path d="M20 0V964M40 0V964M60 0V964M80 0V964M100 0V964M120 0V964M140 0V964M160 0V964M180 0V964M200 0V964M220 0V964M240 0V964M260 0V964M280 0V964M300 0V964M320 0V964M340 0V964M360 0V964M380 0V964M400 0V964M420 0V964M440 0V964M460 0V964M480 0V964M500 0V964M520 0V964M540 0V964M560 0V964M580 0V964M600 0V964M620 0V964M640 0V964M660 0V964M680 0V964M700 0V964M720 0V964M740 0V964M760 0V964M780 0V964M800 0V964M820 0V964M840 0V964M860 0V964M0 20H863M0 40H863M0 60H863M0 80H863M0 100H863M0 120H863M0 140H863M0 160H863M0 180H863M0 200H863M0 220H863M0 240H863M0 260H863M0 280H863M0 300H863M0 320H863M0 340H863M0 360H863M0 380H863M0 400H863M0 420H863M0 440H863M0 460H863M0 480H863M0 500H863M0 520H863M0 540H863M0 560H863M0 580H863M0 600H863M0 620H863M0 640H863M0 660H863M0 680H863M0 700H863M0 720H863M0 740H863M0 760H863M0 780H863M0 800H863M0 820H863M0 840H863M0 860H863M0 880H863M0 900H863M0 920H863M0 940H863M0 960H863" class="dag-grid" />
-<path d="M750 68 L750 91 Q750 105 736 105 L617.3 105 Q608.3 105 608.3 114 L608.3 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="603.3,123 613.3,123 608.3,132" class="dag-arrow" />
-<path d="M346.7 64 L346.7 81.5 Q346.7 95.5 332.7 95.5 L250.1 95.5 Q236.3 95.5 236.3 109.2 L236.3 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="231.3,123 241.3,123 236.3,132" class="dag-arrow" />
-<path d="M243.3 259 L243.3 270.5 Q243.3 282 254.8 282 L376 282 Q390 282 390 296 L390 314" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="385,314 395,314 390,323" class="dag-arrow" />
-<path d="M397 429 L397 438 Q397 447 406 447 L572.3 447 Q586.3 447 586.3 461 L586.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="581.3,492 591.3,492 586.3,501" class="dag-arrow" />
-<path d="M764 68 L764 81.8 Q764 95.5 777.7 95.5 L780.3 95.5 Q794.3 95.5 794.3 109.5 L794.3 268 Q794.3 282 780.3 282 L702.9 282 Q688.9 282 688.9 296 L688.9 442 Q688.9 456 674.9 456 L628.3 456 Q614.3 456 614.3 470 L614.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="609.3,492 619.3,492 614.3,501" class="dag-arrow" />
-<path d="M753.9 391 L753.9 451 Q753.9 465 739.9 465 L641.8 465 Q628.3 465 628.3 478.5 L628.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="623.3,492 633.3,492 628.3,501" class="dag-arrow" />
-<path d="M608.3 259 L608.3 278.2 Q608.3 282 612.1 282 L612.1 282 Q615.9 282 615.9 285.8 L615.9 466.2 Q615.9 474 608.1 474 L608.1 474 Q600.3 474 600.3 481.8 L600.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="595.3,492 605.3,492 600.3,501" class="dag-arrow" />
-<path d="M383 429 L383 451 Q383 465 369 465 L234.3 465 Q220.3 465 220.3 479 L220.3 500" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="215.3,500 225.3,500 220.3,509" class="dag-arrow" />
-<path d="M106 395 L106 433 Q106 447 120 447 L192.3 447 Q206.3 447 206.3 461 L206.3 500" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="201.3,500 211.3,500 206.3,509" class="dag-arrow" />
-<path d="M360.7 64 L360.7 75 Q360.7 86 371.7 86 L408.3 86 Q422.3 86 422.3 100 L422.3 268 Q422.3 282 436.3 282 L562 282 Q576 282 576 296 L576 442 Q576 456 562 456 L435.3 456 Q421.3 456 421.3 470 L421.3 648 Q421.3 662 435.3 662 L529.2 662 Q543.2 662 543.2 676 L543.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="538.2,725 548.2,725 543.2,734" class="dag-arrow" />
-<path d="M778 68 L778 77 Q778 86 787 86 L802.3 86 Q816.3 86 816.3 100 L816.3 273.7 Q816.3 282 824.6 282 L824.6 282 Q832.9 282 832.9 290.3 L832.9 438.2 Q832.9 447 824.1 447 L824.1 447 Q815.3 447 815.3 455.8 L815.3 675 Q815.3 689 801.3 689 L599.2 689 Q585.2 689 585.2 703 L585.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="580.2,725 590.2,725 585.2,734" class="dag-arrow" />
-<path d="M767.9 391 L767.9 434.3 Q767.9 447 780.6 447 L780.6 447 Q793.3 447 793.3 459.7 L793.3 684 Q793.3 698 779.3 698 L584.7 698 Q571.2 698 571.2 711.5 L571.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="566.2,725 576.2,725 571.2,734" class="dag-arrow" />
-<path d="M229.3 259 L229.3 278.3 Q229.3 291 216.7 291 L216.7 291 Q204 291 204 303.7 L204 442 Q204 456 218 456 L385.3 456 Q399.3 456 399.3 470 L399.3 657 Q399.3 671 413.3 671 L515.2 671 Q529.2 671 529.2 685 L529.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="524.2,725 534.2,725 529.2,734" class="dag-arrow" />
-<path d="M607.3 644 L607.3 693 Q607.3 707 593.3 707 L566.2 707 Q557.2 707 557.2 716 L557.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="552.2,725 562.2,725 557.2,734" class="dag-arrow" />
-<path d="M213.3 636 L213.3 666 Q213.3 680 227.3 680 L501.2 680 Q515.2 680 515.2 694 L515.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
-<polygon points="510.2,725 520.2,725 515.2,734" class="dag-arrow" />
-<path d="M550.2 840 L550.2 895" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
-<polygon points="545.2,895 555.2,895 550.2,904" class="dag-arrow dag-arrow--output" />
+<rect class="dag-canvas" width="899" height="985" />
+<path d="M20 0V985M40 0V985M60 0V985M80 0V985M100 0V985M120 0V985M140 0V985M160 0V985M180 0V985M200 0V985M220 0V985M240 0V985M260 0V985M280 0V985M300 0V985M320 0V985M340 0V985M360 0V985M380 0V985M400 0V985M420 0V985M440 0V985M460 0V985M480 0V985M500 0V985M520 0V985M540 0V985M560 0V985M580 0V985M600 0V985M620 0V985M640 0V985M660 0V985M680 0V985M700 0V985M720 0V985M740 0V985M760 0V985M780 0V985M800 0V985M820 0V985M840 0V985M860 0V985M880 0V985M0 20H899M0 40H899M0 60H899M0 80H899M0 100H899M0 120H899M0 140H899M0 160H899M0 180H899M0 200H899M0 220H899M0 240H899M0 260H899M0 280H899M0 300H899M0 320H899M0 340H899M0 360H899M0 380H899M0 400H899M0 420H899M0 440H899M0 460H899M0 480H899M0 500H899M0 520H899M0 540H899M0 560H899M0 580H899M0 600H899M0 620H899M0 640H899M0 660H899M0 680H899M0 700H899M0 720H899M0 740H899M0 760H899M0 780H899M0 800H899M0 820H899M0 840H899M0 860H899M0 880H899M0 900H899M0 920H899M0 940H899M0 960H899M0 980H899" class="dag-grid" />
+<path d="M444.4 68 L444.4 91 Q444.4 105 430.4 105 L184.4 105 Q170.4 105 170.4 119 L170.4 263 Q170.4 277 184.4 277 L224 277 Q238 277 238 291 L238 314" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="233,314 243,314 238,323" class="dag-arrow" />
+<path d="M127 64 L127 75 Q127 86 138 86 L342.4 86 Q356.4 86 356.4 100 L356.4 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="351.4,123 361.4,123 356.4,132" class="dag-arrow" />
+<path d="M363.4 259 L363.4 268 Q363.4 277 372.4 277 L618 277 Q632 277 632 291 L632 324.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="627,324.5 637,324.5 632,333.5" class="dag-arrow" />
+<path d="M625 439.5 L625 463 Q625 477 611 477 L331.8 477 Q317.8 477 317.8 491 L317.8 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="312.8,513 322.8,513 317.8,522" class="dag-arrow" />
+<path d="M458.4 68 L458.4 81.8 Q458.4 95.5 472.1 95.5 L528.4 95.5 Q542.4 95.5 542.4 109.5 L542.4 272.5 Q542.4 286.5 528.4 286.5 L438 286.5 Q424 286.5 424 300.5 L424 472 Q424 486 410 486 L303.3 486 Q289.8 486 289.8 499.5 L289.8 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="284.8,513 294.8,513 289.8,522" class="dag-arrow" />
+<path d="M796.8 64 L796.8 91 Q796.8 105 782.8 105 L615.6 105 Q601.6 105 601.6 119 L601.6 282 Q601.6 296 587.6 296 L460 296 Q446 296 446 310 L446 481 Q446 495 432 495 L312.8 495 Q303.8 495 303.8 504 L303.8 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="298.8,513 308.8,513 303.8,522" class="dag-arrow" />
+<path d="M238 450 L238 459 Q238 468 247 468 L261.8 468 Q275.8 468 275.8 482 L275.8 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="270.8,513 280.8,513 275.8,522" class="dag-arrow" />
+<path d="M639 439.5 L639 460.6 Q639 468 646.4 468 L646.4 468 Q653.8 468 653.8 475.4 L653.8 521" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="648.8,521 658.8,521 653.8,530" class="dag-arrow" />
+<path d="M641.8 68 L641.8 81.8 Q641.8 95.5 655.6 95.5 L658.4 95.5 Q672.4 95.5 672.4 109.5 L672.4 263 Q672.4 277 686.4 277 L804 277 Q818 277 818 291 L818 463 Q818 477 804 477 L681.8 477 Q667.8 477 667.8 491 L667.8 521" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="662.8,521 672.8,521 667.8,530" class="dag-arrow" />
+<path d="M113 64 L113 81.5 Q113 95.5 99 95.5 L65.7 95.5 Q51.7 95.5 51.7 109.5 L51.7 266.2 Q51.7 277 40.8 277 L40.8 277 Q30 277 30 287.8 L30 463 Q30 477 44 477 L74.8 477 Q88.8 477 88.8 491 L88.8 669 Q88.8 683 102.8 683 L431.9 683 Q445.9 683 445.9 697 L445.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="440.9,746 450.9,746 445.9,755" class="dag-arrow" />
+<path d="M472.4 68 L472.4 77 Q472.4 86 481.4 86 L680.4 86 Q694.4 86 694.4 100 L694.4 272.5 Q694.4 286.5 708.4 286.5 L826 286.5 Q840 286.5 840 300.5 L840 464.6 Q840 468 843.4 468 L843.4 468 Q846.8 468 846.8 471.4 L846.8 696 Q846.8 710 832.8 710 L515.9 710 Q501.9 710 501.9 724 L501.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="496.9,746 506.9,746 501.9,755" class="dag-arrow" />
+<path d="M810.8 64 L810.8 75 Q810.8 86 821.8 86 L829.9 86 Q843.9 86 843.9 100 L843.9 267 Q843.9 277 853.9 277 L853.9 277 Q863.9 277 863.9 287 L863.9 465.6 Q863.9 468 866.3 468 L866.3 468 Q868.8 468 868.8 470.4 L868.8 705 Q868.8 719 854.8 719 L529.4 719 Q515.9 719 515.9 732.5 L515.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="510.9,746 520.9,746 515.9,755" class="dag-arrow" />
+<path d="M349.4 259 L349.4 272.8 Q349.4 286.5 335.7 286.5 L66 286.5 Q52 286.5 52 300.5 L52 454 Q52 468 66 468 L96.8 468 Q110.8 468 110.8 482 L110.8 678 Q110.8 692 124.8 692 L445.9 692 Q459.9 692 459.9 706 L459.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="454.9,746 464.9,746 459.9,755" class="dag-arrow" />
+<path d="M296.8 665 L296.8 687 Q296.8 701 310.8 701 L459.9 701 Q473.9 701 473.9 715 L473.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="468.9,746 478.9,746 473.9,755" class="dag-arrow" />
+<path d="M660.8 657 L660.8 714 Q660.8 728 646.8 728 L496.9 728 Q487.9 728 487.9 737 L487.9 746" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="482.9,746 492.9,746 487.9,755" class="dag-arrow" />
+<path d="M480.9 861 L480.9 916" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
+<polygon points="475.9,916 485.9,916 480.9,925" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="name">
 <title>name</title>
-<rect x="313.7" y="34" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
-<rect x="321.7" y="46" width="6" height="6" rx="0" class="dag-pin" />
-<text x="359.7" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">name</text>
+<rect x="80" y="34" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="88" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="126" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">name</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="tlds">
 <title>tlds
 ['com', 'sh']</title>
-<rect x="699.5" y="30" width="129" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
-<rect x="707.5" y="46" width="6" height="6" rx="0" class="dag-pin" />
-<text x="770" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">tlds</text>
-<text x="770" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">['com', 'sh']</text>
+<rect x="393.9" y="30" width="129" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="401.9" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="464.4" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">tlds</text>
+<text x="464.4" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">['com', 'sh']</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="variants">
 <title>variants</title>
-<rect x="710.9" y="361" width="100" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
-<rect x="718.9" y="373" width="6" height="6" rx="0" class="dag-pin" />
-<text x="766.9" y="376" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">variants</text>
+<rect x="753.8" y="34" width="100" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="761.8" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="809.8" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">variants</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="with_lookalikes">
 <title>with_lookalikes
 True</title>
-<rect x="30" y="357" width="152" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
-<rect x="38" y="373" width="6" height="6" rx="0" class="dag-pin" />
-<text x="112" y="369" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">with_lookalikes</text>
-<text x="112" y="384" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">True</text>
+<rect x="565.8" y="30" width="152" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="573.8" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="647.8" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">with_lookalikes</text>
+<text x="647.8" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">True</text>
 </g>
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="controls">
 <title>Controls (cached)
 Control-test each registry: a registered domain reads TAKEN, a random one FREE.
 as_of = 2026-11-22
 key 1e2135d1b50f</title>
-<rect x="444.3" y="132" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
-<text x="458.3" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Controls</text>
-<text x="458.3" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Control-test each registry: a registered</text>
-<text x="458.3" y="192" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">domain reads TAKEN, a random one FREE.</text>
-<text x="458.3" y="213.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
-<line x1="444.3" y1="233" x2="772.3" y2="233" class="dag-rule" />
-<rect x="458.3" y="242" width="8" height="8" rx="0" class="dag-state" />
-<text x="472.3" y="246" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
-<text x="758.3" y="246" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 1e2135d1b50f</text>
+<rect x="74" y="323" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="88" y="345" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Controls</text>
+<text x="88" y="367" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Control-test each registry: a registered</text>
+<text x="88" y="383" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">domain reads TAKEN, a random one FREE.</text>
+<text x="88" y="404.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="74" y1="424" x2="402" y2="424" class="dag-rule" />
+<rect x="88" y="433" width="8" height="8" rx="0" class="dag-state" />
+<text x="102" y="437" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="388" y="437" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 1e2135d1b50f</text>
 </g>
 <g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="pypi_exact">
 <title>Pypi Exact (cached)
 Is `pip install NAME` free to publish? One cached item.
 as_of = 2026-11-22
 key 0a4497daab94</title>
-<rect x="72.3" y="132" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
-<text x="86.3" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Exact</text>
-<text x="86.3" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Is `pip install NAME` free to publish? One</text>
-<text x="86.3" y="192" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">cached item.</text>
-<text x="86.3" y="213.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
-<line x1="72.3" y1="233" x2="400.3" y2="233" class="dag-rule" />
-<rect x="86.3" y="242" width="8" height="8" rx="0" class="dag-state" />
-<text x="100.3" y="246" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
-<text x="386.3" y="246" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 0a4497daab94</text>
+<rect x="192.4" y="132" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="206.4" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Exact</text>
+<text x="206.4" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Is `pip install NAME` free to publish? One</text>
+<text x="206.4" y="192" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">cached item.</text>
+<text x="206.4" y="213.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="192.4" y1="233" x2="520.4" y2="233" class="dag-rule" />
+<rect x="206.4" y="242" width="8" height="8" rx="0" class="dag-state" />
+<text x="220.4" y="246" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="506.4" y="246" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 0a4497daab94</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="pypi_free">
 <title>Pypi Free (pending)
 The gate: the name goes on only if it is free on PyPI.
 key ac2b755bd915</title>
-<rect x="226" y="323" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<text x="240" y="345" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Free</text>
-<text x="240" y="367" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">The gate: the name goes on only if it is</text>
-<text x="240" y="383" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">free on PyPI.</text>
-<line x1="226" y1="403" x2="554" y2="403" class="dag-rule" />
-<rect x="240" y="412" width="8" height="8" rx="0" class="dag-state" />
-<text x="254" y="416" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
-<text x="540" y="416" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key ac2b755bd915</text>
+<rect x="468" y="333.5" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="482" y="355.5" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Free</text>
+<text x="482" y="377.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">The gate: the name goes on only if it is</text>
+<text x="482" y="393.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">free on PyPI.</text>
+<line x1="468" y1="413.5" x2="796" y2="413.5" class="dag-rule" />
+<rect x="482" y="422.5" width="8" height="8" rx="0" class="dag-state" />
+<text x="496" y="426.5" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="782" y="426.5" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key ac2b755bd915</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="domain_probes">
 <title>Domain Probes (pending)
 Base name, prefixes and suffixes on each TLD. Needs the controls, and a free PyPI name.
 as_of = 2026-11-22
 key 6ff75b67e2c3</title>
-<rect x="443.3" y="501" width="328" height="143" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<text x="457.3" y="523" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Domain Probes</text>
-<text x="457.3" y="545" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Base name, prefixes and suffixes on each</text>
-<text x="457.3" y="561" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">TLD. Needs the controls, and a free PyPI</text>
-<text x="457.3" y="577" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">name.</text>
-<text x="457.3" y="598.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
-<line x1="443.3" y1="618" x2="771.3" y2="618" class="dag-rule" />
-<rect x="457.3" y="627" width="8" height="8" rx="0" class="dag-state" />
-<text x="471.3" y="631" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
-<text x="757.3" y="631" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 6ff75b67e2c3</text>
+<rect x="132.8" y="522" width="328" height="143" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="146.8" y="544" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Domain Probes</text>
+<text x="146.8" y="566" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Base name, prefixes and suffixes on each</text>
+<text x="146.8" y="582" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">TLD. Needs the controls, and a free PyPI</text>
+<text x="146.8" y="598" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">name.</text>
+<text x="146.8" y="619.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="132.8" y1="639" x2="460.8" y2="639" class="dag-rule" />
+<rect x="146.8" y="648" width="8" height="8" rx="0" class="dag-state" />
+<text x="160.8" y="652" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="446.8" y="652" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 6ff75b67e2c3</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="lookalikes">
 <title>Lookalikes (pending)
 Sound-alike and typo names on PyPI (crake -&gt; crack). Taken ones are a trust risk.
 as_of = 2026-11-22
 key 5c15433414e5</title>
-<rect x="49.3" y="509" width="328" height="127" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
-<text x="63.3" y="531" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Lookalikes</text>
-<text x="63.3" y="553" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Sound-alike and typo names on PyPI (crake</text>
-<text x="63.3" y="569" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">-&gt; crack). Taken ones are a trust risk.</text>
-<text x="63.3" y="590.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
-<line x1="49.3" y1="610" x2="377.3" y2="610" class="dag-rule" />
-<rect x="63.3" y="619" width="8" height="8" rx="0" class="dag-state" />
-<text x="77.3" y="623" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
-<text x="363.3" y="623" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5c15433414e5</text>
+<rect x="496.8" y="530" width="328" height="127" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="510.8" y="552" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Lookalikes</text>
+<text x="510.8" y="574" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Sound-alike and typo names on PyPI (crake</text>
+<text x="510.8" y="590" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">-&gt; crack). Taken ones are a trust risk.</text>
+<text x="510.8" y="611.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="496.8" y1="631" x2="824.8" y2="631" class="dag-rule" />
+<rect x="510.8" y="640" width="8" height="8" rx="0" class="dag-state" />
+<text x="524.8" y="644" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="810.8" y="644" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5c15433414e5</text>
 </g>
 <g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="decide">
 <title>Decide (pending)
 Viable = free on PyPI and at least one free .com (any prefix or suffix).
 key 5589aa5863c2</title>
-<rect x="386.2" y="734" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
-<text x="400.2" y="756" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Decide</text>
-<text x="400.2" y="778" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Viable = free on PyPI and at least one free</text>
-<text x="400.2" y="794" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">.com (any prefix or suffix).</text>
-<line x1="386.2" y1="814" x2="714.2" y2="814" class="dag-rule" />
-<rect x="400.2" y="823" width="8" height="8" rx="0" class="dag-state" />
-<text x="414.2" y="827" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
-<text x="700.2" y="827" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5589aa5863c2</text>
+<rect x="316.9" y="755" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<text x="330.9" y="777" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Decide</text>
+<text x="330.9" y="799" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Viable = free on PyPI and at least one free</text>
+<text x="330.9" y="815" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">.com (any prefix or suffix).</text>
+<line x1="316.9" y1="835" x2="644.9" y2="835" class="dag-rule" />
+<rect x="330.9" y="844" width="8" height="8" rx="0" class="dag-state" />
+<text x="344.9" y="848" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="630.9" y="848" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5589aa5863c2</text>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Verdict</title>
-<rect x="490.2" y="904" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
-<text x="550.2" y="919" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Verdict</text>
+<rect x="420.9" y="925" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="480.9" y="940" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Verdict</text>
 </g>
 </svg>

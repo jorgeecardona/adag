@@ -88,9 +88,10 @@ class SvgOptions:
     ``style`` is ``"blueprint"`` (mono type, rounded corners, right-angle edges), ``"band"`` (a
     header strip with the state word, curved edges) or ``"classic"`` (the look of adag 0.3.22).
     ``inputs`` says where ``InputParam`` and file inputs go: ``"terminals"`` (small nodes with an
-    edge), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step). ``classic`` has the
-    colours and box shapes of 0.3.22 and draws terminals, except in the compact density.
-    ``density="compact"`` draws only the title of each step, and the inputs as labels to its left.
+    edge, all in the top row), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step).
+    ``classic`` has the colours and box shapes of 0.3.22 and always draws terminals.
+    ``density="compact"`` draws only the title of each step. With ``tabs`` or ``rows`` the inputs
+    are labels to its left.
 
     ``theme`` is ``"light"``, ``"dark"`` or ``"auto"`` (follow the browser's colour scheme).
     ``legend=True`` adds a row under the graph that names the state colours in use. ``animate=True``

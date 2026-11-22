@@ -45,6 +45,8 @@ class Box:
     top: float
     right: float
     bottom: float
+    kind: str = ""
+    """The ``data-kind`` of its group: ``param`` or ``file`` for an input terminal, ``step``, ..."""
 
     def overlaps(self, other: "Box") -> bool:
         return (
@@ -128,17 +130,22 @@ def read_drawing(svg: str) -> Drawing:
     boxes: list[Box] = []
     edges: list[tuple[Point, ...]] = []
     sizes: list[float] = []
+    kinds: dict[ET.Element, str] = {}
+    for group in root.iter(f"{SVG_NS}g"):
+        for child in group:
+            kinds[child] = group.get("data-kind", "")
     for element in root.iter():
         tag = element.tag.removeprefix(SVG_NS)
         classes = set(element.get("class", "").split())
+        kind = kinds.get(element, "")
         if tag == "rect" and "dag-node" in classes:
             x, y = float(element.get("x", 0)), float(element.get("y", 0))
             w, h = float(element.get("width", 0)), float(element.get("height", 0))
-            boxes.append(Box(x, y, x + w, y + h))
+            boxes.append(Box(x, y, x + w, y + h, kind))
         elif tag == "ellipse" and "dag-node" in classes:
             cx, cy = float(element.get("cx", 0)), float(element.get("cy", 0))
             rx, ry = float(element.get("rx", 0)), float(element.get("ry", 0))
-            boxes.append(Box(cx - rx, cy - ry, cx + rx, cy + ry))
+            boxes.append(Box(cx - rx, cy - ry, cx + rx, cy + ry, kind))
         elif tag == "path" and "dag-edge" in classes:
             edges.append(path_points(element.get("d", "")))
         elif tag == "text" and "font-size" in element.attrib:
@@ -210,45 +217,45 @@ def _id(combo: Combo) -> str:
     return "-".join(combo)
 
 
-# The crossings of the first good render of each big graph, per style, input mode and density.
+# The crossings of the first good render of each big graph (terminals in the top row), per style, input mode and density.
 # A change that adds more than two is a regression in the layout.
 CROSSING_BASELINE: dict[str, int] = {
-    "namecheck/blueprint-terminals-normal": 3,
-    "namecheck/blueprint-terminals-compact": 0,
+    "namecheck/blueprint-terminals-normal": 7,
+    "namecheck/blueprint-terminals-compact": 7,
     "namecheck/blueprint-tabs-normal": 0,
     "namecheck/blueprint-tabs-compact": 0,
     "namecheck/blueprint-rows-normal": 0,
     "namecheck/blueprint-rows-compact": 0,
-    "namecheck/band-terminals-normal": 2,
-    "namecheck/band-terminals-compact": 0,
+    "namecheck/band-terminals-normal": 7,
+    "namecheck/band-terminals-compact": 7,
     "namecheck/band-tabs-normal": 0,
     "namecheck/band-tabs-compact": 0,
     "namecheck/band-rows-normal": 0,
     "namecheck/band-rows-compact": 0,
-    "namecheck/classic-terminals-normal": 2,
-    "namecheck/classic-terminals-compact": 0,
-    "namecheck/classic-tabs-normal": 2,
-    "namecheck/classic-tabs-compact": 0,
-    "namecheck/classic-rows-normal": 2,
-    "namecheck/classic-rows-compact": 0,
-    "namecheck_big/blueprint-terminals-normal": 6,
-    "namecheck_big/blueprint-terminals-compact": 0,
+    "namecheck/classic-terminals-normal": 7,
+    "namecheck/classic-terminals-compact": 7,
+    "namecheck/classic-tabs-normal": 7,
+    "namecheck/classic-tabs-compact": 7,
+    "namecheck/classic-rows-normal": 7,
+    "namecheck/classic-rows-compact": 7,
+    "namecheck_big/blueprint-terminals-normal": 8,
+    "namecheck_big/blueprint-terminals-compact": 8,
     "namecheck_big/blueprint-tabs-normal": 0,
     "namecheck_big/blueprint-tabs-compact": 0,
     "namecheck_big/blueprint-rows-normal": 0,
     "namecheck_big/blueprint-rows-compact": 0,
-    "namecheck_big/band-terminals-normal": 5,
-    "namecheck_big/band-terminals-compact": 0,
+    "namecheck_big/band-terminals-normal": 8,
+    "namecheck_big/band-terminals-compact": 8,
     "namecheck_big/band-tabs-normal": 0,
     "namecheck_big/band-tabs-compact": 0,
     "namecheck_big/band-rows-normal": 0,
     "namecheck_big/band-rows-compact": 0,
-    "namecheck_big/classic-terminals-normal": 5,
-    "namecheck_big/classic-terminals-compact": 0,
-    "namecheck_big/classic-tabs-normal": 5,
-    "namecheck_big/classic-tabs-compact": 0,
-    "namecheck_big/classic-rows-normal": 5,
-    "namecheck_big/classic-rows-compact": 0,
+    "namecheck_big/classic-terminals-normal": 8,
+    "namecheck_big/classic-terminals-compact": 8,
+    "namecheck_big/classic-tabs-normal": 8,
+    "namecheck_big/classic-tabs-compact": 8,
+    "namecheck_big/classic-rows-normal": 8,
+    "namecheck_big/classic-rows-compact": 8,
 }
 
 
@@ -312,10 +319,24 @@ def test_a_graph_of_40_nodes_and_80_edges_draws_in_two_seconds() -> None:
         assert not any(a.overlaps(b) for a, b in itertools.combinations(drawing.boxes, 2))
 
 
+@pytest.mark.parametrize("graph", sorted(GRAPHS))
+@pytest.mark.parametrize("combo", COMBOS, ids=_id)
+def test_input_terminals_share_the_top_row_above_every_step(graph: str, combo: Combo) -> None:
+    drawing = read_drawing(render(GRAPHS[graph], *combo))
+    terminals = [b for b in drawing.boxes if b.kind in ("param", "file")]
+    others = [b for b in drawing.boxes if b.kind not in ("param", "file")]
+    if not terminals:
+        return
+    centres = {round((b.top + b.bottom) / 2, 1) for b in terminals}
+    assert len(centres) == 1, centres  # one row
+    assert max(b.bottom for b in terminals) < min(b.top for b in others)  # a clear gap below it
+    assert min(b.top for b in drawing.boxes) == min(b.top for b in terminals)
+
+
 def _expected_counts(graph: GraphFixture, combo: Combo) -> tuple[int, int]:
     """How many node groups and edge paths a drawing has: inputs are folded away or drawn."""
-    style, inputs, density = combo
-    folded = density == "compact" or (style != "classic" and inputs != "terminals")
+    style, inputs, _ = combo
+    folded = style != "classic" and inputs != "terminals"
     names = {n.name: n for n in graph.nodes}
     foldable = {
         n.name
@@ -351,6 +372,65 @@ def test_every_text_is_inside_the_canvas(graph: str, combo: Combo) -> None:
         left = {"start": x, "middle": x - reach / 2, "end": x - reach}[anchor]
         assert left >= -1 and left + reach <= width + 1, (text.text, left, reach, width)
         assert y - size / 2 >= 0 and y + size / 2 <= height, (text.text, y, height)
+
+
+Segment = tuple[float, float, float, float]
+
+
+def straight_segments(d: str) -> list[Segment]:
+    """The straight runs (``L``) of a right-angle edge, without its rounded bends."""
+    tokens = re.findall(r"[MLQ]|-?\d+(?:\.\d+)?", d)
+    segments: list[Segment] = []
+    current = (0.0, 0.0)
+    i = 0
+    while i < len(tokens):
+        command = tokens[i]
+        count = 2 if command == "Q" else 1
+        points = [
+            (float(tokens[i + 1 + 2 * k]), float(tokens[i + 2 + 2 * k])) for k in range(count)
+        ]
+        i += 1 + 2 * count
+        if command == "L":
+            segments.append((*current, *points[0]))
+        current = points[-1]
+    return segments
+
+
+MIN_LANE_GAP = 8.0
+MIN_BOX_GAP = 6.0
+
+
+@pytest.mark.parametrize("graph", ["namecheck", "namecheck_big"])
+def test_lanes_keep_apart_from_each_other_and_from_boxes(graph: str) -> None:
+    """In blueprint, parallel lanes are at least 8 px apart and a lane is 6 px from any box."""
+    root = ET.fromstring(render(GRAPHS[graph], "blueprint", "terminals", "normal"))  # noqa: S314
+    drawing = read_drawing(ET.tostring(root, encoding="unicode"))
+    edges = [
+        straight_segments(p.get("d", ""))
+        for p in root.iter(f"{SVG_NS}path")
+        if "dag-edge" in p.get("class", "").split()
+    ]
+    for (i, first), (j, second) in itertools.combinations(enumerate(edges), 2):
+        for ax1, ay1, ax2, ay2 in first:
+            for bx1, by1, bx2, by2 in second:
+                if ax1 == ax2 and bx1 == bx2:  # two vertical lanes that share some height
+                    shared = min(max(ay1, ay2), max(by1, by2)) - max(min(ay1, ay2), min(by1, by2))
+                    if shared > 2:
+                        assert abs(ax1 - bx1) >= MIN_LANE_GAP, (i, j, ax1, bx1)
+                if ay1 == ay2 and by1 == by2:  # two horizontal runs that share some width
+                    shared = min(max(ax1, ax2), max(bx1, bx2)) - max(min(ax1, ax2), min(bx1, bx2))
+                    if shared > 2:
+                        assert abs(ay1 - by1) >= MIN_LANE_GAP, (i, j, ay1, by1)
+    for points, segments in zip(drawing.edges, edges, strict=True):
+        source, target = _ends(points, drawing.boxes)
+        for index, box in enumerate(drawing.boxes):
+            if index in (source, target):
+                continue
+            for x1, y1, x2, y2 in segments:
+                if x1 == x2 and min(y1, y2) < box.bottom and max(y1, y2) > box.top:
+                    assert x1 <= box.left - MIN_BOX_GAP or x1 >= box.right + MIN_BOX_GAP, (x1, box)
+                if y1 == y2 and min(x1, x2) < box.right and max(x1, x2) > box.left:
+                    assert y1 <= box.top - MIN_BOX_GAP or y1 >= box.bottom + MIN_BOX_GAP, (y1, box)
 
 
 def _selectors(css: str) -> set[str]:

@@ -5,8 +5,9 @@ state word and the cache key in the footer. ``band``: a header strip with the ti
 word, curved edges. ``classic``: the first look of adag, centred text in rounded boxes.
 
 Inputs (``InputParam`` and files) are separate small nodes (``terminals``), a tab on the top edge of
-the step that reads them (``tabs``), or a line inside it (``rows``). In the compact density a step
-is only its title, and its inputs are labels to its left.
+the step that reads them (``tabs``), or a line inside it (``rows``). Terminals share the top row.
+In the compact density a step is only its title. With ``tabs`` or ``rows`` its inputs are labels
+to its left.
 """
 
 from __future__ import annotations
@@ -388,8 +389,11 @@ def _measure_compact(node: RNode, look: Look) -> Measured:
 def _measure_input(node: RNode, look: Look) -> Measured:
     if look.style == "classic":
         return Measured(float(max(len(node.title) * 8 + 32, 100)), 32.0, title=node.title)
-    name = _truncate(node.title, 24)
-    value = _truncate(node.value, 24) if node.value and node.kind == "param" else ""
+    compact = look.density == "compact"
+    name = _truncate(node.title, 16 if compact else 24)
+    value = (
+        _truncate(node.value, 14 if compact else 24) if node.value and node.kind == "param" else ""
+    )
     width = max(_text_width(name, 12, _MONO_EM), _text_width(value, 11, _MONO_EM)) + 28
     if look.style == "blueprint":
         width += 12
@@ -1035,9 +1039,7 @@ def draw(
     animate: bool = False,
 ) -> str:
     """Return the SVG text of the graph."""
-    fold = look.style != "classic" and (look.inputs != "terminals" or look.density == "compact")
-    if look.style == "classic" and look.density == "compact":
-        fold = True
+    fold = look.style != "classic" and look.inputs != "terminals"
     shown, shown_edges = _fold_inputs(nodes, edges, fold=fold)
     measured = {n.name: measure(n, look) for n in shown}
     sizes = [
@@ -1054,12 +1056,15 @@ def draw(
         for n in shown
     ]
     settings = settings_for(look)
+    fed = {target for _, target in shown_edges}
+    top = [n.name for n in shown if n.kind in ("param", "file") and n.name not in fed]
     has_output = bool(output_label) and final is not None
     result = lay.layout(
         sizes,
         shown_edges,
         output=measure_output(output_label, look) if has_output else None,
         final=final,
+        top=top,
         settings=lay.LayoutSettings(
             gap_y=settings.gap_y, gap_x=settings.gap_x, arrow=_arrow_size(look.style)[0]
         ),

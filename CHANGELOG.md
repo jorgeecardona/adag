@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (boxes 8 px, terminals and tabs 6 px, edge bends 14 px).
 - Edges no longer run under boxes. A long edge keeps a lane between the boxes, and a graph of 40
   nodes draws in about 0.1 s instead of seconds.
+- Input nodes (`inputs="terminals"`, the default) all sit in the top row of the image, ordered by
+  where their steps are, with their edges running down to the steps. The compact density also uses
+  input nodes now, not labels to the left of the step. `tabs` and `rows` keep their folded forms.
 - A graph with no cache state (`dag()` without `cache_dir`) is drawn in neutral colours with no state
   word. Colour appears when you pass `cache_dir`. The classic style keeps its pending yellow.
 - The default value of an input and the path of a file now appear in the SVG: the value under the

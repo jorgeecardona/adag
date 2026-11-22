@@ -67,14 +67,15 @@ each box has the state and the cache key.
 ![Band style](assets/look_band.svg)
 
 `classic` has the colours and box shapes of 0.3.22: centred text in rounded boxes. Use it to keep
-the old images. It draws inputs as nodes, except in the compact density.
+the old images. It always draws inputs as nodes.
 
 ![Classic style](assets/look_classic.svg)
 
 ### Inputs
 
-`terminals` draws each input as a small node with an edge into the step. This is the clearest
-view of how the graph is wired.
+`terminals` draws each input as a small node with an edge into the step. All terminals sit in
+the top row of the image, ordered left to right by where their steps are, and the steps are below
+them. This is the clearest view of how the graph is wired.
 
 `tabs` folds each input into the step that reads it, as a tab on the top edge. Several inputs
 make several tabs.
@@ -90,7 +91,9 @@ A box lists at most six input lines. The sixth says `+N more` when there are mor
 ### Density
 
 `density="compact"` draws only the title of each step. The description, the parameters, the
-state and the key move to the hover tooltip. Inputs become labels to the left of the step.
+state and the key move to the hover tooltip. With `inputs="terminals"` the inputs stay small
+nodes in the top row, with the name above the value cut to fit. With `tabs` or `rows` they become
+labels to the left of the step.
 
 ![Compact density](assets/density_compact.svg)
 

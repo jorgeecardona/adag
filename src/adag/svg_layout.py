@@ -96,25 +96,31 @@ def _levels(
     names: Sequence[str],
     inputs_of: Mapping[str, Sequence[str]],
     consumers_of: Mapping[str, Sequence[str]],
+    top: frozenset[str] = frozenset(),
 ) -> dict[str, int]:
+    """Level of each node. Nodes in ``top`` are level 0 and every other node is below them."""
     level: dict[str, int] = {}
+    # The other nodes are leveled as if the top row were not there.
+    parents = {n: [p for p in inputs_of.get(n, ()) if p not in top] for n in names}
+    children = {n: [c for c in consumers_of.get(n, ()) if c not in top] for n in names}
 
     def assign(name: str) -> int:
         if name in level:
             return level[name]
         level[name] = 0  # a cycle would otherwise recurse forever
-        deps = inputs_of.get(name, ())
-        level[name] = max((assign(d) for d in deps), default=-1) + 1
+        level[name] = max((assign(d) for d in parents[name]), default=-1) + 1
         return level[name]
 
-    for name in names:
+    rest = [n for n in names if n not in top]
+    for name in rest:
         assign(name)
     # A node with no inputs sits just above its first consumer, not at the top.
-    for name in names:
-        if not inputs_of.get(name) and consumers_of.get(name):
-            level[name] = min(level[c] for c in consumers_of[name]) - 1
-    low = min(level.values(), default=0)
-    return {name: lvl - low for name, lvl in level.items()}
+    for name in rest:
+        if not parents[name] and children[name]:
+            level[name] = min(level[c] for c in children[name]) - 1
+    low = min((level[n] for n in rest), default=0)
+    shifted = {name: level[name] - low + (1 if top else 0) for name in rest}
+    return {**dict.fromkeys(top, 0), **shifted}
 
 
 # ── Order within a level ─────────────────────────────────────────────────────
@@ -267,9 +273,15 @@ def layout(
     *,
     output: LNode | None = None,
     final: str | None = None,
+    top: Sequence[str] = (),
     settings: LayoutSettings | None = None,
 ) -> Layout:
-    """Place ``nodes`` and route ``edges``. ``output`` is a node below ``final``, joined by a dashed edge."""
+    """Place ``nodes`` and route ``edges``.
+
+    ``output`` is a node below ``final``, joined by a dashed edge. The nodes in ``top`` (that have
+    no inputs) share the first row, ordered by where their consumers are, and every other node is
+    below that row.
+    """
     settings = settings or LayoutSettings()
     sizes: dict[str, LNode] = {n.name: n for n in nodes}
     names = [n.name for n in nodes]
@@ -288,7 +300,8 @@ def layout(
     for a, b in edge_list:
         inputs_of[b].append(a)
         consumers_of[a].append(b)
-    level = _levels(names, inputs_of, consumers_of)
+    top_row = frozenset(n for n in top if n in sizes and not inputs_of.get(n))
+    level = _levels(names, inputs_of, consumers_of, top_row)
 
     # A virtual node on every level an edge crosses.
     virtual: set[str] = set()
@@ -320,6 +333,16 @@ def layout(
     left = {n: (sizes[n].width / 2 + sizes[n].left_extra if n in sizes else 0.0) for n in level}
     right = {n: (sizes[n].width / 2 if n in sizes else 0.0) for n in level}
     x = _place_x(order, left, right, virtual, parents, children, settings)
+    if len(top_row) > 1:
+        # Left to right by the median x of their consumers, so the edges leave without crossing.
+        def median_consumer(name: str) -> float:
+            xs = sorted(x[c] for c in children[name])
+            return xs[len(xs) // 2] if xs else x[name]
+
+        reordered = sorted(order[0], key=median_consumer)
+        if reordered != order[0]:
+            order[0] = reordered
+            x = _place_x(order, left, right, virtual, parents, children, settings)
 
     # Sideways jogs between two rows share a slot (a y) when their spans do not overlap.
     slot_of: dict[tuple[tuple[str, str], int], int] = {}
@@ -375,9 +398,9 @@ def layout(
             else:
                 node = sizes[n]
                 full = node.height + node.top_extra
-                top = row_top[lvl] + (row_height[lvl] - full) / 2 + node.top_extra
-                top_of_box[n] = top
-                y_center[n] = top + node.height / 2
+                box_top = row_top[lvl] + (row_height[lvl] - full) / 2 + node.top_extra
+                top_of_box[n] = box_top
+                y_center[n] = box_top + node.height / 2
 
     # Ports: departures spread along the source's bottom edge, arrivals along the target's top edge.
     out_edges: dict[str, list[tuple[str, str]]] = {}

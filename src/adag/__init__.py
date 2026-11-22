@@ -4,7 +4,7 @@ This module exports every public name of the package, including the lower-level 
 (executors, dispatchers, ``ResolveContext``, ``walk``).
 """
 
-__version__ = "0.3.27"
+__version__ = "0.3.28"
 
 from adag.base import CachedStep
 from adag.batch import BatchItem, BatchStep
