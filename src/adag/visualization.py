@@ -21,6 +21,7 @@ from typing import Any, cast
 import structlog
 
 from adag.deferred import Deferred, InputParam
+from adag.hashing import Placeholder
 from adag.io import FileSource, atomic_write_text
 from adag.key import Expansion
 from adag.step import Step, StepResult
@@ -71,6 +72,8 @@ class Node:
     result: StepResult[Any] | None = None  # the graph node; its cache key covers the inputs
     value: str = ""
     """For an input node: its default value, or the file path. Empty when it has none."""
+    parent: str = ""
+    """The name of the frame node that holds this node, empty for a node at the top level."""
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,13 @@ class NodeMetadata:
     """The 12-hex cache key of a step, empty for a step that is blocked or has no key."""
     value: str = ""
     """For an input: its default value or file path, empty when it has none."""
+    parent: str = ""
+    """The name of the frame node that holds this node. A frame is a node that another node names
+    as its ``parent``. Empty for a node at the top level."""
+    caption: str = ""
+    """For a frame: the sentence drawn under its body."""
+    feedback: str = ""
+    """For a loop frame: the name of the inner ``template_input`` that gets the next round's state."""
 
 
 def _node_name_and_kind(deferred: Deferred[Any]) -> tuple[str, str] | None:
@@ -184,59 +194,240 @@ def _leaf_value(deferred: Deferred[Any]) -> str:
     return ""
 
 
-def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
-    """Walk any Deferred backward and return the full dependency graph.
+_MAX_FRAME_DEPTH = 3
+"""A frame inside a frame inside a frame is drawn. A fourth level is one dashed box."""
 
-    Step nodes are identified by instance (``id(step)``), not class name. A shared upstream (the
-    same instance reached on two paths) is one node. Two distinct instances of the same class are
-    two nodes. Each node's label is its ``node_label`` attribute when present, else the class name.
-    The key gets a suffix (``Name#2``) only when two instances would otherwise collide.
+TEMPLATE_INPUT = "template_input"
+"""The node kind of an input of a template, drawn inside its frame."""
+
+
+def _placeholders(value: Any) -> list[Placeholder]:
+    """The placeholders in a field or an input value, also inside a list, tuple or dict."""
+    found: list[Placeholder] = []
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        if type(item) is Placeholder:  # never ==, in or hash: a placeholder refuses them all
+            found.append(item)
+        elif isinstance(item, (list, tuple)):
+            stack.extend(cast("list[Any] | tuple[Any, ...]", item))
+        elif isinstance(item, dict):
+            mapping = cast("dict[Any, Any]", item)
+            stack.extend(mapping.keys())
+            stack.extend(mapping.values())
+    return found
+
+
+def _results(root: StepResult[Any]) -> dict[int, StepResult[Any]]:
+    """Every ``StepResult`` reachable from ``root`` by the ``id`` of its step."""
+    found: dict[int, StepResult[Any]] = {}
+    todo: list[Any] = [root]
+    while todo:
+        item = todo.pop()
+        if isinstance(item, StepResult):
+            result = cast("StepResult[Any]", item)
+            step: Any = result.step
+            if id(step) not in found:
+                found[id(step)] = result
+                todo.extend(result.sources.values())
+    return found
+
+
+class _Walker:
+    """Walks one level of the graph. A frame's body is walked by a ``_Walker`` of its own.
+
+    All walkers of one ``walk`` share ``nodes`` and ``edges``. A walker knows its ``prefix`` (the
+    frame name and a slash), its ``parent`` frame and the steps it has placed.
     """
-    nodes: dict[str, Node] = {}
-    edges: list[Edge] = []
-    placed: dict[int, str] = {}  # id(step) → the unique node name assigned to that instance
 
-    def _visit(deferred: Any) -> str:
+    def __init__(
+        self,
+        nodes: dict[str, Node],
+        edges: list[Edge],
+        *,
+        prefix: str = "",
+        parent: str = "",
+        outer: _Walker | None = None,
+        captured: frozenset[int] = frozenset(),
+    ) -> None:
+        self.nodes = nodes
+        self.edges = edges
+        self.prefix = prefix
+        self.parent = parent
+        self.outer = outer
+        self.captured = captured
+        self.placed: dict[int, str] = {}  # id(step) -> the unique node name of that instance
+
+    def terminal(self, name: str, title: str = "", value: str = "") -> str:
+        """The node for one input of the template, made once per name."""
+        full = f"{self.prefix}{name}"
+        if full not in self.nodes:
+            self.nodes[full] = Node(
+                name=full,
+                step=None,
+                kind=TEMPLATE_INPUT,
+                title=title or name,
+                value=value,
+                parent=self.parent,
+            )
+        return full
+
+    def visit(self, deferred: Any) -> str:
         leaf = _node_name_and_kind(deferred)
         if leaf is not None:
-            name, kind = leaf
-            if name not in nodes:
-                nodes[name] = Node(name=name, step=None, kind=kind, value=_leaf_value(deferred))
+            name = f"{self.prefix}{leaf[0]}"
+            if name not in self.nodes:
+                self.nodes[name] = Node(
+                    name=name,
+                    step=None,
+                    kind=leaf[1],
+                    value=_leaf_value(deferred),
+                    parent=self.parent,
+                )
             return name
 
         # Capture .step while deferred is still Any (before isinstance narrows it).
         step: Any = deferred.step if hasattr(deferred, "step") else None
 
         if isinstance(deferred, StepResult):
-            if id(step) in placed:  # same instance reached again (shared upstream) → the same node
-                return placed[id(step)]
+            if id(step) in self.captured and self.outer is not None:
+                return self._enter_from_outside(cast("StepResult[Any]", deferred))
+            if id(step) in self.placed:  # the same instance reached again (shared upstream)
+                return self.placed[id(step)]
             label = getattr(step, "node_label", "") or ""
-            base = label or type(step).__name__
+            base = f"{self.prefix}{label or type(step).__name__}"
             name = base
             suffix = 2
-            while (
-                name in nodes
-            ):  # a DIFFERENT instance wants the same base name → disambiguate the key
+            while name in self.nodes:  # a DIFFERENT instance wants the same name
                 name = f"{base}#{suffix}"
                 suffix += 1
-            placed[id(step)] = name
-            nodes[name] = Node(
+            self.placed[id(step)] = name
+            self.nodes[name] = Node(
                 name=name,
                 step=step,
                 kind="step",
                 title=label,
                 result=cast("StepResult[Any]", deferred),
+                parent=self.parent,
             )
             for input_name, source in deferred.sources.items():
                 if isinstance(source, Deferred):
-                    source_name = _visit(source)
+                    source_name = self.visit(source)
                     if source_name:
-                        edges.append(Edge(source=source_name, target=name, label=input_name))
+                        self.edges.append(Edge(source=source_name, target=name, label=input_name))
+            if self.parent:
+                self._take_template_inputs(name, step, deferred.sources)
             return name
 
         return ""
 
-    _visit(output)
+    def _take_template_inputs(self, name: str, step: Any, sources: dict[str, Any]) -> None:
+        """An edge from each template input that this step takes, as a field or as an input."""
+        uses: dict[str, str] = {}
+        for field in dataclasses.fields(step):
+            for placeholder in _placeholders(getattr(step, field.name)):
+                uses.setdefault(placeholder.name, field.name)
+        for input_name, source in sources.items():
+            for placeholder in _placeholders(source):
+                uses.setdefault(placeholder.name, input_name)
+        for template_input, label in uses.items():
+            edge = Edge(self.terminal(template_input), name, label)
+            if edge not in self.edges:
+                self.edges.append(edge)
+
+    def _enter_from_outside(self, deferred: StepResult[Any]) -> str:
+        """A step the template reaches through a closure lives outside: an input carries it in."""
+        assert self.outer is not None
+        outer_name = self.outer.visit(deferred)
+        title = self.outer.nodes[outer_name].title or outer_name
+        terminal = self.terminal(outer_name, title=title)
+        edge = Edge(outer_name, terminal, "captured")
+        if edge not in self.edges:
+            self.edges.append(edge)
+        return terminal
+
+
+def _short(value: Any) -> str:
+    text = repr(value)
+    return text if len(text) <= _MAX_VALUE else text[: _MAX_VALUE - 3] + "..."
+
+
+def _expand(walker: _Walker, depth: int) -> None:
+    """Add the body of every node of this level that has an expansion, as children of the node."""
+    if depth >= _MAX_FRAME_DEPTH:
+        return
+    level = [n for n in walker.nodes.values() if n.parent == walker.parent and n.kind == "step"]
+    for frame in level:
+        expansion = frame.step.expansion() if frame.step is not None else None
+        if expansion is not None:
+            _expand_one(walker, frame, expansion, depth)
+
+
+def _expand_one(walker: _Walker, frame: Node, expansion: Expansion, depth: int) -> None:
+    try:
+        first = expansion.template.trace()
+        second = expansion.template.trace()
+    except TypeError:  # includes TemplateInputError: the node stays one dashed box
+        return
+    # A step that both traces share (a closure) or that this level has already placed is outside.
+    in_second = _results(second)
+    captured = frozenset(
+        step_id for step_id in _results(first) if step_id in in_second or step_id in walker.placed
+    )
+    body = _Walker(
+        walker.nodes,
+        walker.edges,
+        prefix=f"{frame.name}/",
+        parent=frame.name,
+        outer=walker,
+        captured=captured,
+    )
+    _bind(walker, body, frame, expansion)
+    body.visit(first)
+    _expand(body, depth + 1)
+
+
+def _bind(walker: _Walker, body: _Walker, frame: Node, expansion: Expansion) -> None:
+    """Make the inputs of the template, and point the edges that enter the frame at them."""
+    for outer_input, template_input in expansion.binds:
+        entering = [
+            i
+            for i, e in enumerate(walker.edges)
+            if e.target == frame.name and e.label == outer_input
+        ]
+        if entering:
+            terminal = body.terminal(template_input)
+            for i in entering:
+                old = walker.edges[i]
+                walker.edges[i] = Edge(old.source, terminal, old.label)
+        elif expansion.shape == "loop" and frame.step is not None:
+            start = getattr(frame.step, outer_input, None)
+            if start is not None:
+                body.terminal(template_input, value=_short(start))
+    if expansion.feedback:
+        body.terminal(expansion.feedback)
+
+
+def walk(output: Deferred[Any], *, expand: bool = False) -> tuple[list[Node], list[Edge]]:
+    """Walk any Deferred backward and return the full dependency graph.
+
+    Step nodes are identified by instance (``id(step)``), not class name. A shared upstream (the
+    same instance reached on two paths) is one node. Two distinct instances of the same class are
+    two nodes. Each node's label is its ``node_label`` attribute when present, else the class name.
+    The key gets a suffix (``Name#2``) only when two instances would otherwise collide.
+
+    With ``expand=True`` a node that builds its sub-graph at run time (a template fan-out or a
+    loop) gets the steps of its template as children: nodes whose ``parent`` is that node, named
+    ``"<node>/<step>"``, plus one ``template_input`` node for each input of the template. Edges
+    that enter the node end at those inputs. A template that cannot be built over placeholders
+    stays one node.
+    """
+    nodes: dict[str, Node] = {}
+    edges: list[Edge] = []
+    top = _Walker(nodes, edges)
+    top.visit(output)
+    if expand:
+        _expand(top, 0)
     return list(nodes.values()), edges
 
 
@@ -330,7 +521,7 @@ def dag(
         options: Theme, and whether to embed the stylesheet, paint a background
             or draw the per-step parameters.
     """
-    graph_nodes, graph_edges = walk(output)
+    graph_nodes, graph_edges = walk(output, expand=options.style != "classic")
     return SVG(
         _render_svg(
             output,
@@ -376,11 +567,13 @@ def _walk_to_metadata(
 ) -> dict[str, NodeMetadata]:
     """Convert walk results into NodeMetadata, doing Step introspection up front."""
     result: dict[str, NodeMetadata] = {}
+    frames = {node.parent for node in graph_nodes if node.parent}
     for node in graph_nodes:
+        caption = ""
+        feedback = ""
         if node.kind == "step" and node.step is not None:
-            title = node.title or _camel_to_words(
-                node.name.removeprefix(prefix) if prefix else node.name
-            )
+            plain = _tail(node.name) if node.parent else node.name
+            title = node.title or _camel_to_words(plain.removeprefix(prefix) if prefix else plain)
             description = _first_doc_line(node.step)
             params = tuple(_scalar_params(node.step))
             shape = ""
@@ -389,23 +582,37 @@ def _walk_to_metadata(
                 shape = expansion.shape
                 description = expansion.note
                 params = _nested_params(expansion)
+                if node.name in frames:
+                    caption = expansion.caption
+                    feedback = f"{node.name}/{expansion.feedback}" if expansion.feedback else ""
         else:
-            title = node.name
+            title = node.title or node.name
             description = ""
             params = ()
             shape = ""
+        # A step inside a frame is one step of a template, not one run: it has no state and no key.
+        in_body = bool(node.parent)
+        state = "NONE" if in_body and node.kind == "step" else compute_state(node, cache_dir)
         result[node.name] = NodeMetadata(
             name=node.name,
             kind=node.kind,
             title=title,
             description=description,
             params=params,
-            state=compute_state(node, cache_dir),
+            state=state,
             shape=shape,
-            key=_node_key(node),
+            key="" if in_body else _node_key(node),
             value=node.value,
+            parent=node.parent,
+            caption=caption,
+            feedback=feedback,
         )
     return result
+
+
+def _tail(name: str) -> str:
+    """The name of a step inside a frame, without the frame's name before the slash."""
+    return name.rsplit("/", 1)[-1]
 
 
 def node_metadata(
@@ -424,6 +631,37 @@ def node_metadata(
     """
     by_name = _walk_to_metadata(nodes, cache_dir=cache_dir, prefix=prefix)
     return [by_name[node.name] for node in nodes]
+
+
+def _depth(node: NodeMetadata, by_name: dict[str, NodeMetadata]) -> int:
+    """How many frames hold this node."""
+    depth = 0
+    while node.parent and node.parent in by_name:
+        node = by_name[node.parent]
+        depth += 1
+    return depth
+
+
+def _collapse(
+    nodes: dict[str, NodeMetadata], edges: list[tuple[str, str]], depth: int = 0
+) -> tuple[dict[str, NodeMetadata], list[tuple[str, str]]]:
+    """Fold every node deeper than ``depth`` frames into the frame that holds it.
+
+    The children are dropped. An edge that ends in a dropped node ends in the frame instead, and
+    an edge that stays inside one frame is dropped. ``depth=0`` gives the graph of the top level,
+    where a node with a template is one box.
+    """
+    if not any(n.parent for n in nodes.values()):
+        return nodes, edges
+    keep = {name: n for name, n in nodes.items() if _depth(n, nodes) <= depth}
+
+    def home(name: str) -> str:
+        while name not in keep:
+            name = nodes[name].parent
+        return name
+
+    folded = [(home(a), home(b)) for a, b in edges if a in nodes and b in nodes]
+    return keep, list(dict.fromkeys((a, b) for a, b in folded if a != b))
 
 
 def _to_render_nodes(
@@ -461,6 +699,8 @@ def _draw(
     options: SvgOptions,
     stateless: bool,
 ) -> str:
+    # Frames are not drawn yet: a node with a template is one dashed box.
+    nodes, edges = _collapse(nodes, edges)
     # classic keeps the colours of 0.3.22, which paint a graph with no state as pending
     classic = options.style == "classic"
     # classic is the drawing of 0.3.22: it has no input modes, densities or corner shapes

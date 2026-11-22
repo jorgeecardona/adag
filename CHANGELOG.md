@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `walk(output, expand=True)` returns the body of a template fan-out or a loop as children of its
+  node: nodes with a `parent`, named `Node/Step`, and one `template_input` node for each input of
+  the template. `NodeMetadata` has the new fields `parent`, `caption` and `feedback`. `dag()` still
+  draws the node as one dashed box for now.
 - `Expansion` (what `Step.expansion()` returns) says how a template node binds its inputs: `binds`,
   `feedback`, `caption` and `count`. `FanOutStep` and `LoopStep` fill them. The graph drawing will
   use them to draw the body of a fan-out or a loop as a frame.
