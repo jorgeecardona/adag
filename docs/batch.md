@@ -9,6 +9,11 @@ Implement three methods:
 2. `process_item(item, **inputs)`: compute one item.
 3. `assemble(results, **inputs)`: combine the per-item results into the step result.
 
+Each method gets the wired inputs by name. It gets a field of the step only if it names it. Read
+the other fields from `self`. The item keys do not depend on this: they are built from every
+field and input, whether a method names it or not. A `Config` field in `self` is the wrapper
+(`self.concurrency.value`).
+
 Instead of `items()`, you can implement `items_data()` and return plain data. adag then derives
 each item key from three things: the step's own hash (class, code, fields), the item data, and
 every other input of the step.

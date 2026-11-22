@@ -1,10 +1,9 @@
-# pyright: reportIncompatibleMethodOverride=true
 """Override idiom from the docs, checked by pyright strict (#14).
 
-This file runs as a normal test. The first line turns ``reportIncompatibleMethodOverride`` on for
-this file, because pyproject.toml turns it off for the repo. The type check (``pyright`` over
-``tests``) then fails if a named parameter override of a step hook is reported. There is no
-``pyright: ignore`` comment on any override below: that is the point of the file.
+This file runs as a normal test. The type check (``pyright`` over ``tests``, with
+``reportIncompatibleMethodOverride`` on) fails if a named parameter override of a step hook is
+reported. There is no ``pyright: ignore`` comment on any override below: that is the point of
+the file.
 """
 
 import asyncio

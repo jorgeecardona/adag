@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.22] - 2026-11-22
+
 ### Fixed
 
 - A step that overrides `run`, `arun`, `items_data`, `process_item` or `assemble` with named
@@ -16,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a `level` field: read it from `self.level`. The field still changes the cache key (#15).
 - `Pipeline.validate()` now checks `arun` and the batch hooks too, and raises
   `UnacceptedInputError` for a wired input that a method does not accept.
+- The repo's own pyright check now has `reportIncompatibleMethodOverride` on, so a step hook
+  override that pyright rejects fails the gate.
 
 ## [0.3.18] - 2026-11-20
 

@@ -11,8 +11,16 @@ Its `run()` method takes the step's inputs by name and returns a `Result`.
 
 - Dataclass fields are configuration. They are part of the cache key.
 - `run()` arguments are inputs. They come from other steps, `InputParam`s, or sources.
-- adag passes every field to `run()` by name. `run()` must accept each field, or take `**kwargs`.
-  A wired input with the same name as a field wins.
+- A field reaches `run()` only if `run()` names it. Otherwise read it from `self`, for example
+  `self.level`. The field is part of the cache key either way.
+- A `Config` field in `self` is the `Config` wrapper: read `self.concurrency.value`. A parameter
+  named `concurrency` gets the plain value.
+- A `run()` with `**kwargs` gets every field. A name that `run()` does not accept, and that is
+  not a field, is a `TypeError`.
+- A wired input with the same name as a field wins.
+- Name the parameters you need. pyright strict accepts that override without an ignore comment.
+- Define `run()` on the step class itself. A `run()` that comes from a mixin that is not a `Step`
+  still gets every field, so give it `**kwargs`.
 
 ## Wire and run
 
@@ -51,6 +59,11 @@ When you call `pipeline.validate()`:
 
 - `UnboundInputError`: a `run()` argument is not wired, is not a field, and has no default.
   Without `validate()`, `execute()` fails with a `TypeError` from `run()`.
+- `UnacceptedInputError`: a wired input is not a parameter of `run()` and `run()` has no
+  `**kwargs`. Without `validate()`, `execute()` fails with a `TypeError`.
+
+`validate()` checks `arun()` and the batch methods (`items_data`, `process_item`, `assemble`) the
+same way.
 
 ## Reserved names
 

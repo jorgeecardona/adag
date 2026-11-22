@@ -184,8 +184,10 @@ def _overrides(cls: type, name: str) -> bool:
 class Step(Generic[Out]):
     """Base class of every step: a frozen dataclass with config fields and a ``run()`` method.
 
-    Fields are part of the cache key, except ``Config`` fields. adag passes every field to
-    ``run()`` by name, together with the wired inputs.
+    Fields are part of the cache key, except ``Config`` fields. adag calls ``run()`` with the
+    wired inputs and with every field as keywords. A method that does not name a field does not
+    get it: read it from ``self``. A ``Config`` field in ``self`` is the ``Config`` wrapper, so
+    use ``self.name.value``. A method with ``**kwargs`` still gets every field.
 
     Class attributes:
         kind: a stable name for the step. It replaces the class name in the key and in
