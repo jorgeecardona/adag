@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The default look of `dag()` changed. It is now "blueprint": mono type, square corners, right-angle
+  edges, a state square with the state word, and the cache key in each box. Pass
+  `SvgOptions(style="classic")` to keep the look of 0.3.22.
+- Edges no longer run under boxes. A long edge keeps a lane between the boxes, and a graph of 40
+  nodes draws in milliseconds instead of seconds.
+- A graph with no cache state (`dag()` without `cache_dir`) is drawn in neutral colours with no state
+  word. Colour appears when you pass `cache_dir`.
+- All text is at least 11 px (classic keeps its sizes). A long title is cut with "..." and the full
+  text is in the hover tooltip.
+
+### Added
+
+- `SvgOptions(style="blueprint" | "band" | "classic")`. "band" is a header strip with the title and
+  the state word, with curved edges.
+- `SvgOptions(inputs="terminals" | "tabs" | "rows")`: inputs as small nodes (default), as a tab on
+  the step that reads them, or as a line inside it.
+- `SvgOptions(density="compact")`: only the title of each step, and the inputs as labels to its left.
+- `NodeMetadata.key` (the 12-character cache key of a step) and `NodeMetadata.value` (the default of
+  an input, or a file path).
+- Every colour is a CSS variable with a default, `var(--adag-step-border, ...)`. A page that embeds
+  the SVG inline sets `--adag-*` on any parent element. Each node group has `data-state`,
+  `data-kind` and `data-name`.
+
 ### Fixed
 
 - `dag()` no longer shows "Name(field: int = 1)" as the description of a step that has no

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from adag import InputParam, Step
 from adag.io import FileSource
-from adag.visualization import _edge_tail_parts, walk
+from adag.visualization import walk
 
 
 class Result(BaseModel):
@@ -252,20 +252,34 @@ def test_render_pipeline_svg_no_pipeline_json_returns_none(tmp_path: Path) -> No
     assert render_pipeline_svg(pipeline_dir) is None
 
 
-def test_edge_tail_draws_full_curve_to_arrow_base_without_kink() -> None:
-    """The tail keeps the full quintic and ends at the arrow base perpendicular.
+def test_every_edge_arrives_vertically_at_the_arrow_base() -> None:
+    """An edge ends on the base of its arrowhead, moving straight down, in every style.
 
-    Regression: the old code truncated the curve above the arrow and inserted a
-    straight stub, which left a visible kink where the diagonal met the vertical.
-    The quintic already arrives vertical, so the whole curve is drawn as-is.
+    Regression: an early router cut the curve above the arrow and added a stub, which left a kink
+    where the diagonal met the vertical.
     """
-    points = [(100.0, 10.0), (105.0, 20.0), (108.0, 30.0), (109.5, 35.0), (110.0, 40.0)]
-    parts = _edge_tail_parts(points, x2=110.0, arrow_base_y=40.0)
+    import re
+    import xml.etree.ElementTree as ET
 
-    assert "Q" not in " ".join(parts)  # no fillet
-    assert len(parts) == len(points)  # every routed point kept (no truncation)
-    assert parts[0] == "M 100.0,10.0"
-    assert parts[-1] == "L 110.0,40.0"  # ends exactly on the arrow base
+    from adag.visualization import NodeMetadata, SvgOptions, render_graph_svg
+
+    nodes = [NodeMetadata(name=n, kind="step", title=n) for n in ("a", "b", "c", "d")]
+    edges = [("a", "b"), ("a", "c"), ("b", "d"), ("c", "d"), ("a", "d")]
+    for style in ("blueprint", "band", "classic"):
+        svg = render_graph_svg(nodes, edges, options=SvgOptions(style=style))
+        root = ET.fromstring(svg)  # noqa: S314 (adag's own output)
+        ns = "{http://www.w3.org/2000/svg}"
+        paths = [e for e in root.iter(f"{ns}path") if "dag-edge" in e.get("class", "")]
+        arrows = list(root.iter(f"{ns}polygon"))
+        assert len(paths) == len(arrows) == len(edges)
+        for path, arrow in zip(paths, arrows, strict=True):
+            numbers = [float(n) for n in re.findall(r"-?\d+(?:\.\d+)?", path.get("d", ""))]
+            end_x, end_y = numbers[-2], numbers[-1]
+            tip = [
+                tuple(float(v) for v in pt.split(",")) for pt in arrow.get("points", "").split()
+            ][2]
+            assert end_x == tip[0] and end_y < tip[1]  # on the arrow base, straight above the tip
+            assert numbers[-4] == end_x  # the last control point or the previous point: same x
 
 
 def test_render_pipeline_svg_carries_classes_not_colours(tmp_path: Path) -> None:
