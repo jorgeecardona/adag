@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A step that overrides `run`, `arun`, `items_data`, `process_item` or `assemble` with named
+  parameters, as the docs show, now passes pyright strict. No `pyright: ignore` comment is needed (#14).
+
 ## [0.3.18] - 2026-11-20
 
 ### Fixed

@@ -341,8 +341,12 @@ class Step(Generic[Out]):
                 )
         return StepResult(step=self, sources=kwargs)
 
-    def run(self, **kwargs: Any) -> Out:
+    def run(self, *args: Any, **kwargs: Any) -> Out:
         """Execute the step's synchronous logic; receives resolved inputs as kwargs.
+
+        Override with named parameters, for example ``def run(self, text: str, n: int)``. The base
+        signature is ``*args: Any, **kwargs: Any`` so pyright accepts that override. adag calls the
+        hook with keywords only, never with positional arguments.
 
         Override in a synchronous step. Deliberately NOT ``@abstractmethod``: an
         ``AsyncStep`` (implements ``arun``) and a ``FanOutStep`` (driven via ``execute``)
@@ -350,7 +354,7 @@ class Step(Generic[Out]):
         un-instantiable. The default raise instead guards the real misuse cases, a sync
         step that forgot ``run``, or a sync resolve of an async step.
         """
-        del kwargs
+        del args, kwargs
         raise NotImplementedError(
             f"{type(self).__name__} has no run(): a synchronous Step must implement run(); "
             "an AsyncStep implements arun() and must be resolved via Pipeline.aexecute()."
@@ -366,12 +370,14 @@ class Step(Generic[Out]):
         with observing(context.observer):
             return self.run(**kwargs)
 
-    async def arun(self, **kwargs: Any) -> Out:
+    async def arun(self, *args: Any, **kwargs: Any) -> Out:
         """Execute the step on the async path and return the result.
 
         The default delegates to ``run()`` so a sync step works unchanged on the async path.
-        A step that awaits I/O subclasses ``AsyncStep`` and overrides this.
+        A step that awaits I/O subclasses ``AsyncStep`` and overrides this. Like ``run``, the
+        base signature is ``*args: Any, **kwargs: Any`` and adag passes keywords only.
         """
+        del args
         return self.run(**kwargs)
 
     async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> Out:
@@ -533,7 +539,7 @@ class AsyncStep(Step[Out]):
     """
 
     @abstractmethod
-    async def arun(self, **kwargs: Any) -> Out:
+    async def arun(self, *args: Any, **kwargs: Any) -> Out:
         """Execute the async step logic. Receives resolved input values as kwargs."""
         ...
 

@@ -122,7 +122,7 @@ class BatchStep(Step[T], Generic[T, R]):
                     cls.item_type = args[1]
                     return
 
-    def items_data(self, **inputs: Any) -> list[Any]:
+    def items_data(self, *args: Any, **inputs: Any) -> list[Any]:
         """Declare the per-item DATA only, framework derives the cache key.
 
         Recommended override path. The default ``items()`` (below) calls
@@ -134,12 +134,15 @@ class BatchStep(Step[T], Generic[T, R]):
 
         Override this method when you don't need custom key topology.
         Then no cache-poisoning bug from manual key composition is possible.
+        The base signature is ``*args: Any, **inputs: Any`` so pyright accepts an override with
+        named parameters. adag calls the hook with keywords only.
         """
+        del args, inputs
         raise NotImplementedError(
             f"{type(self).__name__} must override either `items_data()` (framework derives keys) or `items()` (full control)."
         )
 
-    def items(self, **inputs: Any) -> list[BatchItem]:
+    def items(self, *args: Any, **inputs: Any) -> list[BatchItem]:
         """Declare the work units. Called once at the start.
 
         Default implementation calls ``items_data(**inputs)`` and assigns
@@ -152,8 +155,9 @@ class BatchStep(Step[T], Generic[T, R]):
 
         Override this only when you need custom key topology (e.g.
         deliberately sharing a cached result across two slightly-different
-        inputs).
+        inputs). The base signature is ``*args: Any, **inputs: Any``; adag passes keywords only.
         """
+        del args
         step_sig = self._step_signature()
         inputs_sig = self._inputs_signature(inputs)
         return [
@@ -237,7 +241,7 @@ class BatchStep(Step[T], Generic[T, R]):
         return h.hexdigest()[:16]
 
     @abstractmethod
-    def process_item(self, item: BatchItem, **inputs: Any) -> R:
+    def process_item(self, item: BatchItem, *args: Any, **inputs: Any) -> R:
         """Process a single item. Default implementation called by process_batch().
 
         Override this for simple one-at-a-time processing.
@@ -270,7 +274,7 @@ class BatchStep(Step[T], Generic[T, R]):
             cache.save(item.key, result)
 
     @abstractmethod
-    def assemble(self, results: list[R], **inputs: Any) -> T:
+    def assemble(self, results: list[R], *args: Any, **inputs: Any) -> T:
         """Combine all per-item results into the final step result.
 
         Called after all items (cached + freshly processed) are available.

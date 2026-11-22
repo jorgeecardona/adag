@@ -92,3 +92,14 @@ needs:
     sources:
       - {kind: assumption, date: 2026-11-19, locator: "musil model-check of the cache write protocol, docs/issues/19-11-2026-sqlcachestore-set-may-raise-on-two-concurrent-writers.md (unverified on Postgres)"}
 
+
+  - id: FX-11
+    text: >
+      When the developer overrides run, arun, items_data, process_item or assemble with named
+      parameters, as the docs show, they can run pyright strict with no ignore comment.
+    sources:
+      - {kind: secondary, date: 2026-11-19, locator: "https://gitlab.com/cardona-oss/adag/-/issues/14"}
+    proofs:
+      - "test:tests/test_override_typing.py::test_named_parameter_overrides_run"
+      - "test:tests/test_override_typing.py::test_named_parameter_override_of_arun"
+      - "test:tests/test_override_typing.py::test_named_parameter_overrides_of_the_batch_hooks"
