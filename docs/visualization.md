@@ -27,11 +27,23 @@ Here a pipeline ran once, then one input changed. `Clean` and `Report` are pendi
 
 ![A graph with two pending steps and two cached steps](assets/graph_states.svg)
 
-A node that builds its sub-graph at run time has a dashed border. A `FanOutStep` with a
-`template` is `mapped` (long dashes): the box says "one branch per item", and its `each item`
-line lists the steps of the template. A `LoopStep` is `loop` (short dashes) and its `each round`
-line lists the steps of its body. The graph shows one box, not one per item or round, because the
-count is not known until the run reaches the node.
+A `FanOutStep` or `LoopStep` with a template draws its body once, inside a dashed frame. The
+frame holds the body steps as they are wired. Input nodes sit at the top of the frame (`item` for
+a fan-out, `state` for a loop). One edge leaves the bottom, to what comes next.
+
+![A fan-out frame](assets/frame_fan_out.svg)
+
+The count is not drawn, because it is known only when the run reaches the node. The caption says
+what it is: "one branch per item", or "until small, at most 20 rounds". A loop has no real back
+edge, so the feedback is a dashed arrow labelled "next round".
+
+![A loop frame](assets/frame_loop.svg)
+
+The frame is `mapped` (long dashes) for a fan-out and `loop` (short dashes) for a loop. Frames
+nest: a loop inside a fan-out is a frame inside a frame, up to three levels. A step outside the
+template that the body uses enters through an input node named after it. `classic` and
+`SvgOptions(frames=False)` draw one dashed box instead, with an `each item` or `each round` line
+that lists the steps of the body.
 
 In a notebook, the returned `SVG` object displays inline.
 
@@ -47,6 +59,7 @@ input nodes.
 | `density` | `"normal"` (default), `"compact"` | How much each box shows. |
 | `corners` | `"round"` (default), `"sharp"` | Round corners (boxes 8 px, edge bends 14 px) or almost square ones (2 px, 8 px). `classic` ignores it. |
 | `theme` | `"light"` (default), `"dark"`, `"auto"` | The default colours. `"auto"` follows the browser. |
+| `frames` | `True` (default) | Draw the body of a fan-out or a loop inside a frame. `False` draws one dashed box. `classic` never draws a frame. |
 | `legend` | `False` (default) | Add a row under the graph that names the state colours. |
 | `animate` | `False` (default) | Move dashes along the edges into pending steps. |
 | `show_params` | `True` (default) | Draw the scalar fields of each step. |
@@ -209,7 +222,7 @@ Each node is a group, `<g class="dag-item ...">`. A host can target it by class 
 | Name | Where | Meaning |
 | --- | --- | --- |
 | `data-state` | node group | `cached`, `pending`, `blocked` or `none` (an input, or a graph with no state). |
-| `data-kind` | node group | `step`, `param`, `file` or `output`. |
+| `data-kind` | node group | `step`, `param`, `file`, `output`, `frame` or `template_input`. |
 | `data-name` | node group | The name of the node, as `walk` gives it. |
 | `dag--blueprint`, `dag--band`, `dag--classic` | root | The style. |
 | `dag--compact` | root | The compact density. |
@@ -217,6 +230,9 @@ Each node is a group, `<g class="dag-item ...">`. A host can target it by class 
 | `is-cached`, `is-pending`, `is-blocked` | node group and box | The state of a step. |
 | `is-leaf` | node group | A step with no inputs at all. It is decided before inputs are folded in. |
 | `dag-item--mapped`, `dag-item--loop` | node group | A fan-out node, a loop node. |
+| `dag-item--frame`, `dag-frame--mapped`, `dag-frame--loop` | node group | A frame, and its kind. `data-kind="frame"`, `data-depth` is 1 for a top frame and 2 inside it, `data-parent` names the frame around it. |
+| `dag-frame__border` | frame | The dashed rectangle. It has no extra variable: it uses `--adag-mapped` or `--adag-loop` with a light fill. |
+| `dag-edge--feedback` | edge | The "next round" arrow of a loop. |
 | `dag-node` | box | The outline of a node. |
 | `dag-edge`, `dag-edge--output`, `dag-edge--flow` | edge | An edge, the edge to the output box, an animated edge. |
 | `dag-text--title`, `--desc`, `--param`, `--input`, `--key`, `--state` | text | The kind of text. |
@@ -260,10 +276,16 @@ shortest length, then fewest crossings. A crossing costs less than an extra bend
 4. Only when no channel exists does it end on the top of the target, with a sideways move just above
    it.
 
-The edges that leave one source are ordered by target, so their drops do not cross. Edges of
-different sources stay at least 4 px apart, and two sideways runs that share some width are at
-least 12 px apart. No edge runs through a box. The tests count the bends of every edge
-(`BEND_BASELINE` in `tests/test_svg_layout.py`).
+The edges that leave one source are ordered by target, so their drops do not cross. They share
+one trunk and split at a corner. They branch and never merge. Edges of different sources keep their
+sideways runs 12 px apart. When 12 px would cost another bend, the gap shrinks, down to 4 px.
+An edge has at most four bends in `blueprint` and two curves in `band`. No edge runs through a
+box. `band` has no side entry: every edge ends on the top of its target, and a long sideways move
+is one gentle S.
+
+The tests count the bends of every edge (`BEND_BASELINE` in `tests/test_svg_layout.py`) and check
+the branch and merge rules (`tests/edge_rules.py`). The few edges that still break a rule are listed
+per graph in `KNOWN` in `tests/test_edge_rules.py`.
 
 `classic` does not use this. It keeps the layout and the curved edges of 0.3.22, so its drawing is
 the same as before (an edge can pass over a box, as it did). It ignores `inputs`, `density` and

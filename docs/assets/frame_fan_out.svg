@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--blueprint dag--stateless" width="293" height="593" viewBox="0 0 293 593"><style>.dag-canvas { fill: #ffffff; }
+.dag--blueprint .dag-canvas { fill: #eef3fc; }
+.dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
+.dag-text { fill: #333333; font-family: -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif; }
+.dag--blueprint .dag-text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: #5f6368; }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: #1f3d8f; }
+.dag-text--input { fill: #7b1fa2; font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--input { fill: #1f3d8f; }
+.dag-item--step .dag-text--state { fill: #5f6368; font-weight: bold; letter-spacing: 0.05em; }
+.dag-item--step.is-pending .dag-text--state { fill: #8a6200; }
+.dag-item--step.is-cached .dag-text--state { fill: #1b6b3a; }
+.dag-item--step.is-blocked .dag-text--state { fill: #b3261e; }
+.dag--stateless .dag-item--step .dag-text--state { fill: #5f6368; }
+.dag-edge { fill: none; stroke: #607d8b; }
+.dag-arrow { fill: #607d8b; }
+.dag--blueprint .dag-edge { stroke: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
+.dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
+.dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
+.dag--classic .dag-item--step.is-cached .dag-node { fill: #e8f5e9; stroke: #66bb6a; }
+.dag--classic .dag-item--step.is-blocked .dag-node { fill: #ffebee; stroke: #ef5350; }
+.dag--classic.dag--stateless .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
+.dag--blueprint .dag-node { fill: #eef3fc; stroke: #1f3d8f; }
+.dag--band .dag-item--step .dag-node { fill: #ffffff; stroke: #78909c; }
+.dag--band .dag-item--step.is-pending .dag-node { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-node { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-node { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-node { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-node { stroke: #78909c; }
+.dag--band .dag-item--step .dag-head { fill: #f6f8fa; stroke: none; }
+.dag--band .dag-item--step.is-pending .dag-head { fill: #fff8e1; }
+.dag--band .dag-item--step.is-leaf .dag-head { fill: #e8eaf6; }
+.dag--band .dag-item--step.is-cached .dag-head { fill: #e8f5e9; }
+.dag--band .dag-item--step.is-blocked .dag-head { fill: #ffebee; }
+.dag--band.dag--stateless .dag-item--step .dag-head { fill: #f6f8fa; }
+.dag--band .dag-item--step .dag-rule { stroke: #78909c; stroke-width: 2; }
+.dag--band .dag-item--step.is-pending .dag-rule { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-rule { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-rule { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-rule { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-rule { stroke: #78909c; }
+.dag--blueprint .dag-rule { stroke: #1f3d8f; stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: #64748b; stroke: none; }
+.dag-item--step.is-pending .dag-state { fill: #c98e00; }
+.dag-item--step.is-cached .dag-state { fill: #2a9456; }
+.dag-item--step.is-blocked .dag-state { fill: #d0413a; }
+.dag--stateless .dag-item--step .dag-state { fill: #64748b; }
+.dag--band .dag-item--step .dag-tab { fill: #ffffff; stroke: #78909c; stroke-width: 1.5; }
+.dag--band .dag-item--step.is-pending .dag-tab { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-tab { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-tab { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-tab { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-tab { stroke: #78909c; }
+.dag--blueprint .dag-tab { fill: #eef3fc; stroke: #1f3d8f; stroke-width: 1.5; }
+.dag-node--param { fill: #f3e5f5; stroke: #ce93d8; }
+.dag-node--file { fill: #efebe9; stroke: #bcaaa4; }
+.dag-node--output { fill: #e3f2fd; stroke: #64b5f6; }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: #eef3fc; stroke: #1f3d8f; }
+.dag--blueprint .dag-node--output { fill: #eef3fc; stroke: #1f3d8f; stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: #ffffff; stroke: #607d8b; }
+.dag-pin { fill: #1f3d8f; stroke: none; }
+.dag-text--param-node { fill: #7b1fa2; }
+.dag-text--file { fill: #795548; }
+.dag-text--output { fill: #1565c0; }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: #1f3d8f; }
+.dag--band .dag-text--output { fill: #333333; }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
+.dag-frame__border { fill: #8e24aa; fill-opacity: 0.05; stroke: #8e24aa; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: #00897b; stroke: #00897b; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: #8e24aa; }
+.dag-frame--loop .dag-frame__tag { fill: #00897b; }
+.dag-frame__caption { fill: #5f6368; }
+.dag--blueprint .dag-frame__caption { fill: #1f3d8f; }
+.dag .dag-edge.dag-edge--feedback { stroke: #00897b; }
+.dag .dag-arrow.dag-arrow--feedback { fill: #00897b; stroke: #00897b; }
+@supports (--a: 0) {
+.dag-canvas { fill: var(--adag-canvas, #ffffff); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #cfdaf0); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #333333); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #5f6368); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--input { fill: var(--adag-input-ink, #7b1fa2); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #1f3d8f); }
+.dag-item--step .dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
+.dag-arrow { fill: var(--adag-edge, #607d8b); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
+.dag--band .dag-item--step .dag-head { fill: var(--st-bg); stroke: none; }
+.dag--band .dag-item--step .dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: var(--st); stroke: none; }
+.dag--band .dag-item--step .dag-tab { fill: var(--adag-card, #ffffff); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1.5; }
+.dag-node--param { fill: var(--adag-input-bg, #f3e5f5); stroke: var(--adag-input-border, #ce93d8); }
+.dag-node--file { fill: var(--adag-file-bg, #efebe9); stroke: var(--adag-file-border, #bcaaa4); }
+.dag-node--output { fill: var(--adag-output-bg, #e3f2fd); stroke: var(--adag-output-border, #64b5f6); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #ffffff); stroke: var(--adag-edge, #607d8b); }
+.dag-pin { fill: var(--adag-ink, #1f3d8f); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #7b1fa2); }
+.dag-text--file { fill: var(--adag-file-ink, #795548); }
+.dag-text--output { fill: var(--adag-output-ink, #1565c0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-text--output { fill: var(--adag-text, #333333); }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+.dag-frame__border { fill: var(--adag-mapped, #8e24aa); fill-opacity: 0.05; stroke: var(--adag-mapped, #8e24aa); stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: var(--adag-mapped, #8e24aa); }
+.dag-frame--loop .dag-frame__tag { fill: var(--adag-loop, #00897b); }
+.dag-frame__caption { fill: var(--adag-muted, #5f6368); }
+.dag--blueprint .dag-frame__caption { fill: var(--adag-ink, #1f3d8f); }
+.dag .dag-edge.dag-edge--feedback { stroke: var(--adag-loop, #00897b); }
+.dag .dag-arrow.dag-arrow--feedback { fill: var(--adag-loop, #00897b); stroke: var(--adag-loop, #00897b); }
+.dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #c98e00); --st-ink: var(--adag-pending-ink, #8a6200); --st-bg: var(--adag-pending-bg, #fff8e1); --st-border: var(--adag-pending-border, #ffc107);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #e8eaf6); --st-border: var(--adag-leaf-border, #9fa8da);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #2a9456); --st-ink: var(--adag-cached-ink, #1b6b3a); --st-bg: var(--adag-cached-bg, #e8f5e9); --st-border: var(--adag-cached-border, #66bb6a);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #d0413a); --st-ink: var(--adag-blocked-ink, #b3261e); --st-bg: var(--adag-blocked-bg, #ffebee); --st-border: var(--adag-blocked-border, #ef5350);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+}
+</style><rect class="dag-canvas" width="293" height="593" /><path d="M20 0V593M40 0V593M60 0V593M80 0V593M100 0V593M120 0V593M140 0V593M160 0V593M180 0V593M200 0V593M220 0V593M240 0V593M260 0V593M280 0V593M0 20H293M0 40H293M0 60H293M0 80H293M0 100H293M0 120H293M0 140H293M0 160H293M0 180H293M0 200H293M0 220H293M0 240H293M0 260H293M0 280H293M0 300H293M0 320H293M0 340H293M0 360H293M0 380H293M0 400H293M0 420H293M0 440H293M0 460H293M0 480H293M0 500H293M0 520H293M0 540H293M0 560H293M0 580H293" class="dag-grid" /><g class="dag-item dag-item--step dag-item--frame dag-frame dag-frame--mapped is-pending" data-state="none" data-kind="frame" data-shape="mapped" data-name="FanOutStep" data-depth="1"><title>Fan Out Step
+one branch per item of 'over'; the number of branches is known at run time
+each item = Measure
+key 93dbc0d5524b
+one branch per item</title><rect x="40.5" y="278" width="212" height="191" rx="8" class="dag-frame__border" stroke-width="1.5" stroke-dasharray="8 4" /><text x="52.5" y="291" class="dag-text dag-frame__tag" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central" font-weight="bold">each</text><text x="116.5" y="456" class="dag-text dag-frame__caption" font-family="-apple-system, &quot;Segoe UI&quot;, system-ui, Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" dominant-baseline="central">one branch per item</text></g><path d="M146.5 60 L146.5 115" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="text" data-target="Split" /><polygon points="141.5,115 151.5,115 146.5,124" class="dag-arrow" /><path d="M146.5 214 L146.5 227.8 Q146.5 241.5 132.8 241.5 L118.5 241.5 Q104.5 241.5 104.5 255.5 L104.5 303" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="Split" data-target="FanOutStep" /><polygon points="99.5,303 109.5,303 104.5,312" class="dag-arrow" /><path d="M104.5 469 L104.5 482.8 Q104.5 496.5 118.2 496.5 L132.8 496.5 Q146.5 496.5 146.5 510.2 L146.5 524" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="FanOutStep" data-target="__output__" stroke-dasharray="6,4" /><polygon points="141.5,524 151.5,524 146.5,533" class="dag-arrow dag-arrow--output" /><g class="dag-item dag-item--step is-pending" data-state="none" data-kind="step" data-name="Split"><title>Split
+Cut the text at each semicolon
+key 540bdd2d9742</title><rect x="30" y="124" width="233" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" /><text x="44" y="146" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Split</text><text x="44" y="168" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Cut the text at each semicolon</text><line x1="30" y1="188" x2="263" y2="188" class="dag-rule" /><text x="249" y="201" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 540bdd2d9742</text></g><g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="text"><title>text</title><rect x="106.5" y="30" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" /><rect x="114.5" y="42" width="6" height="6" rx="0" class="dag-pin" /><text x="152.5" y="45" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">text</text></g><g class="dag-frame-body" data-parent="FanOutStep"><line x1="104.5" y1="433" x2="104.5" y2="469" class="dag-edge" stroke-width="1.5" /><path d="M104.5 342 L104.5 390" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="FanOutStep/item" data-target="FanOutStep/Measure" /><polygon points="99.5,390 109.5,390 104.5,399" class="dag-arrow" /><g class="dag-item dag-item--template_input" data-state="none" data-kind="template_input" data-name="FanOutStep/item" data-parent="FanOutStep"><title>item</title><rect x="64.5" y="312" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" /><rect x="72.5" y="324" width="6" height="6" rx="0" class="dag-pin" /><text x="110.5" y="327" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">item</text></g><g class="dag-item dag-item--step is-none" data-state="none" data-kind="step" data-name="FanOutStep/Measure" data-parent="FanOutStep"><title>Measure
+Count the characters of one part</title><rect x="54.5" y="399" width="100" height="34" rx="8" class="dag-node dag-node--step is-none" stroke-width="1.5" /><text x="68.5" y="416" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="13" text-anchor="start" dominant-baseline="central" font-weight="bold">Measure</text></g></g><g class="dag-item dag-item--output" data-state="none" data-kind="output"><title>output</title><rect x="86.5" y="533" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" /><text x="146.5" y="548" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">output</text></g></svg>

@@ -86,7 +86,9 @@ the calling process.
 
 ## Draw and inspect
 
-- `dag()` draws one dashed `loop` box. Its `each round` line lists the steps of the body.
+- `dag()` draws the body once, inside a dashed `loop` frame. The `state` input is at the top, a
+  dashed "next round" arrow returns to it, and the caption says when the loop stops. With
+  `SvgOptions(frames=False)` it draws one box whose `each round` line lists the body.
 - `explain_key` shows an `expansion` row: `up to N rounds; each round is cached under the key
   of the state it starts from`. The rounds are not listed there, because their keys depend on
   states that exist only after the run. Each round writes its own key record when it runs.

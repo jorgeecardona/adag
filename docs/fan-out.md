@@ -76,6 +76,12 @@ Rules for the items:
 A fan-out with a `template` runs in the calling process. To run its branches in worker processes,
 see [Fan out over an upstream result](dispatch.md#fan-out-over-an-upstream-result) in Dispatch.
 
+## Draw it
+
+`dag()` draws the template once, inside a dashed frame with an `item` input at the top and one
+edge out. It does not draw one branch per item, because the count is known only at run time. See
+[Visualization](visualization.md).
+
 ## Template
 
 A `Template` is a sub-graph with named inputs: a function `build` and the names of its
