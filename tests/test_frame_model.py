@@ -247,19 +247,22 @@ def test_a_graph_without_frames_collapses_to_itself() -> None:
     assert kept_edges == [("A", "A")]
 
 
+FRAME_MARK = 'data-kind="frame"'  # the stylesheet also names `dag-frame`: look for an element
+
+
 @pytest.mark.parametrize("make", [_loop, _wired_fan_out])
 def test_without_frames_the_drawing_is_the_one_box_of_before(make: Any) -> None:
     target = make()
     flat_nodes, flat_edges = walk(target)
     flat = viz._render_svg(target, flat_nodes, flat_edges)  # pyright: ignore[reportPrivateUsage]
     assert str(dag(target, options=SvgOptions(frames=False))) == flat
-    assert "dag-frame" not in flat
-    assert "dag-frame" in str(dag(target))
+    assert FRAME_MARK not in flat
+    assert FRAME_MARK in str(dag(target))
 
 
 @pytest.mark.parametrize("make", [_loop, _wired_fan_out])
 def test_classic_never_draws_a_frame(make: Any) -> None:
-    assert "dag-frame" not in str(dag(make(), options=SvgOptions(style="classic")))
+    assert FRAME_MARK not in str(dag(make(), options=SvgOptions(style="classic")))
 
 
 def test_edges_compare_by_value() -> None:
