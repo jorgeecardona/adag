@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--classic" width="856" height="548" viewBox="0 0 856 548"><style>
+.dag-canvas { fill: var(--adag-canvas, #ffffff); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #cfdaf0); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #333333); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text, .dag-text--mono { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #5f6368); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--input { fill: var(--adag-input-ink, #7b1fa2); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
+.dag-arrow { fill: var(--adag-edge, #607d8b); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #c98e00); --st-ink: var(--adag-pending-ink, #8a6200); --st-bg: var(--adag-pending-bg, #fff8e1); --st-border: var(--adag-pending-border, #ffc107);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #e8eaf6); --st-border: var(--adag-leaf-border, #9fa8da);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #2a9456); --st-ink: var(--adag-cached-ink, #1b6b3a); --st-bg: var(--adag-cached-bg, #e8f5e9); --st-border: var(--adag-cached-border, #66bb6a);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #d0413a); --st-ink: var(--adag-blocked-ink, #b3261e); --st-bg: var(--adag-blocked-bg, #ffebee); --st-border: var(--adag-blocked-border, #ef5350);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
+.dag-head { fill: var(--st-bg); stroke: none; }
+.dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; opacity: 0.55; }
+.dag-state { fill: var(--st); stroke: none; }
+.dag-tab { fill: var(--adag-card, #ffffff); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag-node--param { fill: var(--adag-input-bg, #f3e5f5); stroke: var(--adag-input-border, #ce93d8); }
+.dag-node--file { fill: var(--adag-file-bg, #efebe9); stroke: var(--adag-file-border, #bcaaa4); }
+.dag-node--output { fill: var(--adag-output-bg, #e3f2fd); stroke: var(--adag-output-border, #64b5f6); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #ffffff); stroke: var(--adag-edge, #607d8b); }
+.dag-pin { fill: var(--adag-ink, #1f3d8f); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #7b1fa2); }
+.dag-text--file { fill: var(--adag-file-ink, #795548); }
+.dag-text--output { fill: var(--adag-output-ink, #1565c0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-text--output { fill: var(--adag-text, #333333); }
+.dag .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
+.dag .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+</style><rect class="dag-canvas" width="856" height="548" /><path d="M371.1 62 C371.1 90 365.5 90 365.5 118" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="362.3,118 368.7,118 365.5,126" class="dag-arrow" /><path d="M372.5 182 C372.5 210 629 210 629 238" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="625.8,238 632.2,238 629,246" class="dag-arrow" /><path d="M641.5 170 C641.5 204 643 204 643 238" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="639.8,238 646.2,238 643,246" class="dag-arrow" /><path d="M636 302 C636 330 427.4 330 427.4 358" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="424.2,358 430.6,358 427.4,366" class="dag-arrow" /><path d="M358.5 182 C358.5 210 220 210 220 238" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="216.8,238 223.2,238 220,246" class="dag-arrow" /><path d="M220 302 C220 330 413.4 330 413.4 358" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" /><polygon points="410.2,358 416.6,358 413.4,366" class="dag-arrow" /><path d="M420.4 422 L420.4 478" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" /><polygon points="417.2,478 423.6,478 420.4,486" class="dag-arrow dag-arrow--output" /><g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="Report"><title>Report (pending)
+Write the summary
+key fe0b5b0b448c</title><rect x="230.4" y="366" width="380" height="56" rx="10" class="dag-node dag-node--step is-pending" stroke-width="1.5" /><text x="420.4" y="384" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Report</text><text x="420.4" y="404" class="dag-text dag-text--desc" font-size="10" text-anchor="middle" dominant-baseline="central">Write the summary</text></g><g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="Clean"><title>Clean (pending)
+Normalize the text
+key 76ffaa480ff1</title><rect x="446" y="246" width="380" height="56" rx="10" class="dag-node dag-node--step is-pending" stroke-width="1.5" /><text x="636" y="264" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Clean</text><text x="636" y="284" class="dag-text dag-text--desc" font-size="10" text-anchor="middle" dominant-baseline="central">Normalize the text</text></g><g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="Load"><title>Load (cached)
+Read the CSV file
+key 4ac3b3f08cb0</title><rect x="175.5" y="126" width="380" height="56" rx="10" class="dag-node dag-node--step is-cached" stroke-width="1.5" /><text x="365.5" y="144" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Load</text><text x="365.5" y="164" class="dag-text dag-text--desc" font-size="10" text-anchor="middle" dominant-baseline="central">Read the CSV file</text></g><g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="path"><title>path</title><ellipse cx="371.1" cy="46" rx="50" ry="16" class="dag-node dag-node--param" stroke-width="1.5" /><text x="371.1" y="46" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central">path</text></g><g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="case"><title>case</title><ellipse cx="641.5" cy="154" rx="50" ry="16" class="dag-node dag-node--param" stroke-width="1.5" /><text x="641.5" y="154" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central">case</text></g><g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="Count"><title>Count (cached)
+Count the characters
+key 6321522a0eee</title><rect x="30" y="246" width="380" height="56" rx="10" class="dag-node dag-node--step is-cached" stroke-width="1.5" /><text x="220" y="264" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Count</text><text x="220" y="284" class="dag-text dag-text--desc" font-size="10" text-anchor="middle" dominant-baseline="central">Count the characters</text></g><g class="dag-item dag-item--output" data-state="none" data-kind="output"><title>Text</title><rect x="370.4" y="486" width="100" height="32" rx="8" class="dag-node dag-node--output" stroke-width="2" /><text x="420.4" y="502" class="dag-text dag-text--output" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">Text</text></g></svg>

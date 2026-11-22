@@ -5,3 +5,4 @@ set -eu
 cd "$(dirname "$0")/.."
 uv run python docs/examples/visualization.py docs/assets/graph.svg
 uv run python docs/examples/graph_states.py docs/assets/graph_states.svg
+uv run python docs/examples/graph_looks.py docs/assets

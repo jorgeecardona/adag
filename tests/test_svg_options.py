@@ -281,3 +281,12 @@ def test_animate_moves_dashes_only_along_edges_into_pending_steps() -> None:
     drawing = _drawing(moving)
     # Into Clean, into Report (twice): the three edges that lead to a pending step.
     assert drawing.count("dag-edge--flow") == 3
+
+
+def test_every_css_variable_of_the_stylesheet_is_in_the_docs_table() -> None:
+    docs = (Path(__file__).resolve().parent.parent / "docs" / "visualization.md").read_text()
+    used = set(re.findall(r"--adag-[a-z-]+", stylesheet("light")))
+    listed = set(re.findall(r"^\| `(--adag-[a-z-]+)` \|", docs, flags=re.MULTILINE))
+    assert used == listed, (
+        f"missing from the docs: {sorted(used - listed)}; unknown: {sorted(listed - used)}"
+    )
