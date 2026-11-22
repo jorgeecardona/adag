@@ -10,7 +10,7 @@ with CSS variables.
 ![The quickstart graph](assets/graph.svg)
 
 Each step is a box. The state square and word say whether the step is cached, pending or
-blocked. The box also shows the 12-character cache key of the step (`key 4ac3b3f08cb0`). Run
+blocked. The box also shows the 12-character cache key of the step (`key d0994e1bad6e`). Run
 `dag(output, cache_dir=...)` to see the states. Without `cache_dir` there is no state to show,
 so the boxes are neutral and carry no state word.
 
@@ -37,8 +37,8 @@ In a notebook, the returned `SVG` object displays inline.
 
 ## Choose a look
 
-`SvgOptions` has three fields that change how the graph looks. Each has a default, so
-`SvgOptions()` is the blueprint look with input nodes.
+`SvgOptions` has these fields. Each has a default, so `SvgOptions()` is the blueprint look with
+input nodes.
 
 | Field | Values | What it does |
 | --- | --- | --- |
@@ -66,8 +66,8 @@ each box has the state and the cache key.
 
 ![Band style](assets/look_band.svg)
 
-`classic` is the look of adag 0.3.22: centred text in rounded boxes. Use it to keep the old
-images. It always draws inputs as nodes.
+`classic` has the colours and box shapes of 0.3.22: centred text in rounded boxes. Use it to keep
+the old images. It draws inputs as nodes, except in the compact density.
 
 ![Classic style](assets/look_classic.svg)
 
@@ -139,6 +139,9 @@ Two rules about where this works:
 
 - The variables work only when the SVG is inline in the page. In `<img src="graph.svg">` or
   `![](graph.svg)` the SVG is a separate document, and it uses its own defaults.
+- Renderers that do not read CSS variables (Inkscape, ImageMagick, some converters) draw the
+  default colours. The stylesheet has the default colours as plain values first, and the variables
+  inside `@supports (--a: 0)`, so only a renderer that knows variables reads them.
 - A README on GitHub, GitLab or PyPI shows an image, not inline SVG. Save the graph to a file
   with `dag(output, path="graph.svg")` and link it as `![](graph.svg)`. Do not paste the SVG text.
 
@@ -235,7 +238,7 @@ str True
 ## Test a drawing change
 
 The tests draw every graph in `tests/graphs_fixtures.py` in every style, input mode and density,
-and check the geometry: no overlapping boxes, no edge under a box, no text under 11 px.
+and check the geometry: no overlapping boxes, no edge under a box, no text under 11 px (9 px in classic).
 
 1. To cover a drawing bug, add the graph to `tests/graphs_fixtures.py`.
 2. Add a line for it to `SPECS` in `tests/test_golden_graphs.py`.
@@ -246,5 +249,6 @@ ADAG_UPDATE_GOLDEN=1 pytest tests/test_golden_graphs.py
 ```
 
 The command writes `tests/golden_graphs/*.svg` and a `.png` beside each one when Chrome is
-installed. Open the PNGs before you commit: they are for your eyes, and no test reads them. A
+installed. The PNGs are for review only: no test reads them. Open the changed ones before you
+commit. A
 test that fails prints the first line that differs and this command.

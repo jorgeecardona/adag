@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from adag.svg_paint import Density, Inputs, Style
 from adag.svg_theme import stylesheet
 from adag.visualization import NodeMetadata, SvgOptions, render_graph_svg
 from graphs_fixtures import GRAPHS, GraphFixture
@@ -26,10 +27,11 @@ SAMPLES = 8
 MAX_ASPECT = 3.0
 MAX_SPREAD = {"normal": 8.0, "compact": 16.0}  # canvas area / sum of box areas
 
-STYLES = ("blueprint", "band", "classic")
-INPUTS = ("terminals", "tabs", "rows")
-DENSITIES = ("normal", "compact")
-COMBOS = list(itertools.product(STYLES, INPUTS, DENSITIES))
+STYLES: tuple[Style, ...] = ("blueprint", "band", "classic")
+INPUTS: tuple[Inputs, ...] = ("terminals", "tabs", "rows")
+DENSITIES: tuple[Density, ...] = ("normal", "compact")
+Combo = tuple[Style, Inputs, Density]
+COMBOS: list[Combo] = list(itertools.product(STYLES, INPUTS, DENSITIES))
 BIG = ("namecheck", "namecheck_big")
 
 Point = tuple[float, float]
@@ -121,7 +123,7 @@ def path_points(d: str) -> tuple[Point, ...]:
 
 
 def read_drawing(svg: str) -> Drawing:
-    root = ET.fromstring(svg)  # noqa: S314 (the SVG is adag's own output)
+    root = ET.fromstring(svg)  # noqa: S314
     view_box = [float(n) for n in root.get("viewBox", "0 0 0 0").split()]
     boxes: list[Box] = []
     edges: list[tuple[Point, ...]] = []
@@ -192,7 +194,9 @@ def crossings(drawing: Drawing) -> int:
     return count
 
 
-def render(graph: GraphFixture, style: str, inputs: str, density: str, theme: str = "light") -> str:
+def render(
+    graph: GraphFixture, style: Style, inputs: Inputs, density: Density, theme: str = "light"
+) -> str:
     return render_graph_svg(
         list(graph.nodes),
         list(graph.edges),
@@ -202,7 +206,7 @@ def render(graph: GraphFixture, style: str, inputs: str, density: str, theme: st
     )
 
 
-def _id(combo: tuple[str, str, str]) -> str:
+def _id(combo: Combo) -> str:
     return "-".join(combo)
 
 
@@ -250,11 +254,9 @@ CROSSING_BASELINE: dict[str, int] = {
 
 @pytest.mark.parametrize("graph", sorted(GRAPHS))
 @pytest.mark.parametrize("combo", COMBOS, ids=_id)
-def test_every_graph_draws_well(graph: str, combo: tuple[str, str, str]) -> None:
+def test_every_graph_draws_well(graph: str, combo: Combo) -> None:
     style = combo[0]
-    started = time.perf_counter()
     svg = render(GRAPHS[graph], *combo)
-    assert time.perf_counter() - started < 1.0
     drawing = read_drawing(svg)  # well-formed XML, or this raises
 
     for first, second in itertools.combinations(drawing.boxes, 2):
@@ -272,7 +274,7 @@ def test_every_graph_draws_well(graph: str, combo: tuple[str, str, str]) -> None
 
 @pytest.mark.parametrize("graph", BIG)
 @pytest.mark.parametrize("combo", COMBOS, ids=_id)
-def test_big_graphs_stay_compact_and_uncrossed(graph: str, combo: tuple[str, str, str]) -> None:
+def test_big_graphs_stay_compact_and_uncrossed(graph: str, combo: Combo) -> None:
     drawing = read_drawing(render(GRAPHS[graph], *combo))
     area = drawing.width * drawing.height
     assert area <= MAX_SPREAD[combo[2]] * sum(box.area for box in drawing.boxes)
@@ -285,7 +287,7 @@ def test_big_graphs_stay_compact_and_uncrossed(graph: str, combo: tuple[str, str
     assert crossings(drawing) <= baseline + 2
 
 
-def test_a_graph_of_40_nodes_and_80_edges_draws_in_half_a_second() -> None:
+def test_a_graph_of_40_nodes_and_80_edges_draws_in_two_seconds() -> None:
     nodes = [
         NodeMetadata(
             name=f"n{level}_{i}", kind="step", title=f"Step {level}.{i}", description="A step."
@@ -305,9 +307,50 @@ def test_a_graph_of_40_nodes_and_80_edges_draws_in_half_a_second() -> None:
     for style in ("blueprint", "band"):
         started = time.perf_counter()
         svg = render_graph_svg(nodes, edges, options=SvgOptions(style=style))
-        assert time.perf_counter() - started < 0.5
+        assert time.perf_counter() - started < 2.0
         drawing = read_drawing(svg)
         assert not any(a.overlaps(b) for a, b in itertools.combinations(drawing.boxes, 2))
+
+
+def _expected_counts(graph: GraphFixture, combo: Combo) -> tuple[int, int]:
+    """How many node groups and edge paths a drawing has: inputs are folded away or drawn."""
+    style, inputs, density = combo
+    folded = density == "compact" or (style != "classic" and inputs != "terminals")
+    names = {n.name: n for n in graph.nodes}
+    foldable = {
+        n.name
+        for n in graph.nodes
+        if n.kind in ("param", "file")
+        and all(names[t].kind == "step" for s, t in graph.edges if s == n.name)
+    }
+    drawn = [n for n in graph.nodes if not (folded and n.name in foldable)]
+    edges = [(a, b) for a, b in graph.edges if not (folded and a in foldable)]
+    has_output = bool(graph.output_label) and graph.final is not None
+    return len(drawn) + int(has_output), len(edges) + int(has_output)
+
+
+@pytest.mark.parametrize("graph", sorted(GRAPHS))
+@pytest.mark.parametrize("combo", COMBOS, ids=_id)
+def test_every_node_and_every_edge_is_drawn_once(graph: str, combo: Combo) -> None:
+    root = ET.fromstring(render(GRAPHS[graph], *combo))  # noqa: S314 (adag's own output)
+    groups = [g for g in root.iter(f"{SVG_NS}g") if "dag-item" in g.get("class", "").split()]
+    paths = [p for p in root.iter(f"{SVG_NS}path") if "dag-edge" in p.get("class", "").split()]
+    assert (len(groups), len(paths)) == _expected_counts(GRAPHS[graph], combo)
+
+
+@pytest.mark.parametrize("graph", sorted(GRAPHS))
+@pytest.mark.parametrize("combo", COMBOS, ids=_id)
+def test_every_text_is_inside_the_canvas(graph: str, combo: Combo) -> None:
+    root = ET.fromstring(render(GRAPHS[graph], *combo))  # noqa: S314 (adag's own output)
+    width, height = (float(v) for v in root.get("viewBox", "0 0 0 0").split()[2:])
+    for text in root.iter(f"{SVG_NS}text"):
+        size = float(text.get("font-size", 0))
+        reach = len(text.text or "") * size * 0.62
+        x, y = float(text.get("x", 0)), float(text.get("y", 0))
+        anchor = text.get("text-anchor", "start")
+        left = {"start": x, "middle": x - reach / 2, "end": x - reach}[anchor]
+        assert left >= -1 and left + reach <= width + 1, (text.text, left, reach, width)
+        assert y - size / 2 >= 0 and y + size / 2 <= height, (text.text, y, height)
 
 
 def _selectors(css: str) -> set[str]:

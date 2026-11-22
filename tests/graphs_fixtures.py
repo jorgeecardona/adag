@@ -12,7 +12,7 @@ levels. They are copies of the structure, not imports of the consumer.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from adag.visualization import NodeMetadata
 
@@ -325,6 +325,29 @@ def _namecheck_big() -> GraphFixture:
     )
 
 
+def _dataset_middle() -> GraphFixture:
+    """A node that is neither a step nor an input sits between two steps."""
+    return GraphFixture(
+        "dataset_middle",
+        (
+            param("source", "'raw'"),
+            step("extract", "Extract", "Pull the records.", "CACHED"),
+            NodeMetadata(name="table", kind="dataset", title="records", state="SOURCE"),
+            step("model", "Model", "Fit on the records.", "PENDING"),
+        ),
+        (("source", "extract"), ("extract", "table"), ("table", "model")),
+        "model",
+        "Fit",
+        "A dataset node in the middle: it is never folded into a step.",
+    )
+
+
+def _stateless(graph: GraphFixture, name: str) -> GraphFixture:
+    """The same graph with every step pending, so the drawing has no state to show."""
+    nodes = tuple(replace(n, state="PENDING") if n.kind == "step" else n for n in graph.nodes)
+    return GraphFixture(name, nodes, graph.edges, graph.final, graph.output_label, graph.note)
+
+
 def all_graphs() -> dict[str, GraphFixture]:
     """Every fixture by name."""
     graphs = [
@@ -338,6 +361,11 @@ def all_graphs() -> dict[str, GraphFixture]:
         _long_edge(),
         _namecheck(),
         _namecheck_big(),
+        _dataset_middle(),
+    ]
+    graphs += [
+        _stateless(_diamond_inputs(), "diamond_stateless"),
+        _stateless(_namecheck(), "namecheck_stateless"),
     ]
     return {g.name: g for g in graphs}
 

@@ -273,7 +273,9 @@ def layout(
     settings = settings or LayoutSettings()
     sizes: dict[str, LNode] = {n.name: n for n in nodes}
     names = [n.name for n in nodes]
-    edge_list = [(a, b) for a, b in edges if a in sizes and b in sizes and a != b]
+    edge_list = list(
+        dict.fromkeys((a, b) for a, b in edges if a in sizes and b in sizes and a != b)
+    )
     dashed: set[tuple[str, str]] = set()
     if output is not None and final is not None and final in sizes:
         sizes[OUTPUT] = output

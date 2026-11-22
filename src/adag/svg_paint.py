@@ -12,16 +12,24 @@ is only its title, and its inputs are labels to its left.
 from __future__ import annotations
 
 import math
+import re
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import partial
 from itertools import pairwise
+from typing import Literal
 
 from adag import svg_layout as lay
+from adag.svg_theme import FONT_MONO, FONT_SANS
 
-STYLES = ("blueprint", "band", "classic")
-INPUTS = ("terminals", "tabs", "rows")
-DENSITIES = ("normal", "compact")
+Style = Literal["blueprint", "band", "classic"]
+Inputs = Literal["terminals", "tabs", "rows"]
+Density = Literal["normal", "compact"]
+
+STYLES: tuple[Style, ...] = ("blueprint", "band", "classic")
+INPUTS: tuple[Inputs, ...] = ("terminals", "tabs", "rows")
+DENSITIES: tuple[Density, ...] = ("normal", "compact")
 
 _STATE_WORD = {"CACHED": "CACHED", "PENDING": "PENDING", "BLOCKED": "BLOCKED"}
 
@@ -37,15 +45,21 @@ _LANE_MARGIN = 10
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
 _LEGEND_HEIGHT = 34
+_MONO_CLASSES = (
+    "dag-text--param",
+    "dag-text--tab",
+    "dag-text--key",
+    "dag-text--input",
+)
 
 
 @dataclass(frozen=True)
 class Look:
     """The choices that decide how a graph is drawn."""
 
-    style: str = "blueprint"
-    inputs: str = "terminals"
-    density: str = "normal"
+    style: Style = "blueprint"
+    inputs: Inputs = "terminals"
+    density: Density = "normal"
     stateless: bool = False
 
 
@@ -147,6 +161,14 @@ def _state_word(node: RNode, look: Look) -> str:
     return "" if look.stateless else _STATE_WORD.get(node.state, "")
 
 
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _clean(text: str) -> str:
+    """Drop the control characters that XML cannot carry."""
+    return _CONTROL.sub("", text)
+
+
 def _num(value: float) -> str:
     """A coordinate with at most one decimal, so the same graph always gives the same text."""
     text = f"{round(value, 1):.1f}"
@@ -162,11 +184,13 @@ def tooltip(node: RNode, look: Look) -> str:
     lines = [first]
     if node.description:
         lines.append(node.description)
+    if node.kind != "step" and node.value:
+        lines.append(node.value)
     lines.extend(_pair(n, v) for n, v in node.inputs)
     lines.extend(_pair(n, v) for n, v in node.params)
     if node.key:
         lines.append(f"key {node.key}")
-    return "\n".join(lines)
+    return _clean("\n".join(lines))
 
 
 # ── Measuring ────────────────────────────────────────────────────────────────
@@ -191,7 +215,10 @@ def _tabs_for(node: RNode, look: Look, width: float, mark: str) -> tuple[Tab, ..
     texts = [mark + _truncate(_pair(n, v), 28) for n, v in node.inputs][:_MAX_LINES]
     tabs: list[Tab] = []
     used = 0.0
-    for text in texts:
+    for raw in texts:
+        # the first tab must fit the box
+        fit = max(4, int((width - 8 - 22 - 6) / (11 * _MONO_EM)))
+        text = raw if tabs else _truncate(raw, fit)
         w = _text_width(text, 11, _MONO_EM) + 22
         if used + w + 6 > width - 8 and tabs:
             break
@@ -360,7 +387,7 @@ def _measure_input(node: RNode, look: Look) -> Measured:
     if look.style == "classic":
         return Measured(float(max(len(node.title) * 8 + 32, 100)), 32.0, title=node.title)
     name = _truncate(node.title, 24)
-    value = _truncate(node.value, 24) if node.value else ""
+    value = _truncate(node.value, 24) if node.value and node.kind == "param" else ""
     width = max(_text_width(name, 12, _MONO_EM), _text_width(value, 11, _MONO_EM)) + 28
     if look.style == "blueprint":
         width += 12
@@ -417,11 +444,15 @@ def _text(
     anchor: str = "start",
     bold: bool = False,
     tip: str = "",
+    mono: bool = False,
 ) -> None:
+    """Add one line of text. The class sets the font and the colour; the attribute is the fallback."""
+    use_mono = mono or any(name in cls.split() for name in _MONO_CLASSES)
     attrs = {
         "x": _num(x),
         "y": _num(y),
         "class": f"dag-text {cls}".strip(),
+        "font-family": FONT_MONO if use_mono else FONT_SANS,
         "font-size": _num(size),
         "text-anchor": anchor,
         "dominant-baseline": "central",
@@ -429,9 +460,12 @@ def _text(
     if bold:
         attrs["font-weight"] = "bold"
     element = ET.SubElement(parent, "text", attrs)
-    element.text = s
+    element.text = _clean(s)
     if tip:
-        ET.SubElement(element, "title").text = tip
+        ET.SubElement(element, "title").text = _clean(tip)
+
+
+_mono_text = partial(_text, mono=True)
 
 
 def _group(parent: ET.Element, node: RNode, look: Look) -> ET.Element:
@@ -450,7 +484,7 @@ def _group(parent: ET.Element, node: RNode, look: Look) -> ET.Element:
             "class": " ".join(classes),
             "data-state": state,
             "data-kind": node.kind,
-            "data-name": node.name,
+            "data-name": _clean(node.name),
         },
     )
     ET.SubElement(group, "title").text = tooltip(node, look)
@@ -512,7 +546,7 @@ def _paint_blueprint(
         _box_classes(node),
         **{"stroke-width": "2" if node.is_final else "1.5"},
     )
-    _text(
+    _mono_text(
         group,
         m.title,
         x + _PAD_X,
@@ -526,17 +560,17 @@ def _paint_blueprint(
     if m.desc:
         cursor += 4
         for line in m.desc:
-            _text(group, line, x + _PAD_X, cursor + 8, size=11, cls="dag-text--desc")
+            _mono_text(group, line, x + _PAD_X, cursor + 8, size=11, cls="dag-text--desc")
             cursor += 16
     if m.inputs:
         cursor += 6
         for line in m.inputs:
-            _text(group, line, x + _PAD_X, cursor + 8, size=11, cls="dag-text--input")
+            _mono_text(group, line, x + _PAD_X, cursor + 8, size=11, cls="dag-text--input")
             cursor += 16
     if m.params:
         cursor += 6
         for line in m.params:
-            _text(group, line, x + _PAD_X, cursor + 7.5, size=11, cls="dag-text--param")
+            _mono_text(group, line, x + _PAD_X, cursor + 7.5, size=11, cls="dag-text--param")
             cursor += 15
     word = _state_word(node, look)
     if word or node.key:
@@ -555,9 +589,9 @@ def _paint_blueprint(
         mid = top + 13
         if word:
             _rect(group, x + _PAD_X, mid - 4, 8, 8, 0, "dag-state")
-            _text(group, word, x + _PAD_X + 14, mid, size=11, cls="dag-text--state")
+            _mono_text(group, word, x + _PAD_X + 14, mid, size=11, cls="dag-text--state")
         if node.key:
-            _text(
+            _mono_text(
                 group,
                 f"key {node.key}",
                 x + p.width - _PAD_X,
@@ -688,7 +722,7 @@ def _paint_compact(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, l
         _rect(group, x, y, p.width, p.height, 2, _box_classes(node), **{"stroke-width": width})
         if word:
             _rect(group, x + 11, p.y - 4, 8, 8, 0, "dag-state")
-        _text(
+        _mono_text(
             group, m.title, x + (28 if word else 14), p.y, size=13, cls="dag-text--title", bold=True
         )
         label_cls = "dag-text--input"
@@ -727,8 +761,13 @@ def _paint_compact(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, l
 
 def _paint_input(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, look: Look) -> None:
     x, y = p.x - p.width / 2, p.y - p.height / 2
-    cls = f"dag-node dag-node--{node.kind}"
+    kind = node.kind if node.kind in ("param", "file") else "param"
+    cls = f"dag-node dag-node--{kind}"
     if look.style == "classic":
+        if kind == "file":
+            _rect(group, x, y, p.width, p.height, 4, cls, **{"stroke-width": "1.5"})
+            _text(group, m.title, p.x, p.y, size=11, cls="dag-text--file", anchor="middle")
+            return
         ET.SubElement(
             group,
             "ellipse",
@@ -758,7 +797,7 @@ def _paint_input(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, loo
     if blueprint:
         _rect(group, x + 8, p.y - 3, 6, 6, 0, "dag-pin")
     name_y = p.y - 7 if m.desc else p.y
-    _text(
+    _mono_text(
         group,
         m.title,
         p.x + shift,
@@ -769,7 +808,9 @@ def _paint_input(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, loo
         anchor="middle",
     )
     for line in m.desc:
-        _text(group, line, p.x + shift, p.y + 8, size=11, cls="dag-text--desc", anchor="middle")
+        _mono_text(
+            group, line, p.x + shift, p.y + 8, size=11, cls="dag-text--desc", anchor="middle"
+        )
 
 
 def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> None:
@@ -778,7 +819,7 @@ def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> N
         "g",
         {"class": "dag-item dag-item--output", "data-state": "none", "data-kind": "output"},
     )
-    ET.SubElement(group, "title").text = label
+    ET.SubElement(group, "title").text = _clean(label)
     x, y = p.x - p.width / 2, p.y - p.height / 2
     if look.style == "classic":
         _rect(
@@ -796,7 +837,7 @@ def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> N
             "dag-node dag-node--output",
             **{"stroke-width": "1.5"},
         )
-        _text(group, label, p.x, p.y, size=12, cls="dag-text--output", anchor="middle")
+        _mono_text(group, label, p.x, p.y, size=12, cls="dag-text--output", anchor="middle")
     else:
         _rect(
             group,
@@ -920,26 +961,41 @@ def settings_for(look: Look) -> lay.LayoutSettings:
 def _fold_inputs(
     nodes: Sequence[RNode], edges: Sequence[tuple[str, str]], *, fold: bool
 ) -> tuple[list[RNode], list[tuple[str, str]]]:
-    """With ``fold``, take the input nodes out of the graph and put them in the steps that read them."""
+    """With ``fold``, move inputs into the steps that read them.
+
+    Only an input (a param or a file with no edge into it) that feeds steps and nothing else is
+    folded. Any other node stays a node, and so does an input that nothing reads.
+    """
     if not fold:
         return list(nodes), list(edges)
-    kinds = {n.name: n for n in nodes}
+    by_name = {n.name: n for n in nodes}
+    has_input = {target for _, target in edges}
+    readers: dict[str, list[str]] = {}
+    for source, target in edges:
+        readers.setdefault(source, []).append(target)
+    foldable = {
+        n.name
+        for n in nodes
+        if n.kind in ("param", "file")
+        and n.name not in has_input
+        and readers.get(n.name)
+        and all(by_name.get(t) is not None and by_name[t].kind == "step" for t in readers[n.name])
+    }
     folded: dict[str, list[tuple[str, str]]] = {}
     kept: list[tuple[str, str]] = []
     for source, target in edges:
-        src = kinds.get(source)
-        if src is not None and src.kind != "step":
-            entry = (src.title, src.value)
+        if source in foldable:
+            src = by_name[source]
+            entry = (src.title, src.value if src.kind == "param" else "")
             if entry not in folded.setdefault(target, []):
                 folded[target].append(entry)
         else:
             kept.append((source, target))
-    out: list[RNode] = []
-    for n in nodes:
-        if n.kind != "step":
-            continue
-        extra = tuple(folded.get(n.name, ()))
-        out.append(_with_inputs(n, extra))
+    out = [
+        _with_inputs(n, tuple(folded.get(n.name, ()))) if n.kind == "step" else n
+        for n in nodes
+        if n.name not in foldable
+    ]
     return out, kept
 
 
@@ -1005,6 +1061,7 @@ def draw(
 
     legend_states = _legend_states(shown, look) if legend else []
     canvas_h = result.height + (_LEGEND_HEIGHT if legend_states else 0)
+    canvas_w = max(result.width, _legend_width(legend_states) + 2 * lay.LayoutSettings().margin)
     root_class = f"dag dag--{look.style}"
     if look.density == "compact":
         root_class += " dag--compact"
@@ -1015,9 +1072,9 @@ def draw(
         {
             "xmlns": "http://www.w3.org/2000/svg",
             "class": root_class,
-            "width": _num(result.width),
+            "width": _num(canvas_w),
             "height": _num(canvas_h),
-            "viewBox": f"0 0 {_num(result.width)} {_num(canvas_h)}",
+            "viewBox": f"0 0 {_num(canvas_w)} {_num(canvas_h)}",
         },
     )
     if css is not None:
@@ -1026,10 +1083,10 @@ def draw(
         ET.SubElement(
             svg,
             "rect",
-            {"class": "dag-canvas", "width": _num(result.width), "height": _num(canvas_h)},
+            {"class": "dag-canvas", "width": _num(canvas_w), "height": _num(canvas_h)},
         )
         if look.style == "blueprint":
-            _path(svg, _grid(result.width, canvas_h), "dag-grid")
+            _path(svg, _grid(canvas_w, canvas_h), "dag-grid")
     pending = {n.name for n in shown if n.state == "PENDING" and not look.stateless}
     for route in result.routes:
         paint_route(svg, route, look, settings, flow=animate and route.target in pending)
@@ -1050,6 +1107,12 @@ def _legend_states(shown: Sequence[RNode], look: Look) -> list[str]:
     return [word for word in _STATE_WORD if word in present]
 
 
+def _legend_width(states: Sequence[str]) -> float:
+    return (
+        sum(14 + _text_width(state, 11, _WORD_EM) + 24 for state in states) - 24 if states else 0.0
+    )
+
+
 def _paint_legend(parent: ET.Element, states: Sequence[str], y: float) -> None:
     """One row of state squares and words, left aligned under the graph."""
     group = ET.SubElement(parent, "g", {"class": "dag-legend"})
@@ -1058,7 +1121,10 @@ def _paint_legend(parent: ET.Element, states: Sequence[str], y: float) -> None:
         item = ET.SubElement(
             group,
             "g",
-            {"class": f"dag-item dag-legend-item is-{state.lower()}", "data-state": state.lower()},
+            {
+                "class": f"dag-item dag-item--step dag-legend-item is-{state.lower()}",
+                "data-state": state.lower(),
+            },
         )
         _rect(item, x, y - 4, 8, 8, 0, "dag-state")
         _text(item, state, x + 14, y, size=11, cls="dag-text--state")

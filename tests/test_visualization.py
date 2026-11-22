@@ -267,7 +267,7 @@ def test_every_edge_arrives_vertically_at_the_arrow_base() -> None:
     edges = [("a", "b"), ("a", "c"), ("b", "d"), ("c", "d"), ("a", "d")]
     for style in ("blueprint", "band", "classic"):
         svg = render_graph_svg(nodes, edges, options=SvgOptions(style=style))
-        root = ET.fromstring(svg)  # noqa: S314 (adag's own output)
+        root = ET.fromstring(svg)  # noqa: S314
         ns = "{http://www.w3.org/2000/svg}"
         paths = [e for e in root.iter(f"{ns}path") if "dag-edge" in e.get("class", "")]
         arrows = list(root.iter(f"{ns}polygon"))

@@ -22,7 +22,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel
 
+from adag import InputParam, NullObserver, Pipeline, Step, dag
+from adag.svg_paint import Density, Inputs, Style
+from adag.svg_theme import stylesheet
 from adag.visualization import SvgOptions, render_graph_svg
 from graphs_fixtures import GRAPHS
 
@@ -36,14 +40,17 @@ class Spec:
     """One golden image: a graph in one style, input mode, density and theme."""
 
     graph: str
-    style: str = "blueprint"
-    inputs: str = "terminals"
-    density: str = "normal"
+    style: Style = "blueprint"
+    inputs: Inputs = "terminals"
+    density: Density = "normal"
     theme: str = "light"
+    legend: bool = False
+    animate: bool = False
 
     @property
     def stem(self) -> str:
-        return f"{self.graph}__{self.style}-{self.inputs}-{self.density}-{self.theme}"
+        extras = ("-legend" if self.legend else "") + ("-animate" if self.animate else "")
+        return f"{self.graph}__{self.style}-{self.inputs}-{self.density}-{self.theme}{extras}"
 
 
 def _specs() -> list[Spec]:
@@ -61,10 +68,50 @@ def _specs() -> list[Spec]:
             Spec(graph, "band", "rows", "compact"),
             Spec(graph, theme="dark"),
         ]
+    specs += [
+        Spec("blocked", "classic"),
+        Spec("dataset_middle", "band", "tabs"),
+        Spec("diamond_stateless", "band", "rows"),
+        Spec("namecheck_stateless", "classic"),
+        Spec("diamond", legend=True, animate=True),
+    ]
     return specs
 
 
 SPECS = _specs()
+REAL = ("dag_real__stateless", "dag_real__cached")
+
+
+class Num(BaseModel):
+    value: int
+
+
+@dataclass(frozen=True)
+class Source(Step[Num]):
+    """Read a number."""
+
+    def run(self, x: int) -> Num:
+        return Num(value=x)
+
+
+@dataclass(frozen=True)
+class Scale(Step[Num]):
+    """Multiply the number."""
+
+    factor: int = 2
+
+    def run(self, source: Num, factor: int) -> Num:
+        return Num(value=source.value * factor)
+
+
+def _real_graph(factor: int):
+    """Three steps from real classes. Two are ``Scale``, so the second is named ``Scale#2``.
+
+    The cache key of a step covers its code, so editing a step in this file changes the keys in the
+    golden images: run the update command.
+    """
+    x = InputParam.with_default("x", 3)
+    return Scale(factor=factor)(source=Scale()(source=Source()(x=x)))
 
 
 def render(spec: Spec) -> str:
@@ -76,7 +123,12 @@ def render(spec: Spec) -> str:
         output_label=graph.output_label,
         final_step_name=graph.final,
         options=SvgOptions(
-            theme=spec.theme, style=spec.style, inputs=spec.inputs, density=spec.density
+            theme=spec.theme,
+            style=spec.style,
+            inputs=spec.inputs,
+            density=spec.density,
+            legend=spec.legend,
+            animate=spec.animate,
         ),
     )
     return svg.replace("><", ">\n<") + "\n"
@@ -107,10 +159,9 @@ def _write_png(svg_path: Path) -> None:
     subprocess.run(command, check=False, capture_output=True, timeout=60)
 
 
-@pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.stem)
-def test_the_graph_matches_its_golden_svg(spec: Spec) -> None:
-    path = GOLDEN / f"{spec.stem}.svg"
-    drawn = render(spec)
+def _check(stem: str, drawn: str) -> None:
+    """Compare ``drawn`` with ``golden_graphs/<stem>.svg``, or write it when updating."""
+    path = GOLDEN / f"{stem}.svg"
     if UPDATE:
         GOLDEN.mkdir(exist_ok=True)
         if not path.exists() or path.read_text() != drawn:
@@ -131,8 +182,29 @@ def test_the_graph_matches_its_golden_svg(spec: Spec) -> None:
                 )
 
 
+@pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.stem)
+def test_the_graph_matches_its_golden_svg(spec: Spec) -> None:
+    _check(spec.stem, render(spec))
+
+
+def _pretty(svg: str) -> str:
+    return svg.replace("><", ">\n<") + "\n"
+
+
+def test_a_real_dag_with_no_cache_matches_its_golden_svg() -> None:
+    """Real step classes: a ``#2`` name, real cache keys, neutral because there is no cache_dir."""
+    _check(REAL[0], _pretty(str(dag(_real_graph(2), options=SvgOptions(inputs="rows")))))
+
+
+def test_a_real_dag_with_a_cache_matches_its_golden_svg(tmp_path: Path) -> None:
+    """The first two steps are cached; the last changed its field, so it is pending."""
+    Pipeline(_real_graph(2), cache_dir=tmp_path).execute(observer=NullObserver())
+    drawn = str(dag(_real_graph(5), cache_dir=tmp_path, options=SvgOptions(style="band")))
+    _check(REAL[1], _pretty(drawn))
+
+
 def test_every_golden_file_has_a_spec_and_the_other_way_round() -> None:
-    wanted = {f"{spec.stem}.svg" for spec in SPECS}
+    wanted = {f"{spec.stem}.svg" for spec in SPECS} | {f"{stem}.svg" for stem in REAL}
     present: set[str] = {p.name for p in GOLDEN.glob("*.svg")} if GOLDEN.exists() else set()
     if UPDATE:
         for stale in present - wanted:
@@ -142,3 +214,14 @@ def test_every_golden_file_has_a_spec_and_the_other_way_round() -> None:
     assert present == wanted, (
         f"stale: {sorted(present - wanted)}, missing: {sorted(wanted - present)}"
     )
+
+
+def test_every_class_the_stylesheet_names_is_used_by_some_golden_image() -> None:
+    """A class that no golden uses is dead CSS, or a look that no test draws."""
+    named = set(re.findall(r"\.(dag[a-z0-9_-]*|is-[a-z]+)", stylesheet("light", animate=True)))
+    used: set[str] = set()
+    for path in GOLDEN.glob("*.svg"):
+        drawing = re.sub(r"<style>.*?</style>", "", path.read_text(), flags=re.DOTALL)
+        used.update(re.findall(r'class="([^"]*)"', drawing))
+    used_tokens = {token for value in used for token in value.split()}
+    assert named - used_tokens == set()

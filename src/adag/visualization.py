@@ -13,6 +13,7 @@ import dataclasses
 import json
 import os
 import re
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -23,7 +24,14 @@ from adag.deferred import Deferred, InputParam
 from adag.io import FileSource, atomic_write_text
 from adag.key import Expansion
 from adag.step import Step, StepResult
-from adag.svg_paint import DENSITIES, INPUTS, STYLES, Look, RNode, draw, wrap_text_lines
+from adag.svg_paint import DENSITIES as _DENSITIES
+from adag.svg_paint import INPUTS as _INPUTS
+from adag.svg_paint import STYLES as _STYLES
+from adag.svg_paint import Density, Inputs, Style
+from adag.svg_paint import Look as _Look
+from adag.svg_paint import RNode as _RNode
+from adag.svg_paint import draw as _draw_graph
+from adag.svg_paint import wrap_text_lines as _wrap_text
 from adag.svg_theme import stylesheet as _stylesheet
 
 logger = structlog.get_logger()
@@ -80,9 +88,9 @@ class SvgOptions:
     ``style`` is ``"blueprint"`` (mono type, square corners, right-angle edges), ``"band"`` (a
     header strip with the state word, curved edges) or ``"classic"`` (the look of adag 0.3.22).
     ``inputs`` says where ``InputParam`` and file inputs go: ``"terminals"`` (small nodes with an
-    edge), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step). ``classic`` always
-    draws terminals. ``density="compact"`` draws only the title of each step, and the inputs as
-    labels to its left.
+    edge), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step). ``classic`` has the
+    colours and box shapes of 0.3.22 and draws terminals, except in the compact density.
+    ``density="compact"`` draws only the title of each step, and the inputs as labels to its left.
 
     ``theme`` is ``"light"``, ``"dark"`` or ``"auto"`` (follow the browser's colour scheme).
     ``legend=True`` adds a row under the graph that names the state colours in use. ``animate=True``
@@ -98,20 +106,25 @@ class SvgOptions:
     include_styles: bool = True
     include_background: bool = True
     show_params: bool = True
-    style: str = "blueprint"
-    inputs: str = "terminals"
-    density: str = "normal"
+    style: Style = "blueprint"
+    inputs: Inputs = "terminals"
+    density: Density = "normal"
     legend: bool = False
     animate: bool = False
 
     def __post_init__(self) -> None:
         for name, value, allowed in (
-            ("style", self.style, STYLES),
-            ("inputs", self.inputs, INPUTS),
-            ("density", self.density, DENSITIES),
+            ("style", self.style, _STYLES),
+            ("inputs", self.inputs, _INPUTS),
+            ("density", self.density, _DENSITIES),
         ):
             if value not in allowed:
                 raise ValueError(f"SvgOptions.{name} must be one of {allowed}, not {value!r}")
+        if self.theme not in ("light", "dark", "auto"):
+            warnings.warn(
+                f"SvgOptions.theme {self.theme!r} is not light, dark or auto: drawing it light",
+                stacklevel=3,
+            )
 
     def stylesheet(self) -> str:
         return _stylesheet(self.theme, animate=self.animate)
@@ -140,14 +153,26 @@ class NodeMetadata:
     """For an input: its default value or file path, empty when it has none."""
 
 
-def _node_name_and_kind(deferred: Deferred[Any]) -> tuple[str, str, str] | None:
-    """Return (name, kind, value) for a leaf Deferred, or None for StepResult."""
+def _node_name_and_kind(deferred: Deferred[Any]) -> tuple[str, str] | None:
+    """Return (name, kind) for a leaf Deferred, or None for StepResult."""
     if isinstance(deferred, FileSource):
-        return Path(deferred.path).name, "file", str(deferred.path)
+        return Path(deferred.path).name, "file"
     if isinstance(deferred, InputParam):
-        default = repr(deferred.default) if deferred.has_default else ""
-        return deferred.name, "param", default[:40]
+        return deferred.name, "param"
     return None
+
+
+_MAX_VALUE = 40
+
+
+def _leaf_value(deferred: Deferred[Any]) -> str:
+    """What an input node shows besides its name: the default of a param, the path of a file."""
+    if isinstance(deferred, FileSource):
+        return str(deferred.path)
+    if isinstance(deferred, InputParam) and deferred.has_default:
+        text = repr(deferred.default)
+        return text if len(text) <= _MAX_VALUE else text[: _MAX_VALUE - 3] + "..."
+    return ""
 
 
 def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
@@ -165,9 +190,9 @@ def walk(output: Deferred[Any]) -> tuple[list[Node], list[Edge]]:
     def _visit(deferred: Any) -> str:
         leaf = _node_name_and_kind(deferred)
         if leaf is not None:
-            name, kind, value = leaf
+            name, kind = leaf
             if name not in nodes:
-                nodes[name] = Node(name=name, step=None, kind=kind, value=value)
+                nodes[name] = Node(name=name, step=None, kind=kind, value=_leaf_value(deferred))
             return name
 
         # Capture .step while deferred is still Any (before isinstance narrows it).
@@ -271,7 +296,8 @@ def _scalar_params(step: Step[Any], max_str_len: int = 30) -> list[tuple[str, st
     return items
 
 
-_wrap_text_lines = wrap_text_lines  # the first-release private name, kept for old callers
+_wrap_text_lines = _wrap_text  # the first-release private name, kept for old callers
+LayoutNode = _RNode  # the old name of the node the painter draws, kept for old imports
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
@@ -396,11 +422,11 @@ def _to_render_nodes(
     edges: list[tuple[str, str]],
     final_step_name: str | None,
     options: SvgOptions,
-) -> list[RNode]:
+) -> list[_RNode]:
     """Turn the metadata into what the painter draws. ``is_leaf`` is decided here, from every edge."""
     targets = {target for _, target in edges}
     return [
-        RNode(
+        _RNode(
             name=meta.name,
             kind=meta.kind,
             title=meta.title,
@@ -426,8 +452,11 @@ def _draw(
     options: SvgOptions,
     stateless: bool,
 ) -> str:
-    look = Look(options.style, options.inputs, options.density, stateless)
-    return draw(
+    # classic keeps the colours of 0.3.22, which paint a graph with no state as pending
+    look = _Look(
+        options.style, options.inputs, options.density, stateless and options.style != "classic"
+    )
+    return _draw_graph(
         _to_render_nodes(nodes, edges, final_step_name, options),
         edges,
         look=look,
