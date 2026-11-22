@@ -67,7 +67,8 @@ def _groups(svg: str) -> list[ET.Element]:
 
 
 @pytest.mark.parametrize(
-    ("field", "value"), [("style", "neon"), ("inputs", "chips"), ("density", "tiny")]
+    ("field", "value"),
+    [("style", "neon"), ("inputs", "chips"), ("density", "tiny"), ("corners", "bevel")],
 )
 def test_an_unknown_option_value_is_refused(field: str, value: str) -> None:
     with pytest.raises(ValueError, match=field):
@@ -480,3 +481,76 @@ def test_a_renderer_without_css_variables_does_not_paint_the_graph_black(
         check=True,
     ).stdout
     assert float(mean) > 0.6  # a light drawing: mostly bright, not mostly black
+
+
+def _radii(svg: str) -> set[float]:
+    """The ``rx`` of every box in a drawing."""
+    root = ET.fromstring(svg)  # noqa: S314
+    return {float(r.get("rx", "0")) for r in root.iter(f"{SVG_NS}rect") if r.get("rx") is not None}
+
+
+def _drawn(
+    style: str, corners: str, graph: str = "diamond_inputs", inputs: str = "terminals"
+) -> str:
+    g = GRAPHS[graph]
+    return render_graph_svg(
+        list(g.nodes),
+        list(g.edges),
+        output_label=g.output_label,
+        final_step_name=g.final,
+        options=SvgOptions(style=style, corners=corners, inputs=inputs),  # type: ignore[arg-type]
+    )
+
+
+def test_the_default_corners_are_round() -> None:
+    assert SvgOptions().corners == "round"
+    assert _drawn("blueprint", "round") == render_graph_svg(
+        list(GRAPHS["diamond_inputs"].nodes),
+        list(GRAPHS["diamond_inputs"].edges),
+        output_label=GRAPHS["diamond_inputs"].output_label,
+        final_step_name=GRAPHS["diamond_inputs"].final,
+    )
+
+
+@pytest.mark.parametrize("style", ["blueprint", "band"])
+def test_sharp_corners_use_a_box_radius_of_2_and_round_uses_8(style: str) -> None:
+    assert 8.0 in _radii(_drawn(style, "round"))
+    sharp = _radii(_drawn(style, "sharp"))
+    assert 2.0 in sharp
+    assert max(sharp) <= 2.0
+
+
+def test_sharp_corners_make_edge_bends_smaller() -> None:
+    def radius(svg: str) -> float:
+        """The distance from the start of a bend (``L``) to its control point (``Q``)."""
+        for path in ET.fromstring(svg).iter(f"{SVG_NS}path"):  # noqa: S314
+            match = (
+                re.search(r"L([\d.]+) ([\d.]+) Q([\d.]+) ([\d.]+)", path.get("d", ""))
+                if "dag-edge" in path.get("class", "")
+                else None
+            )
+            if match:
+                ax, ay, cx, cy = map(float, match.groups())
+                return abs(cx - ax) + abs(cy - ay)
+        raise AssertionError("no bent edge")
+
+    assert radius(_drawn("blueprint", "round")) > radius(_drawn("blueprint", "sharp"))
+    assert radius(_drawn("blueprint", "sharp")) <= 8.0
+
+
+def test_classic_ignores_corners() -> None:
+    assert _drawn("classic", "round") == _drawn("classic", "sharp")
+
+
+def test_the_corners_do_not_change_the_layout() -> None:
+    """Both corner shapes put every box in the same place."""
+
+    def boxes(svg: str) -> list[tuple[str, str, str, str]]:
+        root = ET.fromstring(svg)  # noqa: S314
+        return [
+            (r.get("x", ""), r.get("y", ""), r.get("width", ""), r.get("height", ""))
+            for r in root.iter(f"{SVG_NS}rect")
+            if "dag-node" in r.get("class", "")
+        ]
+
+    assert boxes(_drawn("blueprint", "round")) == boxes(_drawn("blueprint", "sharp"))

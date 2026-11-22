@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from adag.svg_paint import Density, Inputs, Style
+from adag.svg_paint import Corners, Density, Inputs, Style
 from adag.svg_theme import stylesheet
 from adag.visualization import NodeMetadata, SvgOptions, render_graph_svg
 from graphs_fixtures import GRAPHS, GraphFixture
@@ -202,14 +202,21 @@ def crossings(drawing: Drawing) -> int:
 
 
 def render(
-    graph: GraphFixture, style: Style, inputs: Inputs, density: Density, theme: str = "light"
+    graph: GraphFixture,
+    style: Style,
+    inputs: Inputs,
+    density: Density,
+    theme: str = "light",
+    corners: Corners = "round",
 ) -> str:
     return render_graph_svg(
         list(graph.nodes),
         list(graph.edges),
         output_label=graph.output_label,
         final_step_name=graph.final,
-        options=SvgOptions(theme=theme, style=style, inputs=inputs, density=density),
+        options=SvgOptions(
+            theme=theme, style=style, inputs=inputs, density=density, corners=corners
+        ),
     )
 
 
@@ -318,9 +325,12 @@ def test_total_bends_stay_near_the_first_good_render(
 
 @pytest.mark.parametrize("graph", sorted(GRAPHS))
 @pytest.mark.parametrize("combo", COMBOS, ids=_id)
-def test_every_graph_draws_well(graph: str, combo: Combo) -> None:
+@pytest.mark.parametrize("corners", ["round", "sharp"])
+def test_every_graph_draws_well(graph: str, combo: Combo, corners: Corners) -> None:
     style = combo[0]
-    svg = render(GRAPHS[graph], *combo)
+    if style == "classic" and corners == "sharp":
+        pytest.skip("classic ignores corners")
+    svg = render(GRAPHS[graph], *combo, corners=corners)
     drawing = read_drawing(svg)  # well-formed XML, or this raises
 
     for first, second in itertools.combinations(drawing.boxes, 2):

@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SvgOptions(corners="round" | "sharp")`: round corners (default) or almost square ones, for
+  `blueprint` and `band`. Boxes go from 8 px to 2 px and edge bends from 14 px to 8 px. `classic`
+  ignores it.
 - `SvgOptions(style="blueprint" | "band" | "classic")`. "band" is a header strip with the title and
   the state word, with curved edges.
 - `SvgOptions(inputs="terminals" | "tabs" | "rows")`: inputs as small nodes (default), as a tab on

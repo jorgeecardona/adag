@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--blueprint" width="858" height="951" viewBox="0 0 858 951">
+<style>.dag-canvas { fill: #ffffff; }
+.dag--blueprint .dag-canvas { fill: #eef3fc; }
+.dag-grid { fill: none; stroke: #cfdaf0; stroke-width: 1; }
+.dag-text { fill: #333333; font-family: -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif; }
+.dag--blueprint .dag-text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: #5f6368; }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: #1f3d8f; }
+.dag-text--input { fill: #7b1fa2; font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.dag--blueprint .dag-text--input { fill: #1f3d8f; }
+.dag-item--step .dag-text--state { fill: #5f6368; font-weight: bold; letter-spacing: 0.05em; }
+.dag-item--step.is-pending .dag-text--state { fill: #8a6200; }
+.dag-item--step.is-cached .dag-text--state { fill: #1b6b3a; }
+.dag-item--step.is-blocked .dag-text--state { fill: #b3261e; }
+.dag--stateless .dag-item--step .dag-text--state { fill: #5f6368; }
+.dag-edge { fill: none; stroke: #607d8b; }
+.dag-arrow { fill: #607d8b; }
+.dag--blueprint .dag-edge { stroke: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
+.dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
+.dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
+.dag--classic .dag-item--step.is-cached .dag-node { fill: #e8f5e9; stroke: #66bb6a; }
+.dag--classic .dag-item--step.is-blocked .dag-node { fill: #ffebee; stroke: #ef5350; }
+.dag--classic.dag--stateless .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
+.dag--blueprint .dag-node { fill: #eef3fc; stroke: #1f3d8f; }
+.dag--band .dag-item--step .dag-node { fill: #ffffff; stroke: #78909c; }
+.dag--band .dag-item--step.is-pending .dag-node { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-node { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-node { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-node { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-node { stroke: #78909c; }
+.dag--band .dag-item--step .dag-head { fill: #f6f8fa; stroke: none; }
+.dag--band .dag-item--step.is-pending .dag-head { fill: #fff8e1; }
+.dag--band .dag-item--step.is-leaf .dag-head { fill: #e8eaf6; }
+.dag--band .dag-item--step.is-cached .dag-head { fill: #e8f5e9; }
+.dag--band .dag-item--step.is-blocked .dag-head { fill: #ffebee; }
+.dag--band.dag--stateless .dag-item--step .dag-head { fill: #f6f8fa; }
+.dag--band .dag-item--step .dag-rule { stroke: #78909c; stroke-width: 2; }
+.dag--band .dag-item--step.is-pending .dag-rule { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-rule { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-rule { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-rule { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-rule { stroke: #78909c; }
+.dag--blueprint .dag-rule { stroke: #1f3d8f; stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: #64748b; stroke: none; }
+.dag-item--step.is-pending .dag-state { fill: #c98e00; }
+.dag-item--step.is-cached .dag-state { fill: #2a9456; }
+.dag-item--step.is-blocked .dag-state { fill: #d0413a; }
+.dag--stateless .dag-item--step .dag-state { fill: #64748b; }
+.dag--band .dag-item--step .dag-tab { fill: #ffffff; stroke: #78909c; stroke-width: 1.5; }
+.dag--band .dag-item--step.is-pending .dag-tab { stroke: #ffc107; }
+.dag--band .dag-item--step.is-leaf .dag-tab { stroke: #9fa8da; }
+.dag--band .dag-item--step.is-cached .dag-tab { stroke: #66bb6a; }
+.dag--band .dag-item--step.is-blocked .dag-tab { stroke: #ef5350; }
+.dag--band.dag--stateless .dag-item--step .dag-tab { stroke: #78909c; }
+.dag--blueprint .dag-tab { fill: #eef3fc; stroke: #1f3d8f; stroke-width: 1.5; }
+.dag-node--param { fill: #f3e5f5; stroke: #ce93d8; }
+.dag-node--file { fill: #efebe9; stroke: #bcaaa4; }
+.dag-node--output { fill: #e3f2fd; stroke: #64b5f6; }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: #eef3fc; stroke: #1f3d8f; }
+.dag--blueprint .dag-node--output { fill: #eef3fc; stroke: #1f3d8f; stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: #ffffff; stroke: #607d8b; }
+.dag-pin { fill: #1f3d8f; stroke: none; }
+.dag-text--param-node { fill: #7b1fa2; }
+.dag-text--file { fill: #795548; }
+.dag-text--output { fill: #1565c0; }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: #1f3d8f; }
+.dag--band .dag-text--output { fill: #333333; }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: #8e24aa; }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: #00897b; }
+@supports (--a: 0) {
+.dag-canvas { fill: var(--adag-canvas, #ffffff); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #cfdaf0); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #333333); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #5f6368); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--input { fill: var(--adag-input-ink, #7b1fa2); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #1f3d8f); }
+.dag-item--step .dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
+.dag-arrow { fill: var(--adag-edge, #607d8b); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
+.dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
+.dag--band .dag-item--step .dag-head { fill: var(--st-bg); stroke: none; }
+.dag--band .dag-item--step .dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; opacity: 0.55; }
+.dag-item--step .dag-state { fill: var(--st); stroke: none; }
+.dag--band .dag-item--step .dag-tab { fill: var(--adag-card, #ffffff); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1.5; }
+.dag-node--param { fill: var(--adag-input-bg, #f3e5f5); stroke: var(--adag-input-border, #ce93d8); }
+.dag-node--file { fill: var(--adag-file-bg, #efebe9); stroke: var(--adag-file-border, #bcaaa4); }
+.dag-node--output { fill: var(--adag-output-bg, #e3f2fd); stroke: var(--adag-output-border, #64b5f6); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #ffffff); stroke: var(--adag-edge, #607d8b); }
+.dag-pin { fill: var(--adag-ink, #1f3d8f); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #7b1fa2); }
+.dag-text--file { fill: var(--adag-file-ink, #795548); }
+.dag-text--output { fill: var(--adag-output-ink, #1565c0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-text--output { fill: var(--adag-text, #333333); }
+.dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
+.dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+.dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #c98e00); --st-ink: var(--adag-pending-ink, #8a6200); --st-bg: var(--adag-pending-bg, #fff8e1); --st-border: var(--adag-pending-border, #ffc107);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #e8eaf6); --st-border: var(--adag-leaf-border, #9fa8da);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #2a9456); --st-ink: var(--adag-cached-ink, #1b6b3a); --st-bg: var(--adag-cached-bg, #e8f5e9); --st-border: var(--adag-cached-border, #66bb6a);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #d0413a); --st-ink: var(--adag-blocked-ink, #b3261e); --st-bg: var(--adag-blocked-bg, #ffebee); --st-border: var(--adag-blocked-border, #ef5350);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+}
+</style>
+<rect class="dag-canvas" width="858" height="951" />
+<path d="M20 0V951M40 0V951M60 0V951M80 0V951M100 0V951M120 0V951M140 0V951M160 0V951M180 0V951M200 0V951M220 0V951M240 0V951M260 0V951M280 0V951M300 0V951M320 0V951M340 0V951M360 0V951M380 0V951M400 0V951M420 0V951M440 0V951M460 0V951M480 0V951M500 0V951M520 0V951M540 0V951M560 0V951M580 0V951M600 0V951M620 0V951M640 0V951M660 0V951M680 0V951M700 0V951M720 0V951M740 0V951M760 0V951M780 0V951M800 0V951M820 0V951M840 0V951M0 20H858M0 40H858M0 60H858M0 80H858M0 100H858M0 120H858M0 140H858M0 160H858M0 180H858M0 200H858M0 220H858M0 240H858M0 260H858M0 280H858M0 300H858M0 320H858M0 340H858M0 360H858M0 380H858M0 400H858M0 420H858M0 440H858M0 460H858M0 480H858M0 500H858M0 520H858M0 540H858M0 560H858M0 580H858M0 600H858M0 620H858M0 640H858M0 660H858M0 680H858M0 700H858M0 720H858M0 740H858M0 760H858M0 780H858M0 800H858M0 820H858M0 840H858M0 860H858M0 880H858M0 900H858M0 920H858M0 940H858" class="dag-grid" />
+<path d="M212 450 L212 505" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="207,505 217,505 212,514" class="dag-arrow" />
+<path d="M613 439.5 L613 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="608,513 618,513 613,522" class="dag-arrow" />
+<path d="M356.5 657 L356.5 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="351.5,712 361.5,712 356.5,721" class="dag-arrow" />
+<path d="M553.3 649 L553.3 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="548.3,712 558.3,712 553.3,721" class="dag-arrow" />
+<path d="M454.9 827 L454.9 882" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
+<polygon points="449.9,882 459.9,882 454.9,891" class="dag-arrow dag-arrow--output" />
+<path d="M101 64 L101 78 Q101 86 109 86 L322.4 86 Q330.4 86 330.4 94 L330.4 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="325.4,123 335.4,123 330.4,132" class="dag-arrow" />
+<path d="M337.4 259 L337.4 274 Q337.4 282 345.4 282 L598 282 Q606 282 606 290 L606 324.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="601,324.5 611,324.5 606,333.5" class="dag-arrow" />
+<path d="M599 439.5 L599 474 Q599 482 591 482 L299.8 482 Q291.8 482 291.8 490 L291.8 505" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="286.8,505 296.8,505 291.8,514" class="dag-arrow" />
+<path d="M418.4 68 L418.4 97 Q418.4 105 410.4 105 L166.4 105 Q158.4 105 158.4 113 L158.4 274 Q158.4 282 166.4 282 L204 282 Q212 282 212 290 L212 314" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="207,314 217,314 212,323" class="dag-arrow" />
+<path d="M432.4 68 L432.4 87.5 Q432.4 95.5 424.4 95.5 L48 95.5 Q40 95.5 40 103.5 L40 465 Q40 473 48 473 L255.8 473 Q263.8 473 263.8 481 L263.8 505" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="258.8,505 268.8,505 263.8,514" class="dag-arrow" />
+<path d="M770.8 64 L770.8 283 Q770.8 291 762.8 291 L392 291 Q384 291 384 299 L384 465 Q384 473 376 473 L285.8 473 Q277.8 473 277.8 481 L277.8 505" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="272.8,505 282.8,505 277.8,514" class="dag-arrow" />
+<path d="M615.8 68 L615.8 274 Q615.8 282 623.8 282 L770 282 Q778 282 778 290 L778 474 Q778 482 770 482 L649.8 482 Q641.8 482 641.8 490 L641.8 513" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="636.8,513 646.8,513 641.8,522" class="dag-arrow" />
+<path d="M323.4 259 L323.4 283 Q323.4 291 315.4 291 L43 291 Q35 291 35 299 L35 672 Q35 680 43 680 L425.9 680 Q433.9 680 433.9 688 L433.9 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="428.9,712 438.9,712 433.9,721" class="dag-arrow" />
+<path d="M87 64 L87 274 Q87 282 79 282 L38 282 Q30 282 30 290 L30 681 Q30 689 38 689 L411.9 689 Q419.9 689 419.9 697 L419.9 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="414.9,712 424.9,712 419.9,721" class="dag-arrow" />
+<path d="M446.4 68 L446.4 78 Q446.4 86 454.4 86 L798.8 86 Q806.8 86 806.8 94 L806.8 672 Q806.8 680 798.8 680 L483.9 680 Q475.9 680 475.9 688 L475.9 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="470.9,712 480.9,712 475.9,721" class="dag-arrow" />
+<path d="M784.8 64 L784.8 465 Q784.8 473 792.8 473 L803.8 473 Q811.8 473 811.8 481 L811.8 681 Q811.8 689 803.8 689 L497.9 689 Q489.9 689 489.9 697 L489.9 712" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="484.9,712 494.9,712 489.9,721" class="dag-arrow" />
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="name">
+<title>name</title>
+<rect x="54" y="34" width="80" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="62" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="100" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">name</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="tlds">
+<title>tlds
+['com', 'sh']</title>
+<rect x="367.9" y="30" width="129" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="375.9" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="438.4" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">tlds</text>
+<text x="438.4" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">['com', 'sh']</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="variants">
+<title>variants</title>
+<rect x="727.8" y="34" width="100" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="735.8" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="783.8" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">variants</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="with_lookalikes">
+<title>with_lookalikes
+True</title>
+<rect x="539.8" y="30" width="152" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="547.8" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="621.8" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">with_lookalikes</text>
+<text x="621.8" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">True</text>
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="controls">
+<title>Controls (cached)
+Control-test each registry: a registered domain reads TAKEN, a random one FREE.
+as_of = 2026-11-22
+key 1e2135d1b50f</title>
+<rect x="48" y="323" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="62" y="345" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Controls</text>
+<text x="62" y="367" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Control-test each registry: a registered</text>
+<text x="62" y="383" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">domain reads TAKEN, a random one FREE.</text>
+<text x="62" y="404.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="48" y1="424" x2="376" y2="424" class="dag-rule" />
+<rect x="62" y="433" width="8" height="8" rx="0" class="dag-state" />
+<text x="76" y="437" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="362" y="437" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 1e2135d1b50f</text>
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="pypi_exact">
+<title>Pypi Exact (cached)
+Is `pip install NAME` free to publish? One cached item.
+as_of = 2026-11-22
+key 0a4497daab94</title>
+<rect x="166.4" y="132" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="180.4" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Exact</text>
+<text x="180.4" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Is `pip install NAME` free to publish? One</text>
+<text x="180.4" y="192" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">cached item.</text>
+<text x="180.4" y="213.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="166.4" y1="233" x2="494.4" y2="233" class="dag-rule" />
+<rect x="180.4" y="242" width="8" height="8" rx="0" class="dag-state" />
+<text x="194.4" y="246" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="480.4" y="246" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 0a4497daab94</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="pypi_free">
+<title>Pypi Free (pending)
+The gate: the name goes on only if it is free on PyPI.
+key ac2b755bd915</title>
+<rect x="442" y="333.5" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="456" y="355.5" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Free</text>
+<text x="456" y="377.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">The gate: the name goes on only if it is</text>
+<text x="456" y="393.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">free on PyPI.</text>
+<line x1="442" y1="413.5" x2="770" y2="413.5" class="dag-rule" />
+<rect x="456" y="422.5" width="8" height="8" rx="0" class="dag-state" />
+<text x="470" y="426.5" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="756" y="426.5" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key ac2b755bd915</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="domain_probes">
+<title>Domain Probes (pending)
+Base name, prefixes and suffixes on each TLD. Needs the controls, and a free PyPI name.
+as_of = 2026-11-22
+key 6ff75b67e2c3</title>
+<rect x="106.8" y="514" width="328" height="143" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="120.8" y="536" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Domain Probes</text>
+<text x="120.8" y="558" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Base name, prefixes and suffixes on each</text>
+<text x="120.8" y="574" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">TLD. Needs the controls, and a free PyPI</text>
+<text x="120.8" y="590" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">name.</text>
+<text x="120.8" y="611.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="106.8" y1="631" x2="434.8" y2="631" class="dag-rule" />
+<rect x="120.8" y="640" width="8" height="8" rx="0" class="dag-state" />
+<text x="134.8" y="644" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="420.8" y="644" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 6ff75b67e2c3</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="lookalikes">
+<title>Lookalikes (pending)
+Sound-alike and typo names on PyPI (crake -&gt; crack). Taken ones are a trust risk.
+as_of = 2026-11-22
+key 5c15433414e5</title>
+<rect x="470.8" y="522" width="328" height="127" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="484.8" y="544" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Lookalikes</text>
+<text x="484.8" y="566" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Sound-alike and typo names on PyPI (crake</text>
+<text x="484.8" y="582" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">-&gt; crack). Taken ones are a trust risk.</text>
+<text x="484.8" y="603.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="470.8" y1="623" x2="798.8" y2="623" class="dag-rule" />
+<rect x="484.8" y="632" width="8" height="8" rx="0" class="dag-state" />
+<text x="498.8" y="636" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="784.8" y="636" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5c15433414e5</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="decide">
+<title>Decide (pending)
+Viable = free on PyPI and at least one free .com (any prefix or suffix).
+key 5589aa5863c2</title>
+<rect x="290.9" y="721" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<text x="304.9" y="743" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Decide</text>
+<text x="304.9" y="765" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Viable = free on PyPI and at least one free</text>
+<text x="304.9" y="781" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">.com (any prefix or suffix).</text>
+<line x1="290.9" y1="801" x2="618.9" y2="801" class="dag-rule" />
+<rect x="304.9" y="810" width="8" height="8" rx="0" class="dag-state" />
+<text x="318.9" y="814" class="dag-text dag-text--state" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="604.9" y="814" class="dag-text dag-text--key" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="end" dominant-baseline="central">key 5589aa5863c2</text>
+</g>
+<g class="dag-item dag-item--output" data-state="none" data-kind="output">
+<title>Verdict</title>
+<rect x="394.9" y="891" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="454.9" y="906" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Verdict</text>
+</g>
+</svg>

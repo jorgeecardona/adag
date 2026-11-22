@@ -25,7 +25,7 @@ import pytest
 from pydantic import BaseModel
 
 from adag import InputParam, NullObserver, Pipeline, Step, dag
-from adag.svg_paint import Density, Inputs, Style
+from adag.svg_paint import Corners, Density, Inputs, Style
 from adag.svg_theme import stylesheet
 from adag.visualization import SvgOptions, render_graph_svg
 from graphs_fixtures import GRAPHS
@@ -46,10 +46,15 @@ class Spec:
     theme: str = "light"
     legend: bool = False
     animate: bool = False
+    corners: Corners = "round"
 
     @property
     def stem(self) -> str:
-        extras = ("-legend" if self.legend else "") + ("-animate" if self.animate else "")
+        extras = (
+            ("-legend" if self.legend else "")
+            + ("-animate" if self.animate else "")
+            + ("-sharp" if self.corners == "sharp" else "")
+        )
         return f"{self.graph}__{self.style}-{self.inputs}-{self.density}-{self.theme}{extras}"
 
 
@@ -74,6 +79,8 @@ def _specs() -> list[Spec]:
         Spec("diamond_stateless", "band", "rows"),
         Spec("namecheck_stateless", "classic"),
         Spec("diamond", legend=True, animate=True),
+        Spec("namecheck", corners="sharp"),
+        Spec("diamond_inputs", "band", "tabs", corners="sharp"),
     ]
     return specs
 
@@ -129,6 +136,7 @@ def render(spec: Spec) -> str:
             density=spec.density,
             legend=spec.legend,
             animate=spec.animate,
+            corners=spec.corners,
         ),
     )
     return svg.replace("><", ">\n<") + "\n"

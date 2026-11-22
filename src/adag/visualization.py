@@ -24,10 +24,11 @@ from adag.deferred import Deferred, InputParam
 from adag.io import FileSource, atomic_write_text
 from adag.key import Expansion
 from adag.step import Step, StepResult
+from adag.svg_paint import CORNER_SHAPES as _CORNER_SHAPES
 from adag.svg_paint import DENSITIES as _DENSITIES
 from adag.svg_paint import INPUTS as _INPUTS
 from adag.svg_paint import STYLES as _STYLES
-from adag.svg_paint import Density, Inputs, Style
+from adag.svg_paint import Corners, Density, Inputs, Style
 from adag.svg_paint import Look as _Look
 from adag.svg_paint import RNode as _RNode
 from adag.svg_paint import draw as _draw_graph
@@ -93,6 +94,9 @@ class SvgOptions:
     ``density="compact"`` draws only the title of each step. With ``tabs`` or ``rows`` the inputs
     are labels to its left.
 
+    ``corners`` is ``"round"`` (the default) or ``"sharp"`` (boxes and bends almost square). It
+    applies to ``blueprint`` and ``band``; ``classic`` ignores it.
+
     ``theme`` is ``"light"``, ``"dark"`` or ``"auto"`` (follow the browser's colour scheme).
     ``legend=True`` adds a row under the graph that names the state colours in use. ``animate=True``
     moves dashes along the edges into pending steps, unless the viewer asks for reduced motion.
@@ -110,6 +114,7 @@ class SvgOptions:
     style: Style = "blueprint"
     inputs: Inputs = "terminals"
     density: Density = "normal"
+    corners: Corners = "round"
     legend: bool = False
     animate: bool = False
 
@@ -118,6 +123,7 @@ class SvgOptions:
             ("style", self.style, _STYLES),
             ("inputs", self.inputs, _INPUTS),
             ("density", self.density, _DENSITIES),
+            ("corners", self.corners, _CORNER_SHAPES),
         ):
             if value not in allowed:
                 raise ValueError(f"SvgOptions.{name} must be one of {allowed}, not {value!r}")
@@ -455,7 +461,11 @@ def _draw(
 ) -> str:
     # classic keeps the colours of 0.3.22, which paint a graph with no state as pending
     look = _Look(
-        options.style, options.inputs, options.density, stateless and options.style != "classic"
+        options.style,
+        options.inputs,
+        options.density,
+        stateless and options.style != "classic",
+        options.corners,
     )
     return _draw_graph(
         _to_render_nodes(nodes, edges, final_step_name, options),

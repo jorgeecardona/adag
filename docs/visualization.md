@@ -45,6 +45,7 @@ input nodes.
 | `style` | `"blueprint"` (default), `"band"`, `"classic"` | The look of the boxes and edges. |
 | `inputs` | `"terminals"` (default), `"tabs"`, `"rows"` | Where `InputParam` and file inputs go. |
 | `density` | `"normal"` (default), `"compact"` | How much each box shows. |
+| `corners` | `"round"` (default), `"sharp"` | Round corners (boxes 8 px, edge bends 14 px) or almost square ones (2 px, 8 px). `classic` ignores it. |
 | `theme` | `"light"` (default), `"dark"`, `"auto"` | The default colours. `"auto"` follows the browser. |
 | `legend` | `False` (default) | Add a row under the graph that names the state colours. |
 | `animate` | `False` (default) | Move dashes along the edges into pending steps. |
@@ -96,6 +97,13 @@ nodes in the top row, with the name above the value cut to fit. With `tabs` or `
 labels to the left of the step.
 
 ![Compact density](assets/density_compact.svg)
+
+### Corners
+
+`corners="sharp"` makes the boxes and the edge bends almost square. It applies to `blueprint` and
+`band`.
+
+![Sharp corners](assets/corners_sharp.svg)
 
 ### Dark theme
 

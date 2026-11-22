@@ -26,10 +26,12 @@ from adag.svg_theme import FONT_MONO, FONT_SANS
 Style = Literal["blueprint", "band", "classic"]
 Inputs = Literal["terminals", "tabs", "rows"]
 Density = Literal["normal", "compact"]
+Corners = Literal["round", "sharp"]
 
 STYLES: tuple[Style, ...] = ("blueprint", "band", "classic")
 INPUTS: tuple[Inputs, ...] = ("terminals", "tabs", "rows")
 DENSITIES: tuple[Density, ...] = ("normal", "compact")
+CORNER_SHAPES: tuple[Corners, ...] = ("round", "sharp")
 
 _STATE_WORD = {"CACHED": "CACHED", "PENDING": "PENDING", "BLOCKED": "BLOCKED"}
 
@@ -45,8 +47,6 @@ _LANE_MARGIN = 10
 _S_REACH = 26.0  # half the height of the S of a sideways move
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
-_BOX_R = 8  # blueprint: step boxes and the output box
-_TERM_R = 6  # blueprint: input terminals and tabs
 _LEGEND_HEIGHT = 34
 _MONO_CLASSES = (
     "dag-text--param",
@@ -64,6 +64,35 @@ class Look:
     inputs: Inputs = "terminals"
     density: Density = "normal"
     stateless: bool = False
+    corners: Corners = "round"
+
+
+@dataclass(frozen=True)
+class Radii:
+    """The corner radii of one look. ``terminal`` is 0 for a pill (half the height of the node).
+
+    ``edge`` is the radius of an edge bend in blueprint and the half height of the S in band.
+    """
+
+    box: float
+    terminal: float
+    tab: float
+    output: float
+    edge: float
+
+
+_ROUND = Radii(box=8, terminal=6, tab=6, output=8, edge=14)
+_ROUND_BAND = Radii(box=8, terminal=0, tab=8, output=8, edge=_S_REACH)
+_SHARP = Radii(box=2, terminal=2, tab=2, output=2, edge=8)
+
+
+def radii_for(look: Look) -> Radii:
+    """The corner radii for a look. ``classic`` ignores ``corners`` and does not use these."""
+    if look.style == "classic":
+        return _ROUND_BAND
+    if look.corners == "sharp":
+        return _SHARP
+    return _ROUND_BAND if look.style == "band" else _ROUND
 
 
 @dataclass(frozen=True)
@@ -520,39 +549,46 @@ def paint_node(parent: ET.Element, node: RNode, p: lay.Placed, m: Measured, look
         _paint_blueprint(group, node, p, m, look)
 
 
-def _paint_tabs(group: ET.Element, m: Measured, left: float, top: float, *, round_: bool) -> None:
+def _paint_tabs(
+    group: ET.Element, m: Measured, left: float, top: float, r: float, *, mono: bool
+) -> None:
     x = left
     for tab in m.tabs:
-        if round_:
-            d = (
-                f"M{_num(x)} {_num(top)} V{_num(top - 14)} A8 8 0 0 1 {_num(x + 8)} {_num(top - 22)} "
-                f"H{_num(x + tab.width - 8)} A8 8 0 0 1 {_num(x + tab.width)} {_num(top - 14)} V{_num(top)}"
-            )
-            _path(group, d, "dag-tab")
-            _text(group, tab.text, x + 12, top - 10, size=11, cls="dag-text--tab")
-        else:
-            r = _TERM_R
-            d = (
-                f"M{_num(x)} {_num(top)} V{_num(top - 22 + r)} A{r} {r} 0 0 1 {_num(x + r)} {_num(top - 22)} "
-                f"H{_num(x + tab.width - r)} A{r} {r} 0 0 1 {_num(x + tab.width)} {_num(top - 22 + r)} V{_num(top)}"
-            )
-            _path(group, d, "dag-tab")
+        d = (
+            f"M{_num(x)} {_num(top)} V{_num(top - 22 + r)} A{_num(r)} {_num(r)} 0 0 1 "
+            f"{_num(x + r)} {_num(top - 22)} H{_num(x + tab.width - r)} "
+            f"A{_num(r)} {_num(r)} 0 0 1 {_num(x + tab.width)} {_num(top - 22 + r)} V{_num(top)}"
+        )
+        _path(group, d, "dag-tab")
+        if mono:
             _text(group, tab.text, x + 10, top - 10, size=11, cls="dag-text--input")
+        else:
+            _text(group, tab.text, x + 12, top - 10, size=11, cls="dag-text--tab")
         x += tab.width + 6
+
+
+def _head_path(x: float, y: float, width: float, height: float, r: float) -> str:
+    """The header strip of a band box: round corners on top, square at the bottom."""
+    return (
+        f"M{_num(x)} {_num(y + r)} A{_num(r)} {_num(r)} 0 0 1 {_num(x + r)} {_num(y)} "
+        f"H{_num(x + width - r)} A{_num(r)} {_num(r)} 0 0 1 {_num(x + width)} {_num(y + r)} "
+        f"V{_num(y + height)} H{_num(x)} Z"
+    )
 
 
 def _paint_blueprint(
     group: ET.Element, node: RNode, p: lay.Placed, m: Measured, look: Look
 ) -> None:
     x, y = p.x - p.width / 2, p.y - p.height / 2
-    _paint_tabs(group, m, x + _BOX_R, y, round_=False)
+    r = radii_for(look)
+    _paint_tabs(group, m, x + r.box, y, r.tab, mono=True)
     _rect(
         group,
         x,
         y,
         p.width,
         p.height,
-        _BOX_R,
+        r.box,
         _box_classes(node),
         **{"stroke-width": "2" if node.is_final else "1.5"},
     )
@@ -614,21 +650,19 @@ def _paint_blueprint(
 
 def _paint_band(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, look: Look) -> None:
     x, y = p.x - p.width / 2, p.y - p.height / 2
-    _paint_tabs(group, m, x, y, round_=True)
+    r = radii_for(look).box
+    _paint_tabs(group, m, x, y, radii_for(look).tab, mono=False)
     _rect(
         group,
         x,
         y,
         p.width,
         p.height,
-        8,
+        r,
         _box_classes(node),
         **{"stroke-width": "2" if node.is_final else "1.5"},
     )
-    d = (
-        f"M{_num(x)} {_num(y + 8)} A8 8 0 0 1 {_num(x + 8)} {_num(y)} H{_num(x + p.width - 8)} "
-        f"A8 8 0 0 1 {_num(x + p.width)} {_num(y + 8)} V{_num(y + 30)} H{_num(x)} Z"
-    )
+    d = _head_path(x, y, p.width, 30, r)
     _path(group, d, "dag-head")
     ET.SubElement(
         group,
@@ -728,8 +762,9 @@ def _paint_compact(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, l
     x, y = p.x - p.width / 2, p.y - p.height / 2
     word = _state_word(node, look)
     width = "2" if node.is_final else "1.5"
+    r = radii_for(look).box
     if look.style == "blueprint":
-        _rect(group, x, y, p.width, p.height, _BOX_R, _box_classes(node), **{"stroke-width": width})
+        _rect(group, x, y, p.width, p.height, r, _box_classes(node), **{"stroke-width": width})
         if word:
             _rect(group, x + 11, p.y - 4, 8, 8, 0, "dag-state")
         _mono_text(
@@ -737,11 +772,8 @@ def _paint_compact(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, l
         )
         label_cls = "dag-text--input"
     elif look.style == "band":
-        _rect(group, x, y, p.width, p.height, 8, _box_classes(node), **{"stroke-width": width})
-        d = (
-            f"M{_num(x)} {_num(y + 8)} A8 8 0 0 1 {_num(x + 8)} {_num(y)} H{_num(x + p.width - 8)} "
-            f"A8 8 0 0 1 {_num(x + p.width)} {_num(y + 8)} V{_num(y + 9)} H{_num(x)} Z"
-        )
+        _rect(group, x, y, p.width, p.height, r, _box_classes(node), **{"stroke-width": width})
+        d = _head_path(x, y, p.width, 9, r)
         _path(group, d, "dag-head")
         _text(
             group, m.title, p.x, p.y + 4, size=14, cls="dag-text--title", bold=True, anchor="middle"
@@ -799,7 +831,7 @@ def _paint_input(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, loo
         y,
         p.width,
         p.height,
-        _TERM_R if blueprint else p.height / 2,
+        radii_for(look).terminal or p.height / 2,
         cls,
         **{"stroke-width": "1.5"},
     )
@@ -843,7 +875,7 @@ def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> N
             y,
             p.width,
             p.height,
-            _BOX_R,
+            radii_for(look).output,
             "dag-node dag-node--output",
             **{"stroke-width": "1.5"},
         )
@@ -855,7 +887,7 @@ def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> N
             y,
             p.width,
             p.height,
-            8,
+            radii_for(look).output,
             "dag-node dag-node--output",
             **{"stroke-width": "1.5"},
         )
@@ -876,7 +908,7 @@ def _end_points(route: lay.Route, arrow: float) -> list[lay.Point]:
     return points
 
 
-def curve_path(route: lay.Route, arrow: float) -> str:
+def curve_path(route: lay.Route, arrow: float, reach_max: float = _S_REACH) -> str:
     """Straight runs and one smooth S for each sideways move, in the gap where the move happens.
 
     The S has a vertical tangent at both ends, so it joins the straight runs without a corner.
@@ -889,8 +921,8 @@ def curve_path(route: lay.Route, arrow: float) -> str:
         b = pts[index + 1] if index + 1 < len(pts) else None
         if b is not None and abs(a[1] - b[1]) < _EPS and abs(a[0] - b[0]) >= _EPS:
             before = pts[index - 1][1]
-            after = pts[index + 2][1] if index + 2 < len(pts) else b[1] + _S_REACH
-            reach = min(_S_REACH, a[1] - before, after - a[1])
+            after = pts[index + 2][1] if index + 2 < len(pts) else b[1] + reach_max
+            reach = min(reach_max, a[1] - before, after - a[1])
             top, bottom = a[1] - reach, a[1] + reach
             parts.append(f"L{_num(a[0])} {_num(top)}")
             parts.append(
@@ -929,16 +961,12 @@ def paint_route(
     parent: ET.Element,
     route: lay.Route,
     look: Look,
-    settings: lay.LayoutSettings,
     *,
     flow: bool = False,
 ) -> None:
     arrow, half = _arrow_size(look.style)
-    d = (
-        ortho_path(route, arrow, settings.corner)
-        if look.style == "blueprint"
-        else curve_path(route, arrow)
-    )
+    r = radii_for(look).edge
+    d = ortho_path(route, arrow, r) if look.style == "blueprint" else curve_path(route, arrow, r)
     cls = "dag-edge dag-edge--output" if route.dashed else "dag-edge"
     if flow:
         cls += " dag-edge--flow"
@@ -1100,7 +1128,7 @@ def draw(
             _path(svg, _grid(canvas_w, canvas_h), "dag-grid")
     pending = {n.name for n in shown if n.state == "PENDING" and not look.stateless}
     for route in result.routes:
-        paint_route(svg, route, look, settings, flow=animate and route.target in pending)
+        paint_route(svg, route, look, flow=animate and route.target in pending)
     for n in shown:
         paint_node(svg, n, result.nodes[n.name], measured[n.name], look)
     if has_output and lay.OUTPUT in result.nodes:

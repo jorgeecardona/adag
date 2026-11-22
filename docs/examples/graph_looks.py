@@ -67,6 +67,7 @@ looks = {
     "inputs_tabs": SvgOptions(inputs="tabs"),
     "inputs_rows": SvgOptions(inputs="rows"),
     "density_compact": SvgOptions(density="compact"),
+    "corners_sharp": SvgOptions(corners="sharp"),
     "theme_dark": SvgOptions(theme="dark", legend=True),
 }
 out = Path(sys.argv[1]) if len(sys.argv) > 1 else cache
