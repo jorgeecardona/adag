@@ -689,18 +689,24 @@ class StepResult(Deferred[Out]):
         """
         step_name = type(self.step).__name__
         context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
+        written = False
         if self.step.caches_to_path():
             cache_dir = self._result_dir(context)
             if cache_dir is not None:
                 result = self._save_path(result, cache_dir, context.params)
                 emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
                 self._write_key_record(context)
+                written = True
         else:
             store = context.result_store()
             if store is not None and self.step.result_model() is not None:
                 self._save(result, store, params=context.params)
                 emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
                 self._write_key_record(context)
+                written = True
+        if not written and context.children_of(self.step) is not None:
+            # A fan-out or a loop saves no result of its own, but its record says what ran.
+            self._write_key_record(context)
         with context._lock:
             context._resolved[id(self)] = (self, result)
         return result
@@ -718,12 +724,15 @@ class StepResult(Deferred[Out]):
         try:
             from adag import __version__  # late: adag/__init__ imports this module
 
-            record = {
+            record: dict[str, Any] = {
                 "record_version": 1,
                 "adag_version": __version__,
                 "saved_at": datetime.now(UTC).isoformat(),
                 **self.explain_key(context.params).redacted().to_dict(),
             }
+            children = context.children_of(self.step)
+            if children is not None and self.step.expansion() is not None:
+                record["expansion"] = {"children": children}
             store.set(f"{KEY_RECORD_PREFIX}{key}.json", json.dumps(record, indent=1))
         except Exception as exc:
             emit("step.key_record.failed", step=type(self.step).__name__, key=key, error=str(exc))

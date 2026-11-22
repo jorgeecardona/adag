@@ -56,6 +56,10 @@ def _empty_pools() -> dict[str, ProcessPoolExecutor]:
     return {}
 
 
+def _empty_children() -> dict[int, tuple[object, list[str]]]:
+    return {}
+
+
 @dataclass(frozen=True)
 class Progress:
     """Progress report from a resolving Deferred."""
@@ -458,8 +462,28 @@ class ResolveContext:
     _pools: dict[str, ProcessPoolExecutor] = field(
         default_factory=_empty_pools, repr=False, compare=False
     )
+    # The keys of the branches or rounds a fan-out or a loop ran, by ``id`` of the step. The key
+    # record of the step lists them as ``expansion.children``.
+    _children: dict[int, tuple[object, list[str]]] = field(
+        default_factory=_empty_children, repr=False, compare=False
+    )
     # The limit on step bodies running at once, set by ``aresolve_all(max_concurrency=...)``.
     _budget: _Budget = field(default_factory=_Budget, repr=False, compare=False)
+
+    def record_children(self, step: object, keys: Sequence[str]) -> None:
+        """Remember the keys of the branches or rounds that ``step`` ran in this run.
+
+        A branch with no key (a blocked input) is left out.
+        """
+        with self._lock:
+            # The step is kept with its keys: a freed step could give its id to another one.
+            self._children[id(step)] = (step, list(keys))
+
+    def children_of(self, step: object) -> list[str] | None:
+        """The keys that ``record_children`` stored for ``step``, or ``None`` if it ran no branch."""
+        with self._lock:
+            found = self._children.get(id(step))
+            return None if found is None else list(found[1])
 
     def process_pool(self) -> ProcessPoolExecutor:
         """The run's pool of worker processes, made on first use.

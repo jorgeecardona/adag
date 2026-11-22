@@ -144,19 +144,26 @@ class LoopStep(Step[Any]):
             raise TypeError(_NO_INIT)
         encoded = _encode(state, "the start state")
         rounds = 0
+        children: list[str] = []
         while True:
             if self.until(state):
+                context.record_children(self, children)
                 return state
             if rounds == self.max_rounds:
                 break
             sub = self._round(rounds, state)
-            context.observer.on_loop_round(rounds, sub.content_hash(params=context.params) or "")
+            round_key = sub.content_hash(params=context.params)
+            context.observer.on_loop_round(rounds, round_key or "")
+            if round_key is not None:
+                children.append(round_key)
             following: Any = sub.resolve(context)
             rounds += 1
             following_encoded = _encode(following, f"the state after round {rounds}")
             if not self.key_by_round and following_encoded == encoded:
+                context.record_children(self, children)
                 return following
             state, encoded = following, following_encoded
+        context.record_children(self, children)
         if self.on_max == "return":
             return state
         raise LoopNotConverged(rounds, state)

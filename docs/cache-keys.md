@@ -78,5 +78,8 @@ with `KeyExplanation.from_dict`.
   secret, and the record goes to disk or to a shared store.
 - A failed write never fails the run. adag sends a `step.key_record.failed` event instead.
 - With `store=`, the record is the store key `.keys/<key>.json`.
+- A `FanOutStep` with a template and a `LoopStep` save no result of their own, but they write a
+  record after each run, with `"expansion": {"children": [...]}`: the key of each branch or round
+  that ran, in order. Each child has its own record or result under that key.
 - adag does not read these records. Use them to compare the key a result was saved under with
   a new key.

@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frame end on them, and one edge leaves the bottom. A loop also has a dashed edge "next round"
   back to its `state` input. `SvgOptions(frames=False)` and `style="classic"` keep the single
   dashed box.
+- A fan-out with a template and a loop write a key record after each run, with
+  `expansion.children`: the key of each branch or round that ran. `ResolveContext` gets
+  `record_children(step, keys)` and `children_of(step)`.
 - `Pipeline.expansions()` lists the steps that build a sub-graph at run time (a template fan-out, a
   loop) as `StepExpansion(step, expansion, body)`. `Pipeline.validate()` now also checks the steps
   inside each template, so a step with a missing input fails before the run reaches it.

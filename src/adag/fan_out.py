@@ -29,7 +29,7 @@ import asyncio
 import dataclasses
 import hashlib
 import warnings
-from collections.abc import Callable, Hashable, Mapping
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from dataclasses import dataclass, field
@@ -230,6 +230,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         for key, value in over.items():
             context.observer.on_fan_out_branch(str(key))
             prepared.append((key, self._branch(key, value)))
+        self._note_children(context, [sub for _, sub in prepared])
         tasks = [asyncio.create_task(sub.aresolve(context)) for _, sub in prepared]
         try:
             values = await gather_first_failure(tasks)
@@ -254,6 +255,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             sub = self._branch(key, value)
             branches.append(sub)
             results[key] = sub.resolve(context)
+        self._note_children(context, branches)
         return results
 
     def _resolve_branches_concurrently(
@@ -272,6 +274,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
         for key, value in over.items():
             context.observer.on_fan_out_branch(str(key))
             prepared.append((key, self._branch(key, value)))
+        self._note_children(context, [sub for _, sub in prepared])
         results: dict[K, V] = {}
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures: dict[Future[V], K] = {
@@ -280,6 +283,13 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
             for future in as_completed(futures):
                 results[futures[future]] = future.result()
         return {key: results[key] for key, _ in prepared}  # keep the order of ``over``
+
+    def _note_children(self, context: ResolveContext, subs: Sequence[StepResult[V]]) -> None:
+        """Tell the context the key of every branch, for the key record of this step."""
+        if self.template is None:
+            return
+        keys = (sub.content_hash(params=context.params) for sub in subs)
+        context.record_children(self, [key for key in keys if key is not None])
 
     def _branch(self, key: K, value: Any) -> StepResult[V]:
         """Build one branch's sub-DAG via the template or factory, checking it is a StepResult."""
@@ -349,6 +359,7 @@ class FanOutStep(Step[dict[K, V]], Generic[K, V]):
 
         if not prepared:
             return {}
+        self._note_children(context, [sub for _, sub, _ in prepared])
 
         dispatch_all = getattr(context.dispatcher, "dispatch_all", None)
         if dispatch_all is None:
