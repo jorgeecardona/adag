@@ -1,7 +1,8 @@
 # Fan-out
 
 `FanOutStep` builds one sub-graph per key of a dict and returns a dict of results with the
-same keys. Each branch is cached like any other step.
+same keys. Each branch is cached like any other step. For what is fixed and what is decided at
+run time, see [Static and dynamic parts](static-and-dynamic.md).
 
 - `over`: the dict to iterate. With a `template`, it can be the result of an upstream step.
 - `factory(key, value)`: returns the branch's `StepResult`. Use it when the keys are known when

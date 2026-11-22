@@ -2,7 +2,8 @@
 
 Use `LoopStep` to run a sub-graph again and again, each round starting from the result of the
 one before, until a condition holds. The graph stays acyclic: the loop is one node, and its
-rounds are built when the run reaches it.
+rounds are built when the run reaches it. For what is fixed and what is decided at run time, see
+[Static and dynamic parts](static-and-dynamic.md).
 
 1. Write a function that builds one round from the state: `one_round(state)`.
 2. Wrap it in a [`Template`](fan-out.md#template) with the input `("state",)`.
