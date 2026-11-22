@@ -390,9 +390,11 @@ def paint_level(
         _paint_frame_box(
             parent, body, _moved(level.placed[name], dx, dy), level.look, depth, holder
         )
-    for route in level.routes:
-        moved = replace(route, points=tuple((x + dx, y + dy) for x, y in route.points))
-        paint.paint_route(parent, moved, level.look, flow=route.target in flow)
+    moved = [
+        replace(route, points=tuple((x + dx, y + dy) for x, y in route.points))
+        for route in level.routes
+    ]
+    paint.paint_routes(parent, moved, level.look, flow=flow)
     for n in level.nodes:
         if n.name in level.bodies:
             continue

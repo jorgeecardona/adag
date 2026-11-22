@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- In the `blueprint` style, an edge that branches off a run it shares with another edge of the
+  same source now has a square corner and a dot, as in a circuit. Edges of different sources still
+  cross without a dot.
 - The default look of `dag()` changed. It is now "blueprint": mono type, rounded corners, right-angle
   edges, a state square with the state word, and the cache key in each box. Pass
   `SvgOptions(style="classic")` to keep the colours and box shapes of 0.3.22. Corners are rounded

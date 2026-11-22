@@ -927,6 +927,8 @@ def _quarter(prev: lay.Point, cur: lay.Point, nxt: lay.Point, radius: float) -> 
     d1 = math.hypot(cur[0] - prev[0], cur[1] - prev[1])
     d2 = math.hypot(nxt[0] - cur[0], nxt[1] - cur[1])
     r = min(radius, d1 / 2, d2 / 2)
+    if r <= 0:
+        return f"L{_num(cur[0])} {_num(cur[1])}"
     ax = cur[0] - (cur[0] - prev[0]) / d1 * r
     ay = cur[1] - (cur[1] - prev[1]) / d1 * r
     bx = cur[0] + (nxt[0] - cur[0]) / d2 * r
@@ -974,8 +976,13 @@ def curve_path(route: lay.Route, arrow: float, reach_max: float = _S_REACH) -> s
     return " ".join(parts)
 
 
-def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
-    """Right angles with rounded corners: down, sideways, down (or sideways into a face)."""
+def ortho_path(
+    route: lay.Route, arrow: float, corner: float, sharp: frozenset[lay.Point] = frozenset()
+) -> str:
+    """Right angles with rounded corners: down, sideways, down (or sideways into a face).
+
+    A corner listed in ``sharp`` is a branch and has no rounding.
+    """
     vertices = _end_points(route, arrow)
     parts = [f"M{_num(vertices[0][0])} {_num(vertices[0][1])}"]
     for i in range(1, len(vertices) - 1):
@@ -984,9 +991,128 @@ def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
             abs(prev[1] - cur[1]) < _EPS and abs(cur[1] - nxt[1]) < _EPS
         ):
             continue
-        parts.append(_quarter(prev, cur, nxt, corner))
+        parts.append(_quarter(prev, cur, nxt, 0.0 if _key(cur) in sharp else corner))
     parts.append(f"L{_num(vertices[-1][0])} {_num(vertices[-1][1])}")
     return " ".join(parts)
+
+
+def _key(point: lay.Point) -> lay.Point:
+    """A point rounded to a tenth of a pixel, so two routes agree on where a corner is."""
+    return (round(point[0], 1), round(point[1], 1))
+
+
+def _direction(a: lay.Point, b: lay.Point) -> tuple[int, int]:
+    return (
+        (abs(b[0] - a[0]) >= _EPS) * (1 if b[0] > a[0] else -1),
+        (abs(b[1] - a[1]) >= _EPS) * (1 if b[1] > a[1] else -1),
+    )
+
+
+def _covers(a: lay.Point, b: lay.Point, point: lay.Point) -> bool:
+    """Whether ``point`` lies on the straight segment from ``a`` to ``b``."""
+    if abs(a[0] - b[0]) < _EPS:
+        return (
+            abs(point[0] - a[0]) < _EPS
+            and min(a[1], b[1]) - _EPS <= point[1] <= max(a[1], b[1]) + _EPS
+        )
+    return (
+        abs(a[1] - b[1]) < _EPS
+        and abs(point[1] - a[1]) < _EPS
+        and min(a[0], b[0]) - _EPS <= point[0] <= max(a[0], b[0]) + _EPS
+    )
+
+
+def branch_points(routes: Sequence[lay.Route]) -> list[frozenset[lay.Point]]:
+    """For each route, the corners where it leaves a run that another edge of the same source uses.
+
+    A branch may go on in a different direction from the other edge at that point. Edges of
+    different sources never branch: they cross.
+    """
+    by_source: dict[str, list[int]] = {}
+    for index, route in enumerate(routes):
+        by_source.setdefault(route.source, []).append(index)
+    found: list[frozenset[lay.Point]] = []
+    for index, route in enumerate(routes):
+        pts = route.points
+        here: set[lay.Point] = set()
+        for i in range(1, len(pts) - 1):
+            prev, cur, nxt = pts[i - 1], pts[i], pts[i + 1]
+            if _direction(prev, cur) == _direction(cur, nxt):
+                continue
+            for other in by_source[route.source]:
+                pts_other = routes[other].points
+                if other != index and (
+                    _leaves_here(pts_other, prev, cur, _direction(cur, nxt))
+                    or _joins_here(pts_other, cur, nxt)
+                ):
+                    here.add(_key(cur))
+                    break
+        found.append(frozenset(here))
+    return found
+
+
+def _joins_here(pts: Sequence[lay.Point], cur: lay.Point, nxt: lay.Point) -> bool:
+    """Whether a route already runs along ``cur`` to ``nxt`` and was on that line before ``cur``."""
+    for j in range(len(pts) - 1):
+        a, b = pts[j], pts[j + 1]
+        if _direction(a, b) != _direction(cur, nxt) or not _covers(a, b, cur):
+            continue
+        if abs(a[0] - cur[0]) + abs(a[1] - cur[1]) >= _EPS:
+            return True
+    return False
+
+
+def _leaves_here(
+    pts: Sequence[lay.Point], prev: lay.Point, cur: lay.Point, turn: tuple[int, int]
+) -> bool:
+    """Whether a route runs along ``prev`` to ``cur`` and then does something other than ``turn``."""
+    for j in range(len(pts) - 1):
+        a, b = pts[j], pts[j + 1]
+        if _direction(a, b) != _direction(prev, cur) or not _covers(a, b, cur):
+            continue
+        if not _covers(a, b, prev) and not _covers(prev, cur, a):
+            continue
+        if abs(a[0] - cur[0]) + abs(a[1] - cur[1]) < _EPS:
+            continue
+        beyond = abs(b[0] - cur[0]) + abs(b[1] - cur[1]) >= _EPS
+        if beyond:
+            return True
+        if j + 2 < len(pts) and _direction(b, pts[j + 2]) != turn:
+            return True
+    return False
+
+
+_JUNCTION_RADIUS = 3.0
+
+
+def paint_routes(
+    parent: ET.Element,
+    routes: Sequence[lay.Route],
+    look: Look,
+    *,
+    flow: frozenset[str] = frozenset(),
+) -> None:
+    """Paint all edges of one level. In ``blueprint`` a branch is a square corner with a dot."""
+    drawn = look.style == "blueprint"
+    branches: list[frozenset[lay.Point]] = (
+        branch_points(routes) if drawn else [frozenset() for _ in routes]
+    )
+    for route, here in zip(routes, branches, strict=True):
+        paint_route(parent, route, look, flow=route.target in flow, branches=here)
+    corners: set[lay.Point] = set()
+    for here in branches:
+        corners |= here
+    for x, y in sorted(corners):
+        ET.SubElement(
+            parent,
+            "circle",
+            {
+                "class": "dag-junction",
+                "cx": _num(x),
+                "cy": _num(y),
+                "r": _num(_JUNCTION_RADIUS),
+            },
+        )
 
 
 def paint_route(
@@ -995,10 +1121,15 @@ def paint_route(
     look: Look,
     *,
     flow: bool = False,
+    branches: frozenset[lay.Point] = frozenset(),
 ) -> None:
     arrow, half = _arrow_size(look.style)
     r = radii_for(look).edge
-    d = ortho_path(route, arrow, r) if look.style == "blueprint" else curve_path(route, arrow, r)
+    d = (
+        ortho_path(route, arrow, r, branches)
+        if look.style == "blueprint"
+        else curve_path(route, arrow, r)
+    )
     cls = "dag-edge dag-edge--output" if route.dashed else "dag-edge"
     if flow:
         cls += " dag-edge--flow"
@@ -1214,8 +1345,7 @@ def draw(
     if classic is not None:
         svg_classic.paint_edges(svg, classic)
     elif result is not None:
-        for route in result.routes:
-            paint_route(svg, route, look, flow=animate and route.target in pending)
+        paint_routes(svg, result.routes, look, flow=frozenset(pending) if animate else frozenset())
     for n in shown:
         paint_node(svg, n, placed[n.name], measured[n.name], look)
     if has_output and lay.OUTPUT in placed:

@@ -101,6 +101,7 @@ _RULES = """
 .dag-edge { fill: none; stroke: @edge; }
 .dag-arrow { fill: @edge; }
 .dag--blueprint .dag-edge { stroke: @ink; }
+.dag-junction { fill: @ink; stroke: none; }
 .dag--blueprint .dag-arrow { fill: @ink; stroke: @ink; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-node { fill: ST:bg; stroke: ST:border; }
 .dag--blueprint .dag-node { fill: @paper; stroke: @ink; }

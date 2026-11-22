@@ -18,6 +18,7 @@
 .dag-edge { fill: none; stroke: #607d8b; }
 .dag-arrow { fill: #607d8b; }
 .dag--blueprint .dag-edge { stroke: #1f3d8f; }
+.dag-junction { fill: #1f3d8f; stroke: none; }
 .dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
@@ -96,6 +97,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
 .dag-arrow { fill: var(--adag-edge, #607d8b); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag-junction { fill: var(--adag-ink, #1f3d8f); stroke: none; }
 .dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
@@ -175,7 +177,7 @@
 <polygon points="285.8,779 285.8,789 294.8,784" class="dag-arrow" />
 <path d="M422.2 68 L422.2 90 Q422.2 104 408.2 104 L176.3 104 Q162.3 104 162.3 118 L162.3 277.5 Q162.3 291.5 176.3 291.5 L202.1 291.5 Q215.8 291.5 215.8 305.2 L215.8 319" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="tlds" data-target="controls" />
 <polygon points="210.8,319 220.8,319 215.8,328" class="dag-arrow" />
-<path d="M397.5 68 L397.5 80 Q397.5 92 385.5 92 L44 92 Q30 92 30 106 L30 465 Q30 479 44 479 L253.6 479 Q267.6 479 267.6 493 L267.6 515" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="tlds" data-target="domain_probes" />
+<path d="M397.5 68 L397.5 80 Q397.5 92 385.5 92 L44 92 Q30 92 30 106 L30 479 L253.6 479 Q267.6 479 267.6 493 L267.6 515" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="tlds" data-target="domain_probes" />
 <polygon points="262.6,515 272.6,515 267.6,524" class="dag-arrow" />
 <path d="M781.7 64 L781.8 477 Q781.8 491 767.8 491 L293.6 491 Q281.6 491 281.6 503 L281.6 515" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="variants" data-target="domain_probes" />
 <polygon points="276.6,515 286.6,515 281.6,524" class="dag-arrow" />
@@ -183,6 +185,7 @@
 <polygon points="446.8,722 456.8,722 451.8,731" class="dag-arrow" />
 <path d="M397.5 68 L397.5 80 Q397.5 92 385.5 92 L44 92 Q30 92 30 106 L30 680.5 Q30 694.5 44 694.5 L452 694.5 Q465.8 694.5 465.8 708.2 L465.8 722" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" data-source="tlds" data-target="decide" />
 <polygon points="460.8,722 470.8,722 465.8,731" class="dag-arrow" />
+<circle class="dag-junction" cx="30" cy="479" r="3" />
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="name">
 <title>name</title>
 <rect x="57.8" y="34" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />

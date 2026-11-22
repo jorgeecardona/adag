@@ -115,6 +115,11 @@ labels to the left of the step.
 
 ![Compact density](assets/density_compact.svg)
 
+### Branches
+
+In `blueprint`, a branch is a square corner with a dot where an edge leaves a run that another
+edge of the same source uses. The dot has the class `dag-junction`. `band` has no dots.
+
 ### Corners
 
 `corners="sharp"` makes the boxes and the edge bends almost square. It applies to `blueprint` and
