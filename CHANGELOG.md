@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   frame end on them, and one edge leaves the bottom. A loop also has a dashed edge "next round"
   back to its `state` input. `SvgOptions(frames=False)` and `style="classic"` keep the single
   dashed box.
+- `Pipeline.expansions()` lists the steps that build a sub-graph at run time (a template fan-out, a
+  loop) as `StepExpansion(step, expansion, body)`. `Pipeline.validate()` now also checks the steps
+  inside each template, so a step with a missing input fails before the run reaches it.
+  `Template.steps()` returns the traced steps of a template.
 - `walk(output, expand=True)` returns the body of a template fan-out or a loop as children of its
   node: nodes with a `parent`, named `Node/Step`, and one `template_input` node for each input of
   the template. `NodeMetadata` has the new fields `parent`, `caption` and `feedback`. `dag()` still

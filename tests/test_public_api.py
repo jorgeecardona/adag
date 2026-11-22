@@ -34,6 +34,7 @@ EXPECTED = {
     "RunTreeObserver",
     "SerializableStep",
     "Step",
+    "StepExpansion",
     "StepResult",
     "StepTimeout",
     "SvgOptions",

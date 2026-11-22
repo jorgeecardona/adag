@@ -54,7 +54,7 @@ from adag.hashing import UnhashableValueError
 from adag.hooks import HOOK_NAMES, takes_any_keyword
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
-from adag.key import KeyExplanation
+from adag.key import Expansion, KeyExplanation
 from adag.observers import LoggingObserver
 from adag.step import Step, StepResult, _serialize_step_field
 
@@ -77,6 +77,10 @@ strict type checking. Narrow it (``isinstance``) before you use a part of it.
 """
 
 
+_MAX_TEMPLATE_DEPTH = 4
+"""``validate()`` looks this many templates deep. A template that builds itself stops there."""
+
+
 class CyclicPipelineError(ValueError):
     """Raised at construction when the Deferred graph contains a cycle (a step transitively depends on itself)."""
 
@@ -96,6 +100,19 @@ class UnacceptedInputError(TypeError):
     the input and has no ``**kwargs``, so ``execute()`` would fail with the same message as a
     ``TypeError`` for an unexpected keyword argument.
     """
+
+
+@dataclasses.dataclass(frozen=True)
+class StepExpansion:
+    """A step that builds a sub-graph at run time, and the steps of that sub-graph.
+
+    ``body`` is the template traced over placeholders, each step after the steps it uses. It is
+    ``None`` when the template cannot be built over placeholders.
+    """
+
+    step: Step[Any]
+    expansion: Expansion
+    body: tuple[StepResult[Any], ...] | None
 
 
 class Pipeline(Generic[Out]):
@@ -339,6 +356,10 @@ class Pipeline(Generic[Out]):
         input can validate it up front and reject with a 4xx instead of crashing
         mid-resolution. Raises ``UnboundInputError`` naming the step and the unbound params.
 
+        It also checks the steps inside each template (a fan-out template, a loop body), built
+        over placeholders, so a step with a missing input is found before the run reaches it.
+        A template that cannot be built over placeholders is skipped.
+
         Walks the target StepResults directly (visited by id, the same node identity
         ``resolve()`` uses) rather than caching a derived step->sources map.
         """
@@ -353,6 +374,39 @@ class Pipeline(Generic[Out]):
             stack.extend(
                 source for source in node.sources.values() if isinstance(source, StepResult)
             )
+        self._validate_templates(self.expansions())
+
+    def expansions(self) -> tuple[StepExpansion, ...]:
+        """Return the steps that build a sub-graph at run time (a template fan-out, a loop).
+
+        One entry for each such step of the pipeline, in the order of ``steps``. Steps inside a
+        template are not listed: read ``StepExpansion.body`` and ask each step for its
+        ``expansion()``.
+        """
+        found: list[StepExpansion] = []
+        for step in self._steps:
+            expansion = step.expansion()
+            if expansion is not None:
+                found.append(StepExpansion(step, expansion, expansion.template.steps()))
+        return tuple(found)
+
+    def _validate_templates(self, found: Sequence[StepExpansion], depth: int = 0) -> None:
+        """Check the steps of every template, and of the templates inside them."""
+        if depth >= _MAX_TEMPLATE_DEPTH:
+            return
+        for entry in found:
+            label = type(entry.step).label or type(entry.step).__name__
+            for node in entry.body or ():
+                try:
+                    self._check_inputs_bound(node)
+                except (UnboundInputError, UnacceptedInputError) as error:
+                    raise type(error)(f"In the template of {label!r}: {error}") from error
+            inner = [
+                StepExpansion(n.step, e, e.template.steps())
+                for n in entry.body or ()
+                if (e := n.step.expansion()) is not None
+            ]
+            self._validate_templates(inner, depth + 1)
 
     def _check_inputs_bound(self, node: StepResult[Any]) -> None:
         """Check the step's hooks against what ``execute()`` passes them.

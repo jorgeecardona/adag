@@ -47,6 +47,32 @@ class Template:
         """
         return self._built(tuple(Placeholder(name) for name in self.inputs))
 
+    def steps(self) -> tuple[StepResult[Any], ...] | None:
+        """Return every step of the traced sub-graph, each after the steps it uses.
+
+        Returns ``None`` when ``build`` cannot run over placeholders (it read an input, or it did
+        not return a ``StepResult``). A step from outside the template that ``build`` closes over
+        is in the tuple too.
+        """
+        try:
+            root = self.trace()
+        except TypeError:  # includes TemplateInputError
+            return None
+        ordered: dict[int, StepResult[Any]] = {}
+        visiting: set[int] = set()
+
+        def visit(result: StepResult[Any]) -> None:
+            if id(result.step) in ordered or id(result.step) in visiting:
+                return
+            visiting.add(id(result.step))
+            for source in result.sources.values():
+                if isinstance(source, StepResult):
+                    visit(source)  # pyright: ignore[reportUnknownArgumentType]
+            ordered[id(result.step)] = result
+
+        visit(root)
+        return tuple(ordered.values())
+
     def bind(self, *values: Any) -> StepResult[Any]:
         """Return the sub-graph built over real values, one per input.
 
