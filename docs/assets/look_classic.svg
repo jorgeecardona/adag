@@ -17,7 +17,7 @@
 .dag-edge { fill: none; stroke: #607d8b; }
 .dag-arrow { fill: #607d8b; }
 .dag--blueprint .dag-edge { stroke: #1f3d8f; }
-.dag--blueprint .dag-arrow { fill: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
@@ -87,7 +87,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
 .dag-arrow { fill: var(--adag-edge, #607d8b); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }

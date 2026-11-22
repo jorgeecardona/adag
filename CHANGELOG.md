@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The default look of `dag()` changed. It is now "blueprint": mono type, square corners, right-angle
+- The default look of `dag()` changed. It is now "blueprint": mono type, rounded corners, right-angle
   edges, a state square with the state word, and the cache key in each box. Pass
-  `SvgOptions(style="classic")` to keep the colours and box shapes of 0.3.22.
+  `SvgOptions(style="classic")` to keep the colours and box shapes of 0.3.22. Corners are rounded
+  (boxes 8 px, terminals and tabs 6 px, edge bends 14 px).
 - Edges no longer run under boxes. A long edge keeps a lane between the boxes, and a graph of 40
   nodes draws in about 0.1 s instead of seconds.
 - A graph with no cache state (`dag()` without `cache_dir`) is drawn in neutral colours with no state

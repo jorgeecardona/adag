@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #607d8b; }
 .dag-arrow { fill: #607d8b; }
 .dag--blueprint .dag-edge { stroke: #1f3d8f; }
-.dag--blueprint .dag-arrow { fill: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
 .dag-arrow { fill: var(--adag-edge, #607d8b); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
@@ -145,7 +145,7 @@
 <title>List documents (cached)
 One record per file.
 key 46b42b4229cd</title>
-<rect x="35.5" y="30" width="215" height="90" rx="2" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
+<rect x="35.5" y="30" width="215" height="90" rx="8" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
 <text x="49.5" y="52" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">List documents</text>
 <text x="49.5" y="74" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">One record per file.</text>
 <line x1="35.5" y1="94" x2="250.5" y2="94" class="dag-rule" />
@@ -158,7 +158,7 @@ key 46b42b4229cd</title>
 One branch per item.
 each item = Tokenize &gt; Encode
 key 8a1eed22144c</title>
-<rect x="30" y="184" width="226" height="111" rx="2" class="dag-node dag-node--step is-pending dag-node--mapped" stroke-width="1.5" />
+<rect x="30" y="184" width="226" height="111" rx="8" class="dag-node dag-node--step is-pending dag-node--mapped" stroke-width="1.5" />
 <text x="44" y="206" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Embed each document</text>
 <text x="44" y="228" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">One branch per item.</text>
 <text x="44" y="249.5" class="dag-text dag-text--param" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">each item = Tokenize &gt; Encode</text>
@@ -171,7 +171,7 @@ key 8a1eed22144c</title>
 <title>Build index (pending)
 Collect the vectors.
 key 1bc04b5291c2</title>
-<rect x="32" y="359" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="32" y="359" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="46" y="381" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Build index</text>
 <text x="46" y="403" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Collect the vectors.</text>
 <line x1="32" y1="423" x2="254" y2="423" class="dag-rule" />
@@ -181,7 +181,7 @@ key 1bc04b5291c2</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Index</title>
-<rect x="83" y="513" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="83" y="513" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="143" y="528" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Index</text>
 </g>
 </svg>

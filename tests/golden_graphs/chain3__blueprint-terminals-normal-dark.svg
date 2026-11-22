@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #8a96a3; }
 .dag-arrow { fill: #8a96a3; }
 .dag--blueprint .dag-edge { stroke: #9db8ff; }
-.dag--blueprint .dag-arrow { fill: #9db8ff; }
+.dag--blueprint .dag-arrow { fill: #9db8ff; stroke: #9db8ff; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #1d2127; stroke: #6b7683; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #2a2317; stroke: #b58900; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #1e2030; stroke: #6b74a8; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #8a96a3); }
 .dag-arrow { fill: var(--adag-edge, #8a96a3); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #9db8ff); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); stroke: var(--adag-ink, #9db8ff); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #1c242d); stroke: var(--st-border); }
@@ -145,7 +145,7 @@
 <title>Load (cached)
 Read the CSV file.
 key 0cf67fc72b3c</title>
-<rect x="33.5" y="30" width="215" height="90" rx="2" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
+<rect x="33.5" y="30" width="215" height="90" rx="8" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
 <text x="47.5" y="52" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Load</text>
 <text x="47.5" y="74" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Read the CSV file.</text>
 <line x1="33.5" y1="94" x2="248.5" y2="94" class="dag-rule" />
@@ -157,7 +157,7 @@ key 0cf67fc72b3c</title>
 <title>Clean (cached)
 Normalize the text.
 key 3b066804f6d1</title>
-<rect x="33.5" y="184" width="215" height="90" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<rect x="33.5" y="184" width="215" height="90" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
 <text x="47.5" y="206" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Clean</text>
 <text x="47.5" y="228" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Normalize the text.</text>
 <line x1="33.5" y1="248" x2="248.5" y2="248" class="dag-rule" />
@@ -169,7 +169,7 @@ key 3b066804f6d1</title>
 <title>Report (pending)
 Write the summary.
 key 845e91831319</title>
-<rect x="30" y="338" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="30" y="338" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="44" y="360" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Report</text>
 <text x="44" y="382" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Write the summary.</text>
 <line x1="30" y1="402" x2="252" y2="402" class="dag-rule" />
@@ -179,7 +179,7 @@ key 845e91831319</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Summary</title>
-<rect x="81" y="492" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="81" y="492" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="141" y="507" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Summary</text>
 </g>
 </svg>

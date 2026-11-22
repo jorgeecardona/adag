@@ -1,6 +1,6 @@
 """Measure and paint the nodes and edges of the graph SVG, in three styles and two densities.
 
-``blueprint``: mono type, square corners, a faint grid, right-angle edges, a state square with the
+``blueprint``: mono type, rounded corners, a faint grid, right-angle edges, a state square with the
 state word and the cache key in the footer. ``band``: a header strip with the title and the state
 word, curved edges. ``classic``: the first look of adag, centred text in rounded boxes.
 
@@ -44,6 +44,8 @@ _EPS = 0.5
 _LANE_MARGIN = 10
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
+_BOX_R = 8  # blueprint: step boxes and the output box
+_TERM_R = 6  # blueprint: input terminals and tabs
 _LEGEND_HEIGHT = 34
 _MONO_CLASSES = (
     "dag-text--param",
@@ -525,7 +527,11 @@ def _paint_tabs(group: ET.Element, m: Measured, left: float, top: float, *, roun
             _path(group, d, "dag-tab")
             _text(group, tab.text, x + 12, top - 10, size=11, cls="dag-text--tab")
         else:
-            d = f"M{_num(x)} {_num(top)} V{_num(top - 22)} H{_num(x + tab.width)} V{_num(top)}"
+            r = _TERM_R
+            d = (
+                f"M{_num(x)} {_num(top)} V{_num(top - 22 + r)} A{r} {r} 0 0 1 {_num(x + r)} {_num(top - 22)} "
+                f"H{_num(x + tab.width - r)} A{r} {r} 0 0 1 {_num(x + tab.width)} {_num(top - 22 + r)} V{_num(top)}"
+            )
             _path(group, d, "dag-tab")
             _text(group, tab.text, x + 10, top - 10, size=11, cls="dag-text--input")
         x += tab.width + 6
@@ -535,14 +541,14 @@ def _paint_blueprint(
     group: ET.Element, node: RNode, p: lay.Placed, m: Measured, look: Look
 ) -> None:
     x, y = p.x - p.width / 2, p.y - p.height / 2
-    _paint_tabs(group, m, x, y, round_=False)
+    _paint_tabs(group, m, x + _BOX_R, y, round_=False)
     _rect(
         group,
         x,
         y,
         p.width,
         p.height,
-        2,
+        _BOX_R,
         _box_classes(node),
         **{"stroke-width": "2" if node.is_final else "1.5"},
     )
@@ -719,7 +725,7 @@ def _paint_compact(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, l
     word = _state_word(node, look)
     width = "2" if node.is_final else "1.5"
     if look.style == "blueprint":
-        _rect(group, x, y, p.width, p.height, 2, _box_classes(node), **{"stroke-width": width})
+        _rect(group, x, y, p.width, p.height, _BOX_R, _box_classes(node), **{"stroke-width": width})
         if word:
             _rect(group, x + 11, p.y - 4, 8, 8, 0, "dag-state")
         _mono_text(
@@ -789,7 +795,7 @@ def _paint_input(group: ET.Element, node: RNode, p: lay.Placed, m: Measured, loo
         y,
         p.width,
         p.height,
-        2 if blueprint else p.height / 2,
+        _TERM_R if blueprint else p.height / 2,
         cls,
         **{"stroke-width": "1.5"},
     )
@@ -833,7 +839,7 @@ def paint_output(parent: ET.Element, label: str, p: lay.Placed, look: Look) -> N
             y,
             p.width,
             p.height,
-            2,
+            _BOX_R,
             "dag-node dag-node--output",
             **{"stroke-width": "1.5"},
         )

@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #607d8b; }
 .dag-arrow { fill: #607d8b; }
 .dag--blueprint .dag-edge { stroke: #1f3d8f; }
-.dag--blueprint .dag-arrow { fill: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
 .dag-arrow { fill: var(--adag-edge, #607d8b); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
@@ -144,14 +144,14 @@
 <g class="dag-item dag-item--file" data-state="none" data-kind="file" data-name="sales.csv">
 <title>sales.csv
 data/sales.csv</title>
-<rect x="87.5" y="30" width="107" height="30" rx="2" class="dag-node dag-node--file" stroke-width="1.5" />
+<rect x="87.5" y="30" width="107" height="30" rx="6" class="dag-node dag-node--file" stroke-width="1.5" />
 <rect x="95.5" y="42" width="6" height="6" rx="0" class="dag-pin" />
 <text x="147" y="45" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">sales.csv</text>
 </g>
 <g class="dag-item dag-item--step is-blocked" data-state="blocked" data-kind="step" data-name="load">
 <title>Load (blocked)
 The file is missing.</title>
-<rect x="41" y="124" width="200" height="90" rx="2" class="dag-node dag-node--step is-blocked" stroke-width="1.5" />
+<rect x="41" y="124" width="200" height="90" rx="8" class="dag-node dag-node--step is-blocked" stroke-width="1.5" />
 <text x="55" y="146" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Load</text>
 <text x="55" y="168" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">The file is missing.</text>
 <line x1="41" y1="188" x2="241" y2="188" class="dag-rule" />
@@ -162,7 +162,7 @@ The file is missing.</title>
 <title>Sum (pending)
 Add the amounts.
 key 09f5ffef2830</title>
-<rect x="30" y="278" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="30" y="278" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="44" y="300" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Sum</text>
 <text x="44" y="322" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Add the amounts.</text>
 <line x1="30" y1="342" x2="252" y2="342" class="dag-rule" />
@@ -172,7 +172,7 @@ key 09f5ffef2830</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Total</title>
-<rect x="81" y="432" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="81" y="432" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="141" y="447" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Total</text>
 </g>
 </svg>

@@ -57,7 +57,7 @@ them again.
 
 ### Style
 
-`blueprint` has mono type, square corners, a faint grid and right-angle edges. The footer of
+`blueprint` has mono type, rounded corners, a faint grid and right-angle edges. The footer of
 each box has the state and the cache key.
 
 ![Blueprint style](assets/look_blueprint.svg)

@@ -85,7 +85,7 @@ class Edge:
 class SvgOptions:
     """What the renderer emits.
 
-    ``style`` is ``"blueprint"`` (mono type, square corners, right-angle edges), ``"band"`` (a
+    ``style`` is ``"blueprint"`` (mono type, rounded corners, right-angle edges), ``"band"`` (a
     header strip with the state word, curved edges) or ``"classic"`` (the look of adag 0.3.22).
     ``inputs`` says where ``InputParam`` and file inputs go: ``"terminals"`` (small nodes with an
     edge), ``"tabs"`` (a tab on the step) or ``"rows"`` (a line in the step). ``classic`` has the

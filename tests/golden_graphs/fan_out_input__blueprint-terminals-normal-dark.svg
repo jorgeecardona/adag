@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #8a96a3; }
 .dag-arrow { fill: #8a96a3; }
 .dag--blueprint .dag-edge { stroke: #9db8ff; }
-.dag--blueprint .dag-arrow { fill: #9db8ff; }
+.dag--blueprint .dag-arrow { fill: #9db8ff; stroke: #9db8ff; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #1d2127; stroke: #6b7683; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #2a2317; stroke: #b58900; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #1e2030; stroke: #6b74a8; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #8a96a3); }
 .dag-arrow { fill: var(--adag-edge, #8a96a3); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #9db8ff); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); stroke: var(--adag-ink, #9db8ff); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #1c242d); stroke: var(--st-border); }
@@ -135,24 +135,24 @@
 </style>
 <rect class="dag-canvas" width="791" height="500" />
 <path d="M20 0V500M40 0V500M60 0V500M80 0V500M100 0V500M120 0V500M140 0V500M160 0V500M180 0V500M200 0V500M220 0V500M240 0V500M260 0V500M280 0V500M300 0V500M320 0V500M340 0V500M360 0V500M380 0V500M400 0V500M420 0V500M440 0V500M460 0V500M480 0V500M500 0V500M520 0V500M540 0V500M560 0V500M580 0V500M600 0V500M620 0V500M640 0V500M660 0V500M680 0V500M700 0V500M720 0V500M740 0V500M760 0V500M780 0V500M0 20H791M0 40H791M0 60H791M0 80H791M0 100H791M0 120H791M0 140H791M0 160H791M0 180H791M0 200H791M0 220H791M0 240H791M0 260H791M0 280H791M0 300H791M0 320H791M0 340H791M0 360H791M0 380H791M0 400H791M0 420H791M0 440H791M0 460H791M0 480H791" class="dag-grid" />
-<path d="M379.2 68 L379.2 87.5 Q379.2 95.5 371.2 95.5 L145.5 95.5 Q137.5 95.5 137.5 103.5 L137.5 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M379.2 68 L379.2 81.8 Q379.2 95.5 365.4 95.5 L151.2 95.5 Q137.5 95.5 137.5 109.2 L137.5 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="132.5,123 142.5,123 137.5,132" class="dag-arrow" />
 <path d="M393.2 68 L393.2 104.4 Q393.2 105 392.6 105 L392.6 105 Q392 105 392 105.6 L392 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="387,123 397,123 392,132" class="dag-arrow" />
-<path d="M407.2 68 L407.2 78 Q407.2 86 415.2 86 L642 86 Q650 86 650 94 L650 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M407.2 68 L407.2 77 Q407.2 86 416.2 86 L636 86 Q650 86 650 100 L650 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="645,123 655,123 650,132" class="dag-arrow" />
-<path d="M137.5 222 L137.5 232 Q137.5 240 145.5 240 L371.2 240 Q379.2 240 379.2 248 L379.2 277" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M137.5 222 L137.5 231 Q137.5 240 146.5 240 L365.2 240 Q379.2 240 379.2 254 L379.2 277" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="374.2,277 384.2,277 379.2,286" class="dag-arrow" />
 <path d="M392 222 L392 248.9 Q392 249.5 392.6 249.5 L392.6 249.5 Q393.2 249.5 393.2 250.1 L393.2 277" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="388.2,277 398.2,277 393.2,286" class="dag-arrow" />
-<path d="M650 222 L650 251 Q650 259 642 259 L415.2 259 Q407.2 259 407.2 267 L407.2 277" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M650 222 L650 245 Q650 259 636 259 L416.2 259 Q407.2 259 407.2 268 L407.2 277" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="402.2,277 412.2,277 407.2,286" class="dag-arrow" />
 <path d="M393.2 376 L393.2 431" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="388.2,431 398.2,431 393.2,440" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="threshold">
 <title>threshold
 0.5</title>
-<rect x="339.7" y="30" width="107" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="339.7" y="30" width="107" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
 <rect x="347.7" y="46" width="6" height="6" rx="0" class="dag-pin" />
 <text x="399.2" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">threshold</text>
 <text x="399.2" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">0.5</text>
@@ -161,7 +161,7 @@
 <title>Score A (cached)
 First scorer.
 key ca978112ca1b</title>
-<rect x="30" y="132" width="215" height="90" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<rect x="30" y="132" width="215" height="90" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
 <text x="44" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Score A</text>
 <text x="44" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">First scorer.</text>
 <line x1="30" y1="196" x2="245" y2="196" class="dag-rule" />
@@ -173,7 +173,7 @@ key ca978112ca1b</title>
 <title>Score B (pending)
 Second scorer.
 key 3e23e8160039</title>
-<rect x="281" y="132" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="281" y="132" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="295" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Score B</text>
 <text x="295" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Second scorer.</text>
 <line x1="281" y1="196" x2="503" y2="196" class="dag-rule" />
@@ -185,7 +185,7 @@ key 3e23e8160039</title>
 <title>Score C (pending)
 Third scorer.
 key 2e7d2c03a950</title>
-<rect x="539" y="132" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="539" y="132" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="553" y="154" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Score C</text>
 <text x="553" y="176" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Third scorer.</text>
 <line x1="539" y1="196" x2="761" y2="196" class="dag-rule" />
@@ -197,7 +197,7 @@ key 2e7d2c03a950</title>
 <title>Pick (pending)
 Choose the best score.
 key 8ce33c6c86e9</title>
-<rect x="282.2" y="286" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="282.2" y="286" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="296.2" y="308" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pick</text>
 <text x="296.2" y="330" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Choose the best score.</text>
 <line x1="282.2" y1="350" x2="504.2" y2="350" class="dag-rule" />
@@ -207,7 +207,7 @@ key 8ce33c6c86e9</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Choice</title>
-<rect x="333.2" y="440" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="333.2" y="440" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="393.2" y="455" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Choice</text>
 </g>
 </svg>

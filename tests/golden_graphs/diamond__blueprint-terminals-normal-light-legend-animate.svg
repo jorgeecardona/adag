@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #607d8b; }
 .dag-arrow { fill: #607d8b; }
 .dag--blueprint .dag-edge { stroke: #1f3d8f; }
-.dag--blueprint .dag-arrow { fill: #1f3d8f; }
+.dag--blueprint .dag-arrow { fill: #1f3d8f; stroke: #1f3d8f; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #f6f8fa; stroke: #78909c; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #fff8e1; stroke: #ffc107; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #e8eaf6; stroke: #9fa8da; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
 .dag-arrow { fill: var(--adag-edge, #607d8b); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
@@ -140,13 +140,13 @@
 </style>
 <rect class="dag-canvas" width="533" height="586" />
 <path d="M20 0V586M40 0V586M60 0V586M80 0V586M100 0V586M120 0V586M140 0V586M160 0V586M180 0V586M200 0V586M220 0V586M240 0V586M260 0V586M280 0V586M300 0V586M320 0V586M340 0V586M360 0V586M380 0V586M400 0V586M420 0V586M440 0V586M460 0V586M480 0V586M500 0V586M520 0V586M0 20H533M0 40H533M0 60H533M0 80H533M0 100H533M0 120H533M0 140H533M0 160H533M0 180H533M0 200H533M0 220H533M0 240H533M0 260H533M0 280H533M0 300H533M0 320H533M0 340H533M0 360H533M0 380H533M0 400H533M0 420H533M0 440H533M0 460H533M0 480H533M0 500H533M0 520H533M0 540H533M0 560H533M0 580H533" class="dag-grid" />
-<path d="M261.2 120 L261.2 144 Q261.2 152 253.2 152 L149 152 Q141 152 141 160 L141 175" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M261.2 120 L261.2 138 Q261.2 152 247.2 152 L152.5 152 Q141 152 141 163.5 L141 175" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="136,175 146,175 141,184" class="dag-arrow" />
-<path d="M275.2 120 L275.2 135 Q275.2 143 283.2 143 L387.5 143 Q395.5 143 395.5 151 L395.5 175" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M275.2 120 L275.2 131.5 Q275.2 143 286.8 143 L381.5 143 Q395.5 143 395.5 157 L395.5 175" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="390.5,175 400.5,175 395.5,184" class="dag-arrow" />
-<path d="M141 274 L141 289 Q141 297 149 297 L253.2 297 Q261.2 297 261.2 305 L261.2 329" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M141 274 L141 285.5 Q141 297 152.5 297 L247.2 297 Q261.2 297 261.2 311 L261.2 329" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="256.2,329 266.2,329 261.2,338" class="dag-arrow" />
-<path d="M395.5 274 L395.5 298 Q395.5 306 387.5 306 L283.2 306 Q275.2 306 275.2 314 L275.2 329" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M395.5 274 L395.5 292 Q395.5 306 381.5 306 L286.8 306 Q275.2 306 275.2 317.5 L275.2 329" class="dag-edge dag-edge--flow" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="270.2,329 280.2,329 275.2,338" class="dag-arrow" />
 <path d="M268.2 428 L268.2 483" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="263.2,483 273.2,483 268.2,492" class="dag-arrow dag-arrow--output" />
@@ -154,7 +154,7 @@
 <title>Load (cached)
 Read the CSV file.
 key 0cf67fc72b3c</title>
-<rect x="160.8" y="30" width="215" height="90" rx="2" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
+<rect x="160.8" y="30" width="215" height="90" rx="8" class="dag-node dag-node--leaf is-cached" stroke-width="1.5" />
 <text x="174.8" y="52" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Load</text>
 <text x="174.8" y="74" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Read the CSV file.</text>
 <line x1="160.8" y1="94" x2="375.8" y2="94" class="dag-rule" />
@@ -166,7 +166,7 @@ key 0cf67fc72b3c</title>
 <title>Clean (pending)
 Normalize the text.
 key 3b066804f6d1</title>
-<rect x="30" y="184" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="30" y="184" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="44" y="206" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Clean</text>
 <text x="44" y="228" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Normalize the text.</text>
 <line x1="30" y1="248" x2="252" y2="248" class="dag-rule" />
@@ -178,7 +178,7 @@ key 3b066804f6d1</title>
 <title>Count (cached)
 Count the rows.
 key 6c35493a2b93</title>
-<rect x="288" y="184" width="215" height="90" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<rect x="288" y="184" width="215" height="90" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
 <text x="302" y="206" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Count</text>
 <text x="302" y="228" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Count the rows.</text>
 <line x1="288" y1="248" x2="503" y2="248" class="dag-rule" />
@@ -190,7 +190,7 @@ key 6c35493a2b93</title>
 <title>Report (pending)
 Write the summary.
 key 845e91831319</title>
-<rect x="157.2" y="338" width="222" height="90" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="157.2" y="338" width="222" height="90" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="171.2" y="360" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Report</text>
 <text x="171.2" y="382" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Write the summary.</text>
 <line x1="157.2" y1="402" x2="379.2" y2="402" class="dag-rule" />
@@ -200,7 +200,7 @@ key 845e91831319</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>report.md</title>
-<rect x="208.2" y="492" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="208.2" y="492" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="268.2" y="507" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">report.md</text>
 </g>
 <g class="dag-legend">

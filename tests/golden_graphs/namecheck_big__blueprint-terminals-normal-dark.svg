@@ -18,7 +18,7 @@
 .dag-edge { fill: none; stroke: #8a96a3; }
 .dag-arrow { fill: #8a96a3; }
 .dag--blueprint .dag-edge { stroke: #9db8ff; }
-.dag--blueprint .dag-arrow { fill: #9db8ff; }
+.dag--blueprint .dag-arrow { fill: #9db8ff; stroke: #9db8ff; stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: #1d2127; stroke: #6b7683; }
 .dag--classic .dag-item--step.is-pending .dag-node { fill: #2a2317; stroke: #b58900; }
 .dag--classic .dag-item--step.is-leaf .dag-node { fill: #1e2030; stroke: #6b74a8; }
@@ -88,7 +88,7 @@
 .dag-edge { fill: none; stroke: var(--adag-edge, #8a96a3); }
 .dag-arrow { fill: var(--adag-edge, #8a96a3); }
 .dag--blueprint .dag-edge { stroke: var(--adag-ink, #9db8ff); }
-.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #9db8ff); stroke: var(--adag-ink, #9db8ff); stroke-width: 1; stroke-linejoin: round; }
 .dag--classic .dag-item--step .dag-node { fill: var(--st-bg); stroke: var(--st-border); }
 .dag--blueprint .dag-node { fill: var(--adag-paper, #0b1322); stroke: var(--adag-ink, #9db8ff); }
 .dag--band .dag-item--step .dag-node { fill: var(--adag-card, #1c242d); stroke: var(--st-border); }
@@ -135,72 +135,72 @@
 </style>
 <rect class="dag-canvas" width="1605" height="1008" />
 <path d="M20 0V1008M40 0V1008M60 0V1008M80 0V1008M100 0V1008M120 0V1008M140 0V1008M160 0V1008M180 0V1008M200 0V1008M220 0V1008M240 0V1008M260 0V1008M280 0V1008M300 0V1008M320 0V1008M340 0V1008M360 0V1008M380 0V1008M400 0V1008M420 0V1008M440 0V1008M460 0V1008M480 0V1008M500 0V1008M520 0V1008M540 0V1008M560 0V1008M580 0V1008M600 0V1008M620 0V1008M640 0V1008M660 0V1008M680 0V1008M700 0V1008M720 0V1008M740 0V1008M760 0V1008M780 0V1008M800 0V1008M820 0V1008M840 0V1008M860 0V1008M880 0V1008M900 0V1008M920 0V1008M940 0V1008M960 0V1008M980 0V1008M1000 0V1008M1020 0V1008M1040 0V1008M1060 0V1008M1080 0V1008M1100 0V1008M1120 0V1008M1140 0V1008M1160 0V1008M1180 0V1008M1200 0V1008M1220 0V1008M1240 0V1008M1260 0V1008M1280 0V1008M1300 0V1008M1320 0V1008M1340 0V1008M1360 0V1008M1380 0V1008M1400 0V1008M1420 0V1008M1440 0V1008M1460 0V1008M1480 0V1008M1500 0V1008M1520 0V1008M1540 0V1008M1560 0V1008M1580 0V1008M1600 0V1008M0 20H1605M0 40H1605M0 60H1605M0 80H1605M0 100H1605M0 120H1605M0 140H1605M0 160H1605M0 180H1605M0 200H1605M0 220H1605M0 240H1605M0 260H1605M0 280H1605M0 300H1605M0 320H1605M0 340H1605M0 360H1605M0 380H1605M0 400H1605M0 420H1605M0 440H1605M0 460H1605M0 480H1605M0 500H1605M0 520H1605M0 540H1605M0 560H1605M0 580H1605M0 600H1605M0 620H1605M0 640H1605M0 660H1605M0 680H1605M0 700H1605M0 720H1605M0 740H1605M0 760H1605M0 780H1605M0 800H1605M0 820H1605M0 840H1605M0 860H1605M0 880H1605M0 900H1605M0 920H1605M0 940H1605M0 960H1605M0 980H1605M0 1000H1605" class="dag-grid" />
-<path d="M1496.3 68 L1496.3 96 Q1496.3 104 1488.3 104 L1302 104 Q1294 104 1294 112 L1294 140" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1496.3 68 L1496.3 90 Q1496.3 104 1482.3 104 L1308 104 Q1294 104 1294 118 L1294 140" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1289,140 1299,140 1294,149" class="dag-arrow" />
-<path d="M910.5 64 L910.5 96 Q910.5 104 902.5 104 L202 104 Q194 104 194 112 L194 140" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M910.5 64 L910.5 90 Q910.5 104 896.5 104 L208 104 Q194 104 194 118 L194 140" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="189,140 199,140 194,149" class="dag-arrow" />
-<path d="M201 276 L201 286 Q201 294 209 294 L762.7 294 Q770.7 294 770.7 302 L770.7 331" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M201 276 L201 285 Q201 294 210 294 L756.7 294 Q770.7 294 770.7 308 L770.7 331" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="765.7,331 775.7,331 770.7,340" class="dag-arrow" />
-<path d="M777.7 446 L777.7 456 Q777.7 464 785.7 464 L1194.9 464 Q1202.9 464 1202.9 472 L1202.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M777.7 446 L777.7 455 Q777.7 464 786.7 464 L1188.9 464 Q1202.9 464 1202.9 478 L1202.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1197.9,518 1207.9,518 1202.9,527" class="dag-arrow" />
-<path d="M1510.3 68 L1510.3 105 Q1510.3 113 1502.3 113 L1488 113 Q1480 113 1480 121 L1480 286 Q1480 294 1472 294 L1367.1 294 Q1359.1 294 1359.1 302 L1359.1 474 Q1359.1 482 1351.1 482 L1252.9 482 Q1244.9 482 1244.9 490 L1244.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1510.3 68 L1510.3 99 Q1510.3 113 1496.3 113 L1494 113 Q1480 113 1480 127 L1480 280 Q1480 294 1466 294 L1373.1 294 Q1359.1 294 1359.1 308 L1359.1 468 Q1359.1 482 1345.1 482 L1258.9 482 Q1244.9 482 1244.9 496 L1244.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1239.9,518 1249.9,518 1244.9,527" class="dag-arrow" />
-<path d="M1424.1 408 L1424.1 483 Q1424.1 491 1416.1 491 L1266.9 491 Q1258.9 491 1258.9 499 L1258.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1424.1 408 L1424.1 477 Q1424.1 491 1410.1 491 L1272.4 491 Q1258.9 491 1258.9 504.5 L1258.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1253.9,518 1263.9,518 1258.9,527" class="dag-arrow" />
-<path d="M1294 276 L1294 291.9 Q1294 294 1291.9 294 L1291.9 294 Q1289.8 294 1289.8 296.1 L1289.8 492 Q1289.8 500 1281.8 500 L1238.9 500 Q1230.9 500 1230.9 508 L1230.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1294 276 L1294 291.9 Q1294 294 1291.9 294 L1291.9 294 Q1289.8 294 1289.8 296.1 L1289.8 486 Q1289.8 500 1275.8 500 L1239.9 500 Q1230.9 500 1230.9 509 L1230.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1225.9,518 1235.9,518 1230.9,527" class="dag-arrow" />
 <path d="M763.7 446 L763.7 488.7 Q763.7 491 766 491 L766 491 Q768.3 491 768.3 493.3 L768.3 526" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="763.3,526 773.3,526 768.3,535" class="dag-arrow" />
-<path d="M486.7 412 L486.7 474 Q486.7 482 494.7 482 L746.3 482 Q754.3 482 754.3 490 L754.3 526" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M486.7 412 L486.7 468 Q486.7 482 500.7 482 L740.3 482 Q754.3 482 754.3 496 L754.3 526" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="749.3,526 759.3,526 754.3,535" class="dag-arrow" />
-<path d="M958.5 64 L958.5 87 Q958.5 95 966.5 95 L1494 95 Q1502 95 1502 103 L1502 293.5 Q1502 294 1502.5 294 L1502.5 294 Q1503.1 294 1503.1 294.5 L1503.1 465 Q1503.1 473 1495.1 473 L1446.9 473 Q1438.9 473 1438.9 481 L1438.9 716 Q1438.9 724 1430.9 724 L1220.1 724 Q1212.1 724 1212.1 732 L1212.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M958.5 64 L958.5 81 Q958.5 95 972.5 95 L1488 95 Q1502 95 1502 109 L1502 293.5 Q1502 294 1502.5 294 L1502.5 294 Q1503.1 294 1503.1 294.5 L1503.1 459 Q1503.1 473 1489.1 473 L1452.9 473 Q1438.9 473 1438.9 487 L1438.9 710 Q1438.9 724 1424.9 724 L1226.1 724 Q1212.1 724 1212.1 738 L1212.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1207.1,769 1217.1,769 1212.1,778" class="dag-arrow" />
-<path d="M1524.3 68 L1524 204.5 Q1524 212.5 1524 220.5 L1524 293.5 Q1524 294 1524.5 294 L1524.5 294 Q1525.1 294 1525.1 294.5 L1525.1 456 Q1525.1 464 1517.1 464 L1468.9 464 Q1460.9 464 1460.9 472 L1460.9 725 Q1460.9 733 1452.9 733 L1234.1 733 Q1226.1 733 1226.1 741 L1226.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1524.3 68 L1524 198.5 Q1524 212.5 1524 226.5 L1524 293.5 Q1524 294 1524.5 294 L1524.5 294 Q1525.1 294 1525.1 294.5 L1525.1 450 Q1525.1 464 1511.1 464 L1474.9 464 Q1460.9 464 1460.9 478 L1460.9 719 Q1460.9 733 1446.9 733 L1240.1 733 Q1226.1 733 1226.1 747 L1226.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1221.1,769 1231.1,769 1226.1,778" class="dag-arrow" />
-<path d="M1438.1 408 L1438.1 456 Q1438.1 464 1430.1 464 L1424.9 464 Q1416.9 464 1416.9 472 L1416.9 734 Q1416.9 742 1408.9 742 L1206.1 742 Q1198.1 742 1198.1 750 L1198.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1438.1 408 L1438.1 453.4 Q1438.1 464 1427.5 464 L1427.5 464 Q1416.9 464 1416.9 474.6 L1416.9 728 Q1416.9 742 1402.9 742 L1211.6 742 Q1198.1 742 1198.1 755.5 L1198.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1193.1,769 1203.1,769 1198.1,778" class="dag-arrow" />
-<path d="M187 276 L187 305 Q187 313 195 313 L576.7 313 Q584.7 313 584.7 321 L584.7 465 Q584.7 473 592.7 473 L939.3 473 Q947.3 473 947.3 481 L947.3 680 Q947.3 688 955.3 688 L1134.1 688 Q1142.1 688 1142.1 696 L1142.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M187 276 L187 299 Q187 313 201 313 L570.7 313 Q584.7 313 584.7 327 L584.7 459 Q584.7 473 598.7 473 L933.3 473 Q947.3 473 947.3 487 L947.3 674 Q947.3 688 961.3 688 L1128.1 688 Q1142.1 688 1142.1 702 L1142.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1137.1,769 1147.1,769 1142.1,778" class="dag-arrow" />
-<path d="M1230.9 670 L1230.9 743 Q1230.9 751 1222.9 751 L1192.1 751 Q1184.1 751 1184.1 759 L1184.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M1230.9 670 L1230.9 737 Q1230.9 751 1216.9 751 L1193.1 751 Q1184.1 751 1184.1 760 L1184.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1179.1,769 1189.1,769 1184.1,778" class="dag-arrow" />
-<path d="M761.3 662 L761.3 689 Q761.3 697 769.3 697 L1120.1 697 Q1128.1 697 1128.1 705 L1128.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M761.3 662 L761.3 683 Q761.3 697 775.3 697 L1114.1 697 Q1128.1 697 1128.1 711 L1128.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1123.1,769 1133.1,769 1128.1,778" class="dag-arrow" />
-<path d="M922.5 64 L922.5 105 Q922.5 113 914.5 113 L566 113 Q558 113 558 121 L558 150.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M922.5 64 L922.5 99 Q922.5 113 908.5 113 L572 113 Q558 113 558 127 L558 150.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="553,150.5 563,150.5 558,159.5" class="dag-arrow" />
 <path d="M934.5 64 L934.5 115.8 Q934.5 122 928.2 122 L928.2 122 Q922 122 922 128.2 L922 150.5" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="917,150.5 927,150.5 922,159.5" class="dag-arrow" />
-<path d="M946.5 64 L946.5 78 Q946.5 86 954.5 86 L1100 86 Q1108 86 1108 94 L1108 286 Q1108 294 1116 294 L1188.8 294 Q1196.8 294 1196.8 302 L1196.8 465 Q1196.8 473 1204.8 473 L1208.9 473 Q1216.9 473 1216.9 481 L1216.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M946.5 64 L946.5 75 Q946.5 86 957.5 86 L1094 86 Q1108 86 1108 100 L1108 280 Q1108 294 1122 294 L1182.8 294 Q1196.8 294 1196.8 308 L1196.8 463 Q1196.8 473 1206.8 473 L1206.8 473 Q1216.9 473 1216.9 483 L1216.9 518" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1211.9,518 1221.9,518 1216.9,527" class="dag-arrow" />
-<path d="M558 265.5 L558 295.5 Q558 303.5 566 303.5 L948.7 303.5 Q956.7 303.5 956.7 311.5 L956.7 474 Q956.7 482 964.7 482 L1014.9 482 Q1022.9 482 1022.9 490 L1022.9 698 Q1022.9 706 1030.9 706 L1148.1 706 Q1156.1 706 1156.1 714 L1156.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M558 265.5 L558 289.5 Q558 303.5 572 303.5 L942.7 303.5 Q956.7 303.5 956.7 317.5 L956.7 468 Q956.7 482 970.7 482 L1008.9 482 Q1022.9 482 1022.9 496 L1022.9 692 Q1022.9 706 1036.9 706 L1142.1 706 Q1156.1 706 1156.1 720 L1156.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1151.1,769 1161.1,769 1156.1,778" class="dag-arrow" />
-<path d="M922 265.5 L922 286 Q922 294 930 294 L1002.8 294 Q1010.8 294 1010.8 302 L1010.8 465 Q1010.8 473 1018.8 473 L1036.9 473 Q1044.9 473 1044.9 481 L1044.9 707 Q1044.9 715 1052.9 715 L1162.1 715 Q1170.1 715 1170.1 723 L1170.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M922 265.5 L922 280 Q922 294 936 294 L996.8 294 Q1010.8 294 1010.8 308 L1010.8 459 Q1010.8 473 1024.8 473 L1030.9 473 Q1044.9 473 1044.9 487 L1044.9 701 Q1044.9 715 1058.9 715 L1156.1 715 Q1170.1 715 1170.1 729 L1170.1 769" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
 <polygon points="1165.1,769 1175.1,769 1170.1,778" class="dag-arrow" />
 <path d="M1177.1 884 L1177.1 939" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
 <polygon points="1172.1,939 1182.1,939 1177.1,948" class="dag-arrow dag-arrow--output" />
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="name">
 <title>name</title>
-<rect x="894.5" y="34" width="80" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="894.5" y="34" width="80" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
 <rect x="902.5" y="46" width="6" height="6" rx="0" class="dag-pin" />
 <text x="940.5" y="49" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">name</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="tlds">
 <title>tlds
 ['com', 'sh']</title>
-<rect x="1445.8" y="30" width="129" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="1445.8" y="30" width="129" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
 <rect x="1453.8" y="46" width="6" height="6" rx="0" class="dag-pin" />
 <text x="1516.3" y="42" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">tlds</text>
 <text x="1516.3" y="57" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">['com', 'sh']</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="variants">
 <title>variants</title>
-<rect x="1381.1" y="378" width="100" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="1381.1" y="378" width="100" height="30" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
 <rect x="1389.1" y="390" width="6" height="6" rx="0" class="dag-pin" />
 <text x="1437.1" y="393" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">variants</text>
 </g>
 <g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="with_lookalikes">
 <title>with_lookalikes
 True</title>
-<rect x="410.7" y="374" width="152" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="410.7" y="374" width="152" height="38" rx="6" class="dag-node dag-node--param" stroke-width="1.5" />
 <rect x="418.7" y="390" width="6" height="6" rx="0" class="dag-pin" />
 <text x="492.7" y="386" class="dag-text dag-text--param-node" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">with_lookalikes</text>
 <text x="492.7" y="401" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="middle" dominant-baseline="central">True</text>
@@ -210,7 +210,7 @@ True</title>
 Control-test each registry: a registered domain reads TAKEN, a random one FREE.
 as_of = 2026-11-22
 key 1e2135d1b50f</title>
-<rect x="1130" y="149" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<rect x="1130" y="149" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
 <text x="1144" y="171" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Controls</text>
 <text x="1144" y="193" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Control-test each registry: a registered</text>
 <text x="1144" y="209" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">domain reads TAKEN, a random one FREE.</text>
@@ -225,7 +225,7 @@ key 1e2135d1b50f</title>
 Is `pip install NAME` free to publish? One cached item.
 as_of = 2026-11-22
 key 0a4497daab94</title>
-<rect x="30" y="149" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<rect x="30" y="149" width="328" height="127" rx="8" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
 <text x="44" y="171" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Exact</text>
 <text x="44" y="193" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Is `pip install NAME` free to publish? One</text>
 <text x="44" y="209" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">cached item.</text>
@@ -239,7 +239,7 @@ key 0a4497daab94</title>
 <title>Pypi Free (pending)
 The gate: the name goes on only if it is free on PyPI.
 key ac2b755bd915</title>
-<rect x="606.7" y="340" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="606.7" y="340" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="620.7" y="362" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Free</text>
 <text x="620.7" y="384" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">The gate: the name goes on only if it is</text>
 <text x="620.7" y="400" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">free on PyPI.</text>
@@ -253,7 +253,7 @@ key ac2b755bd915</title>
 Base name, prefixes and suffixes on each TLD. Needs the controls, and a free PyPI name.
 as_of = 2026-11-22
 key 6ff75b67e2c3</title>
-<rect x="1066.9" y="527" width="328" height="143" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="1066.9" y="527" width="328" height="143" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="1080.9" y="549" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Domain Probes</text>
 <text x="1080.9" y="571" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Base name, prefixes and suffixes on each</text>
 <text x="1080.9" y="587" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">TLD. Needs the controls, and a free PyPI</text>
@@ -269,7 +269,7 @@ key 6ff75b67e2c3</title>
 Sound-alike and typo names on PyPI (crake -&gt; crack). Taken ones are a trust risk.
 as_of = 2026-11-22
 key 5c15433414e5</title>
-<rect x="597.3" y="535" width="328" height="127" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="597.3" y="535" width="328" height="127" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="611.3" y="557" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Lookalikes</text>
 <text x="611.3" y="579" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Sound-alike and typo names on PyPI (crake</text>
 <text x="611.3" y="595" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">-&gt; crack). Taken ones are a trust risk.</text>
@@ -283,7 +283,7 @@ key 5c15433414e5</title>
 <title>Decide (pending)
 Viable = free on PyPI and at least one free .com (any prefix or suffix).
 key 5589aa5863c2</title>
-<rect x="1013.1" y="778" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<rect x="1013.1" y="778" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="2" />
 <text x="1027.1" y="800" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Decide</text>
 <text x="1027.1" y="822" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Viable = free on PyPI and at least one free</text>
 <text x="1027.1" y="838" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">.com (any prefix or suffix).</text>
@@ -296,7 +296,7 @@ key 5589aa5863c2</title>
 <title>Pronounce (pending)
 How the name sounds in English, and how a Spanish speaker says it.
 key e718dfa13423</title>
-<rect x="394" y="159.5" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="394" y="159.5" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="408" y="181.5" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pronounce</text>
 <text x="408" y="203.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">How the name sounds in English, and how a</text>
 <text x="408" y="219.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Spanish speaker says it.</text>
@@ -309,7 +309,7 @@ key e718dfa13423</title>
 <title>Connotations (pending)
 Insults, vulgar words and slang that the name sounds like.
 key 48fdf43a882e</title>
-<rect x="758" y="159.5" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<rect x="758" y="159.5" width="328" height="106" rx="8" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
 <text x="772" y="181.5" class="dag-text dag-text--title" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Connotations</text>
 <text x="772" y="203.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">Insults, vulgar words and slang that the</text>
 <text x="772" y="219.5" class="dag-text dag-text--desc" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="11" text-anchor="start" dominant-baseline="central">name sounds like.</text>
@@ -320,7 +320,7 @@ key 48fdf43a882e</title>
 </g>
 <g class="dag-item dag-item--output" data-state="none" data-kind="output">
 <title>Verdict</title>
-<rect x="1117.1" y="948" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<rect x="1117.1" y="948" width="120" height="30" rx="8" class="dag-node dag-node--output" stroke-width="1.5" />
 <text x="1177.1" y="963" class="dag-text dag-text--output" font-family="ui-monospace, &quot;SF Mono&quot;, Menlo, Consolas, &quot;DejaVu Sans Mono&quot;, monospace" font-size="12" text-anchor="middle" dominant-baseline="central">Verdict</text>
 </g>
 </svg>

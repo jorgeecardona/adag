@@ -45,7 +45,7 @@ class LayoutSettings:
     gap_y: float = 64.0
     slot: float = 9.0
     arrow: float = 9.0
-    corner: float = 8.0
+    corner: float = 14.0
     port_margin: float = 0.2
     min_port_spacing: float = 14.0
 
