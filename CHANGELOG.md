@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SvgOptions(inputs="terminals" | "tabs" | "rows")`: inputs as small nodes (default), as a tab on
   the step that reads them, or as a line inside it.
 - `SvgOptions(density="compact")`: only the title of each step, and the inputs as labels to its left.
+- `SvgOptions(theme="auto")`: the graph follows the browser's light or dark colour scheme.
+- `SvgOptions(legend=True)` adds a row under the graph that names the state colours in use.
+- `SvgOptions(animate=True)` moves dashes along the edges into pending steps. It stops when the
+  viewer asks for reduced motion.
 - `NodeMetadata.key` (the 12-character cache key of a step) and `NodeMetadata.value` (the default of
   an input, or a file path).
 - Every colour is a CSS variable with a default, `var(--adag-step-border, ...)`. A page that embeds

@@ -36,6 +36,7 @@ _EPS = 0.5
 _LANE_MARGIN = 10
 _MAX_DESC_LINES = 3
 _MAX_LABELS = 3
+_LEGEND_HEIGHT = 34
 
 
 @dataclass(frozen=True)
@@ -874,7 +875,12 @@ def ortho_path(route: lay.Route, arrow: float, corner: float) -> str:
 
 
 def paint_route(
-    parent: ET.Element, route: lay.Route, look: Look, settings: lay.LayoutSettings
+    parent: ET.Element,
+    route: lay.Route,
+    look: Look,
+    settings: lay.LayoutSettings,
+    *,
+    flow: bool = False,
 ) -> None:
     arrow, half = _arrow_size(look.style)
     d = (
@@ -883,6 +889,8 @@ def paint_route(
         else curve_path(route, arrow)
     )
     cls = "dag-edge dag-edge--output" if route.dashed else "dag-edge"
+    if flow:
+        cls += " dag-edge--flow"
     attrs = {"stroke-width": "1.5", "stroke-linejoin": "round", "stroke-linecap": "round"}
     if route.dashed:
         attrs["stroke-dasharray"] = "6,4"
@@ -961,6 +969,8 @@ def draw(
     final: str | None = None,
     css: str | None = None,
     background: bool = True,
+    legend: bool = False,
+    animate: bool = False,
 ) -> str:
     """Return the SVG text of the graph."""
     fold = look.style != "classic" and (look.inputs != "terminals" or look.density == "compact")
@@ -993,6 +1003,8 @@ def draw(
         ),
     )
 
+    legend_states = _legend_states(shown, look) if legend else []
+    canvas_h = result.height + (_LEGEND_HEIGHT if legend_states else 0)
     root_class = f"dag dag--{look.style}"
     if look.density == "compact":
         root_class += " dag--compact"
@@ -1004,8 +1016,8 @@ def draw(
             "xmlns": "http://www.w3.org/2000/svg",
             "class": root_class,
             "width": _num(result.width),
-            "height": _num(result.height),
-            "viewBox": f"0 0 {_num(result.width)} {_num(result.height)}",
+            "height": _num(canvas_h),
+            "viewBox": f"0 0 {_num(result.width)} {_num(canvas_h)}",
         },
     )
     if css is not None:
@@ -1014,17 +1026,43 @@ def draw(
         ET.SubElement(
             svg,
             "rect",
-            {"class": "dag-canvas", "width": _num(result.width), "height": _num(result.height)},
+            {"class": "dag-canvas", "width": _num(result.width), "height": _num(canvas_h)},
         )
         if look.style == "blueprint":
-            _path(svg, _grid(result.width, result.height), "dag-grid")
+            _path(svg, _grid(result.width, canvas_h), "dag-grid")
+    pending = {n.name for n in shown if n.state == "PENDING" and not look.stateless}
     for route in result.routes:
-        paint_route(svg, route, look, settings)
+        paint_route(svg, route, look, settings, flow=animate and route.target in pending)
     for n in shown:
         paint_node(svg, n, result.nodes[n.name], measured[n.name], look)
     if has_output and lay.OUTPUT in result.nodes:
         paint_output(svg, output_label, result.nodes[lay.OUTPUT], look)
+    if legend_states:
+        _paint_legend(svg, legend_states, result.height + _LEGEND_HEIGHT / 2)
     return ET.tostring(svg, encoding="unicode")
+
+
+def _legend_states(shown: Sequence[RNode], look: Look) -> list[str]:
+    """The states drawn in this graph, in a fixed order. None for a graph with no state."""
+    if look.stateless:
+        return []
+    present = {n.state for n in shown if n.kind == "step"}
+    return [word for word in _STATE_WORD if word in present]
+
+
+def _paint_legend(parent: ET.Element, states: Sequence[str], y: float) -> None:
+    """One row of state squares and words, left aligned under the graph."""
+    group = ET.SubElement(parent, "g", {"class": "dag-legend"})
+    x = 30.0
+    for state in states:
+        item = ET.SubElement(
+            group,
+            "g",
+            {"class": f"dag-item dag-legend-item is-{state.lower()}", "data-state": state.lower()},
+        )
+        _rect(item, x, y - 4, 8, 8, 0, "dag-state")
+        _text(item, state, x + 14, y, size=11, cls="dag-text--state")
+        x += 14 + _text_width(state, 11, _WORD_EM) + 24
 
 
 def _grid(width: float, height: float, step: int = 20) -> str:

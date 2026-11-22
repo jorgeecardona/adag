@@ -143,13 +143,36 @@ _RULES = """
 """
 
 
-def stylesheet(theme: str = "light") -> str:
-    """Return the CSS for ``theme`` (``"light"`` or ``"dark"``; anything else is light)."""
-    use_dark = theme == "dark"
+_FLOW = """
+@media (prefers-reduced-motion: no-preference) {
+.dag-edge--flow { stroke-dasharray: 6 5; animation: dag-flow 1s linear infinite; }
+@keyframes dag-flow { to { stroke-dashoffset: -11; } }
+}
+"""
 
+
+def _theme_rules(*, use_dark: bool) -> str:
     def fill_in(match: re.Match[str]) -> str:
         variable = _BY_NAME[match.group(1)]
         default = variable.dark if use_dark else variable.light
         return f"var({variable.css_name}, {default})"
 
     return re.sub(r"@([a-z][a-z-]*[a-z])", fill_in, _RULES)
+
+
+def stylesheet(theme: str = "light", *, animate: bool = False) -> str:
+    """Return the CSS for ``theme``: ``"light"``, ``"dark"`` or ``"auto"`` (the browser's choice).
+
+    ``"auto"`` is the light rules plus the dark rules inside ``prefers-color-scheme: dark``. Any
+    other value is light. ``animate`` adds the moving dashes of ``SvgOptions(animate=True)``.
+    """
+    if theme == "auto":
+        css = (
+            _theme_rules(use_dark=False)
+            + "\n@media (prefers-color-scheme: dark) {"
+            + _theme_rules(use_dark=True)
+            + "}\n"
+        )
+    else:
+        css = _theme_rules(use_dark=theme == "dark")
+    return css + _FLOW if animate else css

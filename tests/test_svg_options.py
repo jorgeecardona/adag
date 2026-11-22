@@ -236,3 +236,48 @@ def test_show_params_false_still_shrinks_every_style() -> None:
         without = re.search(r'height="([\d.]+)"', _svg("namecheck", style=style, show_params=False))
         assert with_params and without
         assert float(without.group(1)) < float(with_params.group(1))
+
+
+def test_the_new_options_change_nothing_while_they_are_off() -> None:
+    assert _svg("namecheck") == _svg("namecheck", legend=False, animate=False)
+    assert _svg("namecheck", theme="dark") == _svg("namecheck", theme="dark", animate=False)
+
+
+def test_theme_auto_holds_both_palettes_and_a_media_query() -> None:
+    css = stylesheet("auto")
+    assert "@media (prefers-color-scheme: dark)" in css
+    assert "var(--adag-canvas, #ffffff)" in css and "var(--adag-canvas, #14161a)" in css
+    assert re.search(r"#[0-9a-fA-F]{3,8}\b", re.sub(r"var\([^)]*\)", "", css)) is None
+    svg = _svg("diamond", theme="auto")
+    assert svg.count("</style>") == 1
+
+
+def _canvas_height(svg: str) -> float:
+    match = re.search(r'height="([\d.]+)"', svg)
+    assert match is not None
+    return float(match.group(1))
+
+
+def test_the_legend_names_the_states_in_use_and_adds_a_row() -> None:
+    plain, with_legend = _svg("diamond"), _svg("diamond", legend=True)
+    assert _canvas_height(with_legend) > _canvas_height(plain)
+    legend = ET.fromstring(with_legend).find(f".//{SVG_NS}g[@class='dag-legend']")  # noqa: S314
+    assert legend is not None
+    words = [t.text for t in legend.iter(f"{SVG_NS}text")]
+    assert words == ["CACHED", "PENDING"]  # the diamond has no blocked step
+
+
+def test_the_legend_is_left_out_of_a_graph_with_no_state() -> None:
+    nodes = [step("a", "Alpha", "First.", "PENDING")]
+    svg = render_graph_svg(nodes, [], options=SvgOptions(legend=True))
+    assert "dag-legend" not in _drawing(svg)
+
+
+def test_animate_moves_dashes_only_along_edges_into_pending_steps() -> None:
+    plain = _svg("diamond")
+    moving = _svg("diamond", animate=True)
+    assert "dag-edge--flow" not in plain
+    assert "prefers-reduced-motion: no-preference" in moving.split("</style>", 1)[0]
+    drawing = _drawing(moving)
+    # Into Clean, into Report (twice): the three edges that lead to a pending step.
+    assert drawing.count("dag-edge--flow") == 3

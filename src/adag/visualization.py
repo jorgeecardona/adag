@@ -84,6 +84,10 @@ class SvgOptions:
     draws terminals. ``density="compact"`` draws only the title of each step, and the inputs as
     labels to its left.
 
+    ``theme`` is ``"light"``, ``"dark"`` or ``"auto"`` (follow the browser's colour scheme).
+    ``legend=True`` adds a row under the graph that names the state colours in use. ``animate=True``
+    moves dashes along the edges into pending steps, unless the viewer asks for reduced motion.
+
     ``include_styles=False`` leaves the SVG unpainted apart from its classes,
     for a host that supplies the whole stylesheet. ``show_params=False`` drops
     the per-step parameter lines, which also shrinks the boxes: the layout is
@@ -97,6 +101,8 @@ class SvgOptions:
     style: str = "blueprint"
     inputs: str = "terminals"
     density: str = "normal"
+    legend: bool = False
+    animate: bool = False
 
     def __post_init__(self) -> None:
         for name, value, allowed in (
@@ -108,7 +114,7 @@ class SvgOptions:
                 raise ValueError(f"SvgOptions.{name} must be one of {allowed}, not {value!r}")
 
     def stylesheet(self) -> str:
-        return _stylesheet(self.theme)
+        return _stylesheet(self.theme, animate=self.animate)
 
 
 _STYLESHEET_LIGHT = _stylesheet("light")
@@ -429,6 +435,8 @@ def _draw(
         final=final_step_name,
         css=options.stylesheet() if options.include_styles else None,
         background=options.include_background,
+        legend=options.legend,
+        animate=options.animate,
     )
 
 
