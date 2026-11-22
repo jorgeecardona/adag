@@ -16,7 +16,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from typing import Literal
 
@@ -112,6 +112,12 @@ class RNode:
     value: str = ""
     is_leaf: bool = False
     is_final: bool = False
+    parent: str = ""
+    """The name of the frame that holds this node, empty at the top level."""
+    caption: str = ""
+    """For a frame: the sentence under its body."""
+    feedback: str = ""
+    """For a loop frame: the name of the input that gets the state of the next round."""
 
 
 @dataclass(frozen=True)
@@ -421,9 +427,8 @@ def _measure_input(node: RNode, look: Look) -> Measured:
         return Measured(float(max(len(node.title) * 8 + 32, 100)), 32.0, title=node.title)
     compact = look.density == "compact"
     name = _truncate(node.title, 16 if compact else 24)
-    value = (
-        _truncate(node.value, 14 if compact else 24) if node.value and node.kind == "param" else ""
-    )
+    shows_value = node.kind in ("param", "template_input")
+    value = _truncate(node.value, 14 if compact else 24) if node.value and shows_value else ""
     width = max(_text_width(name, 12, _MONO_EM), _text_width(value, 11, _MONO_EM)) + 28
     if look.style == "blueprint":
         width += 12
@@ -1028,12 +1033,17 @@ def settings_for(look: Look) -> lay.LayoutSettings:
 
 
 def _fold_inputs(
-    nodes: Sequence[RNode], edges: Sequence[tuple[str, str]], *, fold: bool
+    nodes: Sequence[RNode],
+    edges: Sequence[tuple[str, str]],
+    *,
+    fold: bool,
+    keep: frozenset[str] = frozenset(),
 ) -> tuple[list[RNode], list[tuple[str, str]]]:
     """With ``fold``, move inputs into the steps that read them.
 
     Only an input (a param or a file with no edge into it) that feeds steps and nothing else is
-    folded. Any other node stays a node, and so does an input that nothing reads.
+    folded. Any other node stays a node, and so does an input that nothing reads, and an input
+    that feeds a node in ``keep`` (a frame has no room for lines of its own).
     """
     if not fold:
         return list(nodes), list(edges)
@@ -1048,7 +1058,10 @@ def _fold_inputs(
         if n.kind in ("param", "file")
         and n.name not in has_input
         and readers.get(n.name)
-        and all(by_name.get(t) is not None and by_name[t].kind == "step" for t in readers[n.name])
+        and all(
+            by_name.get(t) is not None and by_name[t].kind == "step" and t not in keep
+            for t in readers[n.name]
+        )
     }
     folded: dict[str, list[tuple[str, str]]] = {}
     kept: list[tuple[str, str]] = []
@@ -1069,20 +1082,7 @@ def _fold_inputs(
 
 
 def _with_inputs(node: RNode, inputs: tuple[tuple[str, str], ...]) -> RNode:
-    return RNode(
-        node.name,
-        node.kind,
-        node.title,
-        node.description,
-        node.params,
-        inputs,
-        node.state,
-        node.shape,
-        node.key,
-        node.value,
-        node.is_leaf,
-        node.is_final,
-    )
+    return replace(node, inputs=inputs)
 
 
 def draw(

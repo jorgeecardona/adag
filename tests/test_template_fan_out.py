@@ -207,12 +207,23 @@ def test_dag_draws_one_mapped_node_with_the_template_steps_inside_in_both_themes
 
     target = _fan_out(InputParam[str]("text", value_type=str))
     for theme in ("light", "dark"):
-        svg = str(dag(target, options=SvgOptions(theme=theme)))
+        svg = str(dag(target, options=SvgOptions(theme=theme, frames=False)))
         stylesheet, drawing = svg.split("</style>", 1)
         assert ".dag-node--mapped" in stylesheet
         assert drawing.count("dag-node--mapped") == 1  # one node, not one per item
         assert "each item" in drawing and "Measure" in drawing  # the template, inside the node
         assert "known at run time" in drawing
+
+
+def test_dag_draws_the_template_once_inside_a_frame_by_default() -> None:
+    from adag import dag
+
+    svg = str(dag(_fan_out(InputParam[str]("text", value_type=str))))
+    drawing = svg.split("</style>", 1)[1]
+    assert drawing.count("dag-frame--mapped") == 1  # one frame, not one per item
+    assert "Measure" in drawing  # the body of the template, drawn inside
+    assert "dag-node--mapped" not in drawing  # no single dashed box
+    assert "one branch per item" in drawing
 
 
 def test_dag_does_not_flag_a_factory_fan_out_as_mapped() -> None:

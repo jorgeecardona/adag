@@ -11,6 +11,7 @@ from adag import visualization as viz
 from adag.visualization import (  # pyright: ignore[reportPrivateUsage]
     Edge,
     NodeMetadata,
+    SvgOptions,
     _collapse,
     node_metadata,
     walk,
@@ -247,12 +248,18 @@ def test_a_graph_without_frames_collapses_to_itself() -> None:
 
 
 @pytest.mark.parametrize("make", [_loop, _wired_fan_out])
-def test_the_drawing_is_the_same_as_the_flat_one(make: Any) -> None:
-    # Frames are not drawn yet: expanding and collapsing gives the one-box drawing of before.
+def test_without_frames_the_drawing_is_the_one_box_of_before(make: Any) -> None:
     target = make()
     flat_nodes, flat_edges = walk(target)
     flat = viz._render_svg(target, flat_nodes, flat_edges)  # pyright: ignore[reportPrivateUsage]
-    assert str(dag(target)) == flat
+    assert str(dag(target, options=SvgOptions(frames=False))) == flat
+    assert "dag-frame" not in flat
+    assert "dag-frame" in str(dag(target))
+
+
+@pytest.mark.parametrize("make", [_loop, _wired_fan_out])
+def test_classic_never_draws_a_frame(make: Any) -> None:
+    assert "dag-frame" not in str(dag(make(), options=SvgOptions(style="classic")))
 
 
 def test_edges_compare_by_value() -> None:

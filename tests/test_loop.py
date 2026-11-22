@@ -295,7 +295,7 @@ def test_the_graph_draws_one_loop_node_and_explain_key_lists_the_expansion() -> 
 
     target = _loop(40)
     for theme in ("light", "dark"):
-        svg = str(dag(target, options=SvgOptions(theme=theme)))
+        svg = str(dag(target, options=SvgOptions(theme=theme, frames=False)))
         stylesheet, drawing = svg.split("</style>", 1)
         assert ".dag-node--loop" in stylesheet
         assert drawing.count("dag-node--loop") == 1
@@ -305,6 +305,16 @@ def test_the_graph_draws_one_loop_node_and_explain_key_lists_the_expansion() -> 
     assert [c.name for c in expansion] == ["loop"]
     assert "up to 20 rounds" in expansion[0].value
     assert explanation.key == target.content_hash()
+
+
+def test_the_loop_is_drawn_once_inside_a_frame_with_a_way_back_by_default() -> None:
+    from adag import dag
+
+    drawing = str(dag(_loop(40))).split("</style>", 1)[1]
+    assert drawing.count("dag-frame--loop") == 1
+    assert "dag-edge--feedback" in drawing  # the one place where adag draws a cycle
+    assert "until small" in drawing or "until " in drawing
+    assert "Halve" in drawing
 
 
 def test_the_observer_hears_each_round_and_the_run_tree_labels_it(tmp_path: Path) -> None:

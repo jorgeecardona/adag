@@ -28,8 +28,9 @@ from adag import InputParam, NullObserver, Pipeline, Step, dag
 from adag.svg_paint import Corners, Density, Inputs, Style
 from adag.svg_theme import stylesheet
 from adag.visualization import SvgOptions, render_graph_svg
-from graphs_fixtures import GRAPHS
+from graphs_fixtures import FRAME_GRAPHS, GRAPHS
 
+ALL_GRAPHS = {**GRAPHS, **FRAME_GRAPHS}
 GOLDEN = Path(__file__).resolve().parent / "golden_graphs"
 UPDATE = os.environ.get("ADAG_UPDATE_GOLDEN") == "1"
 COMMAND = "ADAG_UPDATE_GOLDEN=1 pytest tests/test_golden_graphs.py"
@@ -73,6 +74,18 @@ def _specs() -> list[Spec]:
             Spec(graph, "band", "rows", "compact"),
             Spec(graph, theme="dark"),
         ]
+    for graph in sorted(FRAME_GRAPHS):
+        specs += [
+            Spec(graph),
+            Spec(graph, theme="dark"),
+            Spec(graph, "band"),
+            Spec(graph, "band", theme="dark"),
+        ]
+    specs += [
+        Spec("frame_nested", density="compact"),
+        Spec("frame_loop", "band", "tabs", "compact"),
+        Spec("frame_fan_out", corners="sharp"),
+    ]
     specs += [
         Spec("blocked", "classic"),
         Spec("dataset_middle", "band", "tabs"),
@@ -123,7 +136,7 @@ def _real_graph(factor: int):
 
 def render(spec: Spec) -> str:
     """The SVG of ``spec``, one element per line so a difference is easy to find."""
-    graph = GRAPHS[spec.graph]
+    graph = ALL_GRAPHS[spec.graph]
     svg = render_graph_svg(
         list(graph.nodes),
         list(graph.edges),

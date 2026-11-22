@@ -495,3 +495,147 @@ def all_graphs() -> dict[str, GraphFixture]:
 
 
 GRAPHS: dict[str, GraphFixture] = all_graphs()
+
+
+# ── Frames: the body of a fan-out or a loop, drawn inside the node that builds it ─────────────
+
+
+def frame_node(
+    name: str,
+    title: str,
+    shape: str,
+    caption: str,
+    state: str = "PENDING",
+    feedback: str = "",
+    parent: str = "",
+    description: str = "",
+) -> NodeMetadata:
+    """A node that builds its sub-graph at run time. Its children name it as their ``parent``."""
+    return NodeMetadata(
+        name=name,
+        kind="step",
+        title=title,
+        description=description or caption,
+        state=state,
+        shape=shape,
+        key=_key(name),
+        parent=parent,
+        caption=caption,
+        feedback=feedback,
+    )
+
+
+def body_step(name: str, title: str, parent: str, description: str = "") -> NodeMetadata:
+    """A step of a template: it has no cache state and no key."""
+    return NodeMetadata(
+        name=name,
+        kind="step",
+        title=title,
+        description=description,
+        state="NONE",
+        parent=parent,
+    )
+
+
+def template_input(name: str, title: str, parent: str, value: str = "") -> NodeMetadata:
+    """An input of a template, drawn at the top of its frame."""
+    return NodeMetadata(
+        name=name,
+        kind="template_input",
+        title=title,
+        state="SOURCE",
+        value=value,
+        parent=parent,
+    )
+
+
+def _frame_fan_out() -> GraphFixture:
+    return GraphFixture(
+        "frame_fan_out",
+        (
+            param("text", "'a;b;c'"),
+            step("split", "Split", "Cut the text into parts.", "CACHED"),
+            frame_node("each", "Each part", "mapped", "one branch per item", "PENDING"),
+            template_input("each/item", "item", "each"),
+            body_step("each/measure", "Measure", "each", "Count the characters."),
+            body_step("each/score", "Score", "each", "Rate the part."),
+            step("join", "Join", "Collect the scores.", "PENDING"),
+        ),
+        (
+            ("text", "split"),
+            ("split", "each/item"),
+            ("each/item", "each/measure"),
+            ("each/measure", "each/score"),
+            ("each", "join"),
+        ),
+        "join",
+        "Scores",
+        "A fan-out: one body, drawn once, run for every item.",
+    )
+
+
+def _frame_loop() -> GraphFixture:
+    return GraphFixture(
+        "frame_loop",
+        (
+            step("seed", "Seed", "Start from 40.", "CACHED"),
+            frame_node(
+                "halve_until",
+                "Halve until small",
+                "loop",
+                "until small, at most 7 rounds",
+                "PENDING",
+                feedback="halve_until/state",
+            ),
+            template_input("halve_until/state", "state", "halve_until"),
+            body_step("halve_until/halve", "Halve", "halve_until", "Divide by two."),
+            step("report", "Report", "Print the result.", "PENDING"),
+        ),
+        (
+            ("seed", "halve_until/state"),
+            ("halve_until/state", "halve_until/halve"),
+            ("halve_until", "report"),
+        ),
+        "report",
+        "Result",
+        "A loop: the body is drawn once, with a way back to its input.",
+    )
+
+
+def _frame_nested() -> GraphFixture:
+    return GraphFixture(
+        "frame_nested",
+        (
+            step("numbers", "Numbers", "A dict of start values.", "CACHED"),
+            frame_node("each", "Each number", "mapped", "one branch per item", "PENDING"),
+            template_input("each/item", "item", "each"),
+            body_step("each/seed", "Seed", "each", "Start from the item."),
+            frame_node(
+                "each/loop",
+                "Halve until small",
+                "loop",
+                "until small, at most 20 rounds",
+                "NONE",
+                feedback="each/loop/state",
+                parent="each",
+            ),
+            template_input("each/loop/state", "state", "each/loop"),
+            body_step("each/loop/halve", "Halve", "each/loop", "Divide by two."),
+            step("total", "Total", "Add the results.", "PENDING"),
+        ),
+        (
+            ("numbers", "each/item"),
+            ("each/item", "each/seed"),
+            ("each/seed", "each/loop/state"),
+            ("each/loop/state", "each/loop/halve"),
+            ("each", "total"),
+        ),
+        "total",
+        "Total",
+        "A loop inside each branch of a fan-out: two frames, one inside the other.",
+    )
+
+
+FRAME_GRAPHS: dict[str, GraphFixture] = {
+    g.name: g for g in (_frame_fan_out(), _frame_loop(), _frame_nested())
+}

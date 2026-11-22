@@ -25,6 +25,7 @@ from adag.hashing import Placeholder
 from adag.io import FileSource, atomic_write_text
 from adag.key import Expansion
 from adag.step import Step, StepResult
+from adag.svg_frame import draw as _draw_framed
 from adag.svg_paint import CORNER_SHAPES as _CORNER_SHAPES
 from adag.svg_paint import DENSITIES as _DENSITIES
 from adag.svg_paint import INPUTS as _INPUTS
@@ -105,6 +106,9 @@ class SvgOptions:
     ``theme`` is ``"light"``, ``"dark"`` or ``"auto"`` (follow the browser's colour scheme).
     ``legend=True`` adds a row under the graph that names the state colours in use. ``animate=True``
     moves dashes along the edges into pending steps, unless the viewer asks for reduced motion.
+    ``frames=True`` (the default) draws the body of a fan-out or a loop once, inside a dashed
+    frame around it (``blueprint`` and ``band``). ``frames=False`` and ``classic`` draw such a
+    node as one dashed box.
 
     ``include_styles=False`` leaves the SVG unpainted apart from its classes,
     for a host that supplies the whole stylesheet. ``show_params=False`` drops
@@ -122,6 +126,7 @@ class SvgOptions:
     corners: Corners = "round"
     legend: bool = False
     animate: bool = False
+    frames: bool = True
 
     def __post_init__(self) -> None:
         for name, value, allowed in (
@@ -521,7 +526,7 @@ def dag(
         options: Theme, and whether to embed the stylesheet, paint a background
             or draw the per-step parameters.
     """
-    graph_nodes, graph_edges = walk(output, expand=options.style != "classic")
+    graph_nodes, graph_edges = walk(output, expand=options.frames and options.style != "classic")
     return SVG(
         _render_svg(
             output,
@@ -670,8 +675,22 @@ def _to_render_nodes(
     final_step_name: str | None,
     options: SvgOptions,
 ) -> list[_RNode]:
-    """Turn the metadata into what the painter draws. ``is_leaf`` is decided here, from every edge."""
-    targets = {target for _, target in edges}
+    """Turn the metadata into what the painter draws. ``is_leaf`` is decided here, from every edge.
+
+    An edge that enters a frame ends on an input inside it, and it feeds the frame as well.
+    """
+
+    def holders(name: str) -> list[str]:
+        chain: list[str] = []
+        while name in nodes and nodes[name].parent:
+            name = nodes[name].parent
+            chain.append(name)
+        return chain
+
+    fed: set[str] = set()
+    for source, target in edges:
+        fed.add(target)
+        fed.update(set(holders(target)) - set(holders(source)) - {source})
     return [
         _RNode(
             name=meta.name,
@@ -683,8 +702,11 @@ def _to_render_nodes(
             shape=meta.shape,
             key=meta.key,
             value=meta.value,
-            is_leaf=meta.name not in targets,
+            is_leaf=meta.name not in fed,
             is_final=meta.name == final_step_name,
+            parent=meta.parent,
+            caption=meta.caption,
+            feedback=meta.feedback,
         )
         for meta in nodes.values()
     ]
@@ -699,10 +721,12 @@ def _draw(
     options: SvgOptions,
     stateless: bool,
 ) -> str:
-    # Frames are not drawn yet: a node with a template is one dashed box.
-    nodes, edges = _collapse(nodes, edges)
     # classic keeps the colours of 0.3.22, which paint a graph with no state as pending
     classic = options.style == "classic"
+    # Without frames a node with a template is one dashed box: fold its children into it.
+    framed = options.frames and not classic and any(n.parent for n in nodes.values())
+    if not framed:
+        nodes, edges = _collapse(nodes, edges)
     # classic is the drawing of 0.3.22: it has no input modes, densities or corner shapes
     look = _Look(
         options.style,
@@ -711,7 +735,7 @@ def _draw(
         stateless and not classic,
         "round" if classic else options.corners,
     )
-    return _draw_graph(
+    return (_draw_framed if framed else _draw_graph)(
         _to_render_nodes(nodes, edges, final_step_name, options),
         edges,
         look=look,

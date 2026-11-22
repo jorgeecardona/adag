@@ -126,6 +126,14 @@ _RULES = """
 .dag--band .dag-text--output { fill: @text; }
 .dag .dag-item .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: @mapped; }
 .dag .dag-item .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: @loop; }
+.dag-frame__border { fill: @mapped; fill-opacity: 0.05; stroke: @mapped; stroke-dasharray: 8 4; }
+.dag-frame--loop .dag-frame__border { fill: @loop; stroke: @loop; stroke-dasharray: 3 3; }
+.dag-frame--mapped .dag-frame__tag { fill: @mapped; }
+.dag-frame--loop .dag-frame__tag { fill: @loop; }
+.dag-frame__caption { fill: @muted; }
+.dag--blueprint .dag-frame__caption { fill: @ink; }
+.dag .dag-edge.dag-edge--feedback { stroke: @loop; }
+.dag .dag-arrow.dag-arrow--feedback { fill: @loop; stroke: @loop; }
 """
 
 # Only with variables: each node group sets its state colours once, and its shapes read them.
