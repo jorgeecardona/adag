@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--classic dag--compact" width="410" height="362" viewBox="0 0 410 362">
+<style>
+.dag-canvas { fill: var(--adag-canvas, #ffffff); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #cfdaf0); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #333333); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text, .dag-text--mono { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #5f6368); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--input { fill: var(--adag-input-ink, #7b1fa2); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
+.dag-arrow { fill: var(--adag-edge, #607d8b); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #c98e00); --st-ink: var(--adag-pending-ink, #8a6200); --st-bg: var(--adag-pending-bg, #fff8e1); --st-border: var(--adag-pending-border, #ffc107);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #e8eaf6); --st-border: var(--adag-leaf-border, #9fa8da);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #2a9456); --st-ink: var(--adag-cached-ink, #1b6b3a); --st-bg: var(--adag-cached-bg, #e8f5e9); --st-border: var(--adag-cached-border, #66bb6a);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #d0413a); --st-ink: var(--adag-blocked-ink, #b3261e); --st-bg: var(--adag-blocked-bg, #ffebee); --st-border: var(--adag-blocked-border, #ef5350);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
+.dag-head { fill: var(--st-bg); stroke: none; }
+.dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; opacity: 0.55; }
+.dag-state { fill: var(--st); stroke: none; }
+.dag-tab { fill: var(--adag-card, #ffffff); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag-node--param { fill: var(--adag-input-bg, #f3e5f5); stroke: var(--adag-input-border, #ce93d8); }
+.dag-node--file { fill: var(--adag-file-bg, #efebe9); stroke: var(--adag-file-border, #bcaaa4); }
+.dag-node--output { fill: var(--adag-output-bg, #e3f2fd); stroke: var(--adag-output-border, #64b5f6); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #ffffff); stroke: var(--adag-edge, #607d8b); }
+.dag-pin { fill: var(--adag-ink, #1f3d8f); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #7b1fa2); }
+.dag-text--file { fill: var(--adag-file-ink, #795548); }
+.dag-text--output { fill: var(--adag-output-ink, #1565c0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-text--output { fill: var(--adag-text, #333333); }
+.dag .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
+.dag .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+</style>
+<rect class="dag-canvas" width="410" height="362" />
+<path d="M258 64 C258 88 200 88 200 112" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="196.8,112 203.2,112 200,120" class="dag-arrow" />
+<path d="M272 64 C272 88 330 88 330 112" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="326.8,112 333.2,112 330,120" class="dag-arrow" />
+<path d="M200 154 C200 178 258 178 258 202" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="254.8,202 261.2,202 258,210" class="dag-arrow" />
+<path d="M330 154 C330 178 272 178 272 202" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="268.8,202 275.2,202 272,210" class="dag-arrow" />
+<path d="M265 244 L265 292" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
+<polygon points="261.8,292 268.2,292 265,300" class="dag-arrow dag-arrow--output" />
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="load">
+<title>Load (cached)
+Read the CSV file.
+path = 'data.csv'
+key 0cf67fc72b3c</title>
+<rect x="215" y="30" width="100" height="34" rx="10" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="265" y="47" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Load</text>
+<text x="201" y="47" class="dag-text dag-text--param-node" font-size="11" text-anchor="end" dominant-baseline="central">path = 'data.csv'</text>
+<line x1="203" y1="47" x2="214" y2="47" class="dag-edge" />
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="clean">
+<title>Clean (pending)
+Normalize the text.
+case = 'lower'
+key 3b066804f6d1</title>
+<rect x="150" y="120" width="100" height="34" rx="10" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="200" y="137" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Clean</text>
+<text x="136" y="137" class="dag-text dag-text--param-node" font-size="11" text-anchor="end" dominant-baseline="central">case = 'lower'</text>
+<line x1="138" y1="137" x2="149" y2="137" class="dag-edge" />
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="count">
+<title>Count (cached)
+Count the rows.
+key 6c35493a2b93</title>
+<rect x="280" y="120" width="100" height="34" rx="10" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="330" y="137" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Count</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="report">
+<title>Report (pending)
+Write the summary.
+key 845e91831319</title>
+<rect x="215" y="210" width="100" height="34" rx="10" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<text x="265" y="227" class="dag-text dag-text--title" font-size="14" text-anchor="middle" dominant-baseline="central" font-weight="bold">Report</text>
+</g>
+<g class="dag-item dag-item--output" data-state="none" data-kind="output">
+<title>report.md</title>
+<rect x="213" y="300" width="104" height="32" rx="8" class="dag-node dag-node--output" stroke-width="2" />
+<text x="265" y="316" class="dag-text dag-text--output" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">report.md</text>
+</g>
+</svg>

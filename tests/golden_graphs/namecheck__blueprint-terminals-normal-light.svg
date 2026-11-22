@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dag dag--blueprint" width="863" height="964" viewBox="0 0 863 964">
+<style>
+.dag-canvas { fill: var(--adag-canvas, #ffffff); }
+.dag--blueprint .dag-canvas { fill: var(--adag-paper, #eef3fc); }
+.dag-grid { fill: none; stroke: var(--adag-grid, #cfdaf0); stroke-width: 1; }
+.dag-text { fill: var(--adag-text, #333333); font-family: var(--adag-font, -apple-system, "Segoe UI", system-ui, Helvetica, Arial, sans-serif); }
+.dag--blueprint .dag-text, .dag-text--mono { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag-text--desc, .dag-text--param, .dag-text--key, .dag-text--tab { fill: var(--adag-muted, #5f6368); }
+.dag-text--param, .dag-text--tab, .dag-text--key { font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--title, .dag--blueprint .dag-text--desc,
+.dag--blueprint .dag-text--param, .dag--blueprint .dag-text--key { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--input { fill: var(--adag-input-ink, #7b1fa2); font-family: var(--adag-font-mono, ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace); }
+.dag--blueprint .dag-text--input { fill: var(--adag-ink, #1f3d8f); }
+.dag-text--state { fill: var(--st-ink); font-weight: bold; letter-spacing: 0.05em; }
+.dag-edge { fill: none; stroke: var(--adag-edge, #607d8b); }
+.dag-arrow { fill: var(--adag-edge, #607d8b); }
+.dag--blueprint .dag-edge { stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-arrow { fill: var(--adag-ink, #1f3d8f); }
+.dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-item.is-pending {
+  --st: var(--adag-pending, #c98e00); --st-ink: var(--adag-pending-ink, #8a6200); --st-bg: var(--adag-pending-bg, #fff8e1); --st-border: var(--adag-pending-border, #ffc107);
+}
+.dag-item.is-leaf {
+  --st-bg: var(--adag-leaf-bg, #e8eaf6); --st-border: var(--adag-leaf-border, #9fa8da);
+}
+.dag-item.is-cached {
+  --st: var(--adag-cached, #2a9456); --st-ink: var(--adag-cached-ink, #1b6b3a); --st-bg: var(--adag-cached-bg, #e8f5e9); --st-border: var(--adag-cached-border, #66bb6a);
+}
+.dag-item.is-blocked {
+  --st: var(--adag-blocked, #d0413a); --st-ink: var(--adag-blocked-ink, #b3261e); --st-bg: var(--adag-blocked-bg, #ffebee); --st-border: var(--adag-blocked-border, #ef5350);
+}
+.dag--stateless .dag-item {
+  --st: var(--adag-neutral, #64748b); --st-ink: var(--adag-muted, #5f6368); --st-bg: var(--adag-step-bg, #f6f8fa); --st-border: var(--adag-step-border, #78909c);
+}
+.dag-node { fill: var(--st-bg); stroke: var(--st-border); }
+.dag--blueprint .dag-node { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-node { fill: var(--adag-card, #ffffff); stroke: var(--st-border); }
+.dag-head { fill: var(--st-bg); stroke: none; }
+.dag-rule { stroke: var(--st-border); stroke-width: 2; }
+.dag--blueprint .dag-rule { stroke: var(--adag-ink, #1f3d8f); stroke-width: 1; opacity: 0.55; }
+.dag-state { fill: var(--st); stroke: none; }
+.dag-tab { fill: var(--adag-card, #ffffff); stroke: var(--st-border); stroke-width: 1.5; }
+.dag--blueprint .dag-tab { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag-node--param { fill: var(--adag-input-bg, #f3e5f5); stroke: var(--adag-input-border, #ce93d8); }
+.dag-node--file { fill: var(--adag-file-bg, #efebe9); stroke: var(--adag-file-border, #bcaaa4); }
+.dag-node--output { fill: var(--adag-output-bg, #e3f2fd); stroke: var(--adag-output-border, #64b5f6); }
+.dag--blueprint .dag-node--param, .dag--blueprint .dag-node--file { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); }
+.dag--blueprint .dag-node--output { fill: var(--adag-paper, #eef3fc); stroke: var(--adag-ink, #1f3d8f); stroke-dasharray: 5 3; }
+.dag--band .dag-node--output { fill: var(--adag-card, #ffffff); stroke: var(--adag-edge, #607d8b); }
+.dag-pin { fill: var(--adag-ink, #1f3d8f); stroke: none; }
+.dag-text--param-node { fill: var(--adag-input-ink, #7b1fa2); }
+.dag-text--file { fill: var(--adag-file-ink, #795548); }
+.dag-text--output { fill: var(--adag-output-ink, #1565c0); }
+.dag--blueprint .dag-text--param-node, .dag--blueprint .dag-text--file,
+.dag--blueprint .dag-text--output { fill: var(--adag-ink, #1f3d8f); }
+.dag--band .dag-text--output { fill: var(--adag-text, #333333); }
+.dag .dag-node.dag-node--mapped { stroke-dasharray: 8 4; stroke: var(--adag-mapped, #8e24aa); }
+.dag .dag-node.dag-node--loop { stroke-dasharray: 3 3; stroke: var(--adag-loop, #00897b); }
+</style>
+<rect class="dag-canvas" width="863" height="964" />
+<path d="M20 0V964M40 0V964M60 0V964M80 0V964M100 0V964M120 0V964M140 0V964M160 0V964M180 0V964M200 0V964M220 0V964M240 0V964M260 0V964M280 0V964M300 0V964M320 0V964M340 0V964M360 0V964M380 0V964M400 0V964M420 0V964M440 0V964M460 0V964M480 0V964M500 0V964M520 0V964M540 0V964M560 0V964M580 0V964M600 0V964M620 0V964M640 0V964M660 0V964M680 0V964M700 0V964M720 0V964M740 0V964M760 0V964M780 0V964M800 0V964M820 0V964M840 0V964M860 0V964M0 20H863M0 40H863M0 60H863M0 80H863M0 100H863M0 120H863M0 140H863M0 160H863M0 180H863M0 200H863M0 220H863M0 240H863M0 260H863M0 280H863M0 300H863M0 320H863M0 340H863M0 360H863M0 380H863M0 400H863M0 420H863M0 440H863M0 460H863M0 480H863M0 500H863M0 520H863M0 540H863M0 560H863M0 580H863M0 600H863M0 620H863M0 640H863M0 660H863M0 680H863M0 700H863M0 720H863M0 740H863M0 760H863M0 780H863M0 800H863M0 820H863M0 840H863M0 860H863M0 880H863M0 900H863M0 920H863M0 940H863M0 960H863" class="dag-grid" />
+<path d="M750 68 L750 97 Q750 105 742 105 L616.3 105 Q608.3 105 608.3 113 L608.3 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="603.3,123 613.3,123 608.3,132" class="dag-arrow" />
+<path d="M346.7 64 L346.7 87.5 Q346.7 95.5 338.7 95.5 L244.3 95.5 Q236.3 95.5 236.3 103.5 L236.3 123" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="231.3,123 241.3,123 236.3,132" class="dag-arrow" />
+<path d="M243.3 259 L243.3 274 Q243.3 282 251.3 282 L382 282 Q390 282 390 290 L390 314" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="385,314 395,314 390,323" class="dag-arrow" />
+<path d="M397 429 L397 439 Q397 447 405 447 L578.3 447 Q586.3 447 586.3 455 L586.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="581.3,492 591.3,492 586.3,501" class="dag-arrow" />
+<path d="M764 68 L764 87.5 Q764 95.5 772 95.5 L786.3 95.5 Q794.3 95.5 794.3 103.5 L794.3 274 Q794.3 282 786.3 282 L696.9 282 Q688.9 282 688.9 290 L688.9 448 Q688.9 456 680.9 456 L622.3 456 Q614.3 456 614.3 464 L614.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="609.3,492 619.3,492 614.3,501" class="dag-arrow" />
+<path d="M753.9 391 L753.9 457 Q753.9 465 745.9 465 L636.3 465 Q628.3 465 628.3 473 L628.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="623.3,492 633.3,492 628.3,501" class="dag-arrow" />
+<path d="M608.3 259 L608.3 278.2 Q608.3 282 612.1 282 L612.1 282 Q615.9 282 615.9 285.8 L615.9 466.2 Q615.9 474 608.1 474 L608.1 474 Q600.3 474 600.3 481.8 L600.3 492" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="595.3,492 605.3,492 600.3,501" class="dag-arrow" />
+<path d="M383 429 L383 457 Q383 465 375 465 L228.3 465 Q220.3 465 220.3 473 L220.3 500" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="215.3,500 225.3,500 220.3,509" class="dag-arrow" />
+<path d="M106 395 L106 439 Q106 447 114 447 L198.3 447 Q206.3 447 206.3 455 L206.3 500" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="201.3,500 211.3,500 206.3,509" class="dag-arrow" />
+<path d="M360.7 64 L360.7 78 Q360.7 86 368.7 86 L414.3 86 Q422.3 86 422.3 94 L422.3 274 Q422.3 282 430.3 282 L568 282 Q576 282 576 290 L576 448 Q576 456 568 456 L429.3 456 Q421.3 456 421.3 464 L421.3 654 Q421.3 662 429.3 662 L535.2 662 Q543.2 662 543.2 670 L543.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="538.2,725 548.2,725 543.2,734" class="dag-arrow" />
+<path d="M778 68 L778 78 Q778 86 786 86 L808.3 86 Q816.3 86 816.3 94 L816.3 274 Q816.3 282 824.3 282 L824.9 282 Q832.9 282 832.9 290 L832.9 439 Q832.9 447 824.9 447 L823.3 447 Q815.3 447 815.3 455 L815.3 681 Q815.3 689 807.3 689 L593.2 689 Q585.2 689 585.2 697 L585.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="580.2,725 590.2,725 585.2,734" class="dag-arrow" />
+<path d="M767.9 391 L767.9 439 Q767.9 447 775.9 447 L785.3 447 Q793.3 447 793.3 455 L793.3 690 Q793.3 698 785.3 698 L579.2 698 Q571.2 698 571.2 706 L571.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="566.2,725 576.2,725 571.2,734" class="dag-arrow" />
+<path d="M229.3 259 L229.3 283 Q229.3 291 221.3 291 L212 291 Q204 291 204 299 L204 448 Q204 456 212 456 L391.3 456 Q399.3 456 399.3 464 L399.3 663 Q399.3 671 407.3 671 L521.2 671 Q529.2 671 529.2 679 L529.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="524.2,725 534.2,725 529.2,734" class="dag-arrow" />
+<path d="M607.3 644 L607.3 699 Q607.3 707 599.3 707 L565.2 707 Q557.2 707 557.2 715 L557.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="552.2,725 562.2,725 557.2,734" class="dag-arrow" />
+<path d="M213.3 636 L213.3 672 Q213.3 680 221.3 680 L507.2 680 Q515.2 680 515.2 688 L515.2 725" class="dag-edge" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+<polygon points="510.2,725 520.2,725 515.2,734" class="dag-arrow" />
+<path d="M550.2 840 L550.2 895" class="dag-edge dag-edge--output" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,4" />
+<polygon points="545.2,895 555.2,895 550.2,904" class="dag-arrow dag-arrow--output" />
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="name">
+<title>name</title>
+<rect x="313.7" y="34" width="80" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="321.7" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="359.7" y="49" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">name</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="tlds">
+<title>tlds</title>
+<rect x="699.5" y="30" width="129" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="707.5" y="46" width="6" height="6" rx="0" class="dag-pin" />
+<text x="770" y="42" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">tlds</text>
+<text x="770" y="57" class="dag-text dag-text--desc" font-size="11" text-anchor="middle" dominant-baseline="central">['com', 'sh']</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="variants">
+<title>variants</title>
+<rect x="710.9" y="361" width="100" height="30" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="718.9" y="373" width="6" height="6" rx="0" class="dag-pin" />
+<text x="766.9" y="376" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">variants</text>
+</g>
+<g class="dag-item dag-item--param" data-state="none" data-kind="param" data-name="with_lookalikes">
+<title>with_lookalikes</title>
+<rect x="30" y="357" width="152" height="38" rx="2" class="dag-node dag-node--param" stroke-width="1.5" />
+<rect x="38" y="373" width="6" height="6" rx="0" class="dag-pin" />
+<text x="112" y="369" class="dag-text dag-text--param-node" font-size="12" text-anchor="middle" dominant-baseline="central" font-weight="bold">with_lookalikes</text>
+<text x="112" y="384" class="dag-text dag-text--desc" font-size="11" text-anchor="middle" dominant-baseline="central">True</text>
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="controls">
+<title>Controls (cached)
+Control-test each registry: a registered domain reads TAKEN, a random one FREE.
+as_of = 2026-11-22
+key 1e2135d1b50f</title>
+<rect x="444.3" y="132" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="458.3" y="154" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Controls</text>
+<text x="458.3" y="176" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">Control-test each registry: a registered</text>
+<text x="458.3" y="192" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">domain reads TAKEN, a random one FREE.</text>
+<text x="458.3" y="213.5" class="dag-text dag-text--param" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="444.3" y1="233" x2="772.3" y2="233" class="dag-rule" />
+<rect x="458.3" y="242" width="8" height="8" rx="0" class="dag-state" />
+<text x="472.3" y="246" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="758.3" y="246" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key 1e2135d1b50f</text>
+</g>
+<g class="dag-item dag-item--step is-cached" data-state="cached" data-kind="step" data-name="pypi_exact">
+<title>Pypi Exact (cached)
+Is `pip install NAME` free to publish? One cached item.
+as_of = 2026-11-22
+key 0a4497daab94</title>
+<rect x="72.3" y="132" width="328" height="127" rx="2" class="dag-node dag-node--step is-cached" stroke-width="1.5" />
+<text x="86.3" y="154" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Exact</text>
+<text x="86.3" y="176" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">Is `pip install NAME` free to publish? One</text>
+<text x="86.3" y="192" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">cached item.</text>
+<text x="86.3" y="213.5" class="dag-text dag-text--param" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="72.3" y1="233" x2="400.3" y2="233" class="dag-rule" />
+<rect x="86.3" y="242" width="8" height="8" rx="0" class="dag-state" />
+<text x="100.3" y="246" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">CACHED</text>
+<text x="386.3" y="246" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key 0a4497daab94</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="pypi_free">
+<title>Pypi Free (pending)
+The gate: the name goes on only if it is free on PyPI.
+key ac2b755bd915</title>
+<rect x="226" y="323" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="240" y="345" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Pypi Free</text>
+<text x="240" y="367" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">The gate: the name goes on only if it is</text>
+<text x="240" y="383" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">free on PyPI.</text>
+<line x1="226" y1="403" x2="554" y2="403" class="dag-rule" />
+<rect x="240" y="412" width="8" height="8" rx="0" class="dag-state" />
+<text x="254" y="416" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="540" y="416" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key ac2b755bd915</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="domain_probes">
+<title>Domain Probes (pending)
+Base name, prefixes and suffixes on each TLD. Needs the controls, and a free PyPI name.
+as_of = 2026-11-22
+key 6ff75b67e2c3</title>
+<rect x="443.3" y="501" width="328" height="143" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="457.3" y="523" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Domain Probes</text>
+<text x="457.3" y="545" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">Base name, prefixes and suffixes on each</text>
+<text x="457.3" y="561" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">TLD. Needs the controls, and a free PyPI</text>
+<text x="457.3" y="577" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">name.</text>
+<text x="457.3" y="598.5" class="dag-text dag-text--param" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="443.3" y1="618" x2="771.3" y2="618" class="dag-rule" />
+<rect x="457.3" y="627" width="8" height="8" rx="0" class="dag-state" />
+<text x="471.3" y="631" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="757.3" y="631" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key 6ff75b67e2c3</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="lookalikes">
+<title>Lookalikes (pending)
+Sound-alike and typo names on PyPI (crake -&gt; crack). Taken ones are a trust risk.
+as_of = 2026-11-22
+key 5c15433414e5</title>
+<rect x="49.3" y="509" width="328" height="127" rx="2" class="dag-node dag-node--step is-pending" stroke-width="1.5" />
+<text x="63.3" y="531" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Lookalikes</text>
+<text x="63.3" y="553" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">Sound-alike and typo names on PyPI (crake</text>
+<text x="63.3" y="569" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">-&gt; crack). Taken ones are a trust risk.</text>
+<text x="63.3" y="590.5" class="dag-text dag-text--param" font-size="11" text-anchor="start" dominant-baseline="central">as_of = 2026-11-22</text>
+<line x1="49.3" y1="610" x2="377.3" y2="610" class="dag-rule" />
+<rect x="63.3" y="619" width="8" height="8" rx="0" class="dag-state" />
+<text x="77.3" y="623" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="363.3" y="623" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key 5c15433414e5</text>
+</g>
+<g class="dag-item dag-item--step is-pending" data-state="pending" data-kind="step" data-name="decide">
+<title>Decide (pending)
+Viable = free on PyPI and at least one free .com (any prefix or suffix).
+key 5589aa5863c2</title>
+<rect x="386.2" y="734" width="328" height="106" rx="2" class="dag-node dag-node--step is-pending" stroke-width="2" />
+<text x="400.2" y="756" class="dag-text dag-text--title" font-size="14" text-anchor="start" dominant-baseline="central" font-weight="bold">Decide</text>
+<text x="400.2" y="778" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">Viable = free on PyPI and at least one free</text>
+<text x="400.2" y="794" class="dag-text dag-text--desc" font-size="11" text-anchor="start" dominant-baseline="central">.com (any prefix or suffix).</text>
+<line x1="386.2" y1="814" x2="714.2" y2="814" class="dag-rule" />
+<rect x="400.2" y="823" width="8" height="8" rx="0" class="dag-state" />
+<text x="414.2" y="827" class="dag-text dag-text--state" font-size="11" text-anchor="start" dominant-baseline="central">PENDING</text>
+<text x="700.2" y="827" class="dag-text dag-text--key" font-size="11" text-anchor="end" dominant-baseline="central">key 5589aa5863c2</text>
+</g>
+<g class="dag-item dag-item--output" data-state="none" data-kind="output">
+<title>Verdict</title>
+<rect x="490.2" y="904" width="120" height="30" rx="2" class="dag-node dag-node--output" stroke-width="1.5" />
+<text x="550.2" y="919" class="dag-text dag-text--output" font-size="12" text-anchor="middle" dominant-baseline="central">Verdict</text>
+</g>
+</svg>
