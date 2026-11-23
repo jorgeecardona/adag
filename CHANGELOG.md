@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Step.code_version`: a text that replaces the digest of the class source in the cache key. Set
   it to keep a key through an edit that changes no result, such as a comment or a bug fix that
-  your cached results do not need. See [cache keys](docs/cache-keys.md) (#19).
+  your cached results do not need. See [cache keys](https://cardona-oss.gitlab.io/adag/cache-keys/) (#19).
 - `dag()` draws the body of a fan-out or a loop once, inside a dashed frame around it (`blueprint`
   and `band`). The inputs of the template sit at the top of the frame, the edges that enter the
   frame end on them, and one edge leaves the bottom. A loop also has a dashed edge "next round"
