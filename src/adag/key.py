@@ -21,7 +21,7 @@ class ComponentKind(StrEnum):
     IDENTITY = "identity"
     """The step's class name or ``kind``; for a node, the step's own key."""
     CODE = "code"
-    """A digest of the step class's source code."""
+    """A digest of the step class's source code, or its ``code_version`` text."""
     PINNED = "pinned"
     """``Step.cache_key`` is set. It replaces identity, code and fields."""
     FIELD = "field"

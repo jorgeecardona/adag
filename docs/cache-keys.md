@@ -12,7 +12,7 @@ after a change: the part whose digest differs is the cause.
 ```text
 Scale  key=9ba856cd8cc6  format=2
   identity  -        Scale         88caac9df9ad
-  code      -        663765373931  3c5791a5408e
+  code      source   f7e791aa02b5  3c5791a5408e
   field     factor   2             01e6dab02f90
   skipped   workers  Config(4)     -
   param     x        3             412a6e3e02d7
@@ -24,7 +24,7 @@ key. A `skipped` row is not in the key and has no digest.
 | Kind | What it is |
 |---|---|
 | `identity` | the step class name, or its `kind` |
-| `code` | a digest of the step class source |
+| `code` | a digest of the step class source (name `source`), or the text of `code_version` (name `code_version`) |
 | `pinned` | the class sets `cache_key`: it replaces identity, code and fields |
 | `field` | a step field, by value |
 | `file` | a `FileSource` field, by file content |
@@ -66,6 +66,27 @@ record equals explain_key: True
 
 The first line that is not `upstream` is the cause. Each `upstream` line after it is a
 consequence.
+
+## Keep a key through an edit that changes no result
+
+Any edit inside the step class body changes its `code` digest: a docstring, a comment, a blank
+line. Set `code_version` on the class to pin the part of the key that comes from the source:
+
+```python
+@dataclass(frozen=True)
+class Probe(Step[Findings]):
+    code_version = "2026-11-23"
+
+    def run(self, domain: str) -> Findings: ...
+```
+
+1. Print the current digest: `class_source_hash(Probe).decode()`.
+2. Set `code_version` to that text. The key does not change.
+3. Edit the class. The key stays the same until you change `code_version`.
+
+Change `code_version` when the edit changes results. `code_version` applies to the class that
+sets it. A subclass does not inherit it. `FanOutStep` and `LoopStep` do not hash their own class
+source, so `code_version` does nothing on them.
 
 ## Key records
 

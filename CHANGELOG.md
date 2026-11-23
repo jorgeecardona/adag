@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Step.code_version`: a text that replaces the digest of the class source in the cache key. Set
+  it to keep a key through an edit that changes no result, such as a comment or a bug fix that
+  your cached results do not need. See [cache keys](docs/cache-keys.md) (#19).
 - `dag()` draws the body of a fan-out or a loop once, inside a dashed frame around it (`blueprint`
   and `band`). The inputs of the template sit at the top of the frame, the edges that enter the
   frame end on them, and one edge leaves the bottom. A loop also has a dashed edge "next round"
@@ -92,6 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `explain_key` showed the `code` value as the hex of the first 6 characters of the digest. It now
+  shows the digest, and the name column says `source` or `code_version`.
 - `dag()` no longer shows "Name(field: int = 1)" as the description of a step that has no
   docstring. The box shows no description line.
 - `dag()` draws the edge to the output box when the last step has a `node_label` or a `#2` name

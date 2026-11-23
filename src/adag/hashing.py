@@ -255,7 +255,8 @@ def class_source_hash(cls: type) -> bytes | None:
     Only the source of the class body is hashed: the first class in the MRO whose
     source ``inspect`` can read. Edits to a base class or to a helper function the
     step calls do NOT change the hash. Bump a field or ``kind`` version when such an
-    edit changes results. Any edit inside the class body, comments included, does.
+    edit changes results. Any edit inside the class body, comments included, does. To keep a key
+    through such an edit, set ``code_version`` on the class (its text replaces this digest).
 
     Memoized per class: inspect.getsource() re-reads + re-tokenizes the source
     file on every call, and this is invoked once per step instance across the

@@ -195,6 +195,9 @@ class Step(Generic[Out]):
         label, description: text for the graph drawing.
         result_type: the ``BaseModel`` the result is cached as. Inferred from ``Step[X]``.
         cache_key: a fixed key that replaces the computed hash.
+        code_version: a text that replaces the digest of the class source in the key. Change it
+            when the behaviour changes. An edit to the source that does not change results then
+            keeps the key. A subclass does not inherit it. See ``class_source_hash``.
         strict_content_hash: set to ``False`` to skip fields the key cannot encode.
         pure: ``False`` records that a rerun would not give the same value (a model call, a
             clock read). adag still caches the step and never reads ``pure``.
@@ -213,6 +216,7 @@ class Step(Generic[Out]):
     result_type: ClassVar[type[BaseModel] | None] = None
     return_type: ClassVar[type[Any] | None] = None
     cache_key: ClassVar[str | None] = None
+    code_version: ClassVar[str | None] = None
     strict_content_hash: ClassVar[bool] = True
     pure: ClassVar[bool] = True
     timeout_s: ClassVar[float | None] = None
@@ -440,9 +444,19 @@ class Step(Generic[Out]):
             yield ComponentKind.IDENTITY, "", name, b"STEP:" + encode_value(name)
         # Source is hashed for kind-tagged steps too: editing a step's code must
         # invalidate its results whether or not it has a serialization kind.
-        code_bytes = class_source_hash(type(self))
-        if code_bytes:
-            yield ComponentKind.CODE, "", code_bytes.hex()[:12], b"CODE:" + code_bytes
+        # A pin in the class body replaces the digest of the source, so a bytes-for-bytes copy of
+        # the digest as ``code_version`` leaves the key unchanged.
+        pin = vars(type(self)).get("code_version")
+        if pin is not None:
+            if not isinstance(pin, str) or not pin:
+                raise TypeError(
+                    f"{type(self).__name__}.code_version must be a non-empty str, got {pin!r}"
+                )
+            yield ComponentKind.CODE, "code_version", pin, b"CODE:" + pin.encode()
+        else:
+            code_bytes = class_source_hash(type(self))
+            if code_bytes:
+                yield ComponentKind.CODE, "source", code_bytes.decode(), b"CODE:" + code_bytes
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)
