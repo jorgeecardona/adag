@@ -23,7 +23,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, cast, get_args
 
-from adag.cache_store import store_from_url
+from adag._worker_events import WorkerEventObserver
+from adag.cache_store import FileSystemCacheStore, store_from_url
 from adag.deferred import InputParam, PipelineObserver
 from adag.deprecation import AdagDeprecationWarning
 from adag.dispatch import EXIT_BAD_BRANCH, BranchReferenceError
@@ -228,7 +229,8 @@ def run_branch(
     When ``over`` is an upstream node, the worker resolves that node first: it reads the result
     from the cache when it is a ``BaseModel`` result, and runs the upstream step otherwise.
     ``StepResult.resolve`` writes the result to ``cache_dir`` (or the store at ``store_url``)
-    under the branch content hash, which the main process reads back.
+    under the branch content hash, which the main process reads back. While it runs, the worker
+    also writes its events to the same store (see ``adag._worker_events``).
 
     Raises:
         BranchReferenceError: the fan-out or key is not in the pipeline, or the re-derived
@@ -286,7 +288,17 @@ def run_branch(
                 f"branch {key!r} hash mismatch: main process expects {expect_hash}, worker "
                 f"derived {actual}. The worker runs different code or params."
             )
-    return pipeline_obj.resolve(sub, **params)
+    events_store = store
+    if events_store is None and cache_dir is not None:
+        events_store = FileSystemCacheStore(cache_dir)
+    if events_store is None:
+        return pipeline_obj.resolve(sub, **params)
+    with WorkerEventObserver(events_store, sub.content_hash(params=params) or "") as observer:
+        try:
+            return pipeline_obj.resolve(sub, observer=observer, **params)
+        except BaseException as error:
+            observer.failed(error)
+            raise
 
 
 def _coerce_legacy_assignments(pipeline: Pipeline[Any], items: list[str]) -> dict[str, Any]:

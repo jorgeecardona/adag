@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A dispatched branch reports while it runs. The worker writes its steps to the shared cache, and
+  `RemoteDispatcher` sends them to your observer as `branch.step_start`, `branch.step_cached`,
+  `branch.step_finished`, `branch.event` and `branch.failed`. The error text of a failed branch
+  joins the `FanOutBranchError` detail. New `BranchPolicy.silent_timeout_seconds` cancels and
+  retries a RUNNING job whose worker went quiet for that long. See
+  [Dispatch](https://cardona-oss.gitlab.io/adag/dispatch/#watch-a-branch-while-it-runs).
 - `adag.backends.CommandBackend`: a `JobBackend` made from command templates (no shell). It runs
   branches on any scheduler that has a CLI, such as `sbatch`, `kubectl`, `gcloud` or `ssh`. See
   [Dispatch](https://cardona-oss.gitlab.io/adag/dispatch/#commandbackend).

@@ -107,12 +107,71 @@ Notes:
 | `retry_delay_seconds` | 0.0 | wait before a retry |
 | `result_grace_seconds` | 5.0 | wait for the result after a job SUCCEEDED |
 | `missing_status_polls` | 3 | polls that may leave a job out of `status()` before it counts as FAILED |
+| `silent_timeout_seconds` | None | a RUNNING job whose worker wrote nothing for this long counts as FAILED (see below) |
 
 `SubprocessDispatcher()` with no policy polls every 0.05 s. If you pass a policy, set
 `poll_interval_seconds=0.05` yourself, or local branches are polled every 5 s.
 
 A worker exits 2 when it cannot find its branch, or when it derives a different branch hash than
 the main process (`--expect-hash`). That means the worker runs different code. It is not retried.
+
+## Watch a branch while it runs
+
+A worker reports to the main process through the same cache that carries the results. No extra
+connection is needed. While a branch runs, the worker writes a small record under
+`.events/<branch hash>`. The dispatcher reads it once per poll and sends each new event to your
+observer's `on_event`.
+
+```python
+--8<-- "docs/examples/dispatch_events_pipeline.py"
+```
+
+```python
+--8<-- "docs/examples/dispatch_events.py"
+```
+
+```text
+a ['branch.step_start']
+b ['branch.step_start']
+```
+
+Every event has `key` (the branch) and `attempt`, plus these fields:
+
+| Event | Extra fields | When |
+|---|---|---|
+| `branch.step_start` | `step` | a step of the branch starts |
+| `branch.step_cached` | `step` | a step is read from the cache |
+| `branch.step_finished` | `step`, `seconds` | a step ran and its result was saved |
+| `branch.event` | `name`, `fields` | the worker's own `on_event`, such as batch progress |
+| `branch.failed` | `error_type`, `error` | the branch raised. The text also goes into the `FanOutBranchError` detail |
+
+The default `LoggingObserver` prints them, so a long remote run shows progress in your terminal.
+
+The record also tells the dispatcher that the worker is alive. A worker writes at least every
+10 seconds. Set `silent_timeout_seconds` to cancel and retry a job that says RUNNING while its
+machine is gone:
+
+- It counts from the last sign of life. A worker that has not written yet is not silent, so a slow
+  start (an image pull, a cold import, an upstream step in the worker) is covered by
+  `timeout_seconds`.
+- Use at least 30, and more on a network filesystem, which can show a new file late. A store that
+  fails on write looks like a dead worker.
+- The dispatcher uses its own clock, so the clocks of the machines do not need to agree.
+- It needs a backend that reports RUNNING.
+
+Limits:
+
+- Events are best effort. The result can reach the cache before the worker reports its last
+  events, so the last `step_finished` of a branch may never arrive.
+- A record holds the newest 200 events. A worker that emits more between two polls loses the oldest.
+- A rerun that reattaches to a live job (`find`) gets the events of that job again.
+- A worker on an adag release before 0.3.44 writes no record, so you get no events and no silent
+  check from it.
+- The worker writes the record to the same cache as the result. A store that fails on write is
+  logged, and the branch goes on.
+- The worker deletes the record when it ends cleanly. After a failure it stays, and the dispatcher
+  deletes it before the next attempt. A job cancelled right after its result can leave a record
+  behind. It is small and harmless.
 
 ## Run branches on a scheduler
 

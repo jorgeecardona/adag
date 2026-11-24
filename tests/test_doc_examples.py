@@ -11,6 +11,7 @@ EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "docs" / "examples"
 LIBRARY_FILES = {
     "cli_pipeline.py",
     "dispatch_pipeline.py",
+    "dispatch_events_pipeline.py",
     "dispatch_template_pipeline.py",
     "dispatch_failing_pipeline.py",
 }

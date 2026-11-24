@@ -22,12 +22,13 @@ import tempfile
 import time
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import IO, Any, Protocol
 
 import structlog
 
+from adag._worker_events import WorkerRecord, events_key
 from adag.cache_store import CacheStore
 from adag.deferred import BranchRef, ResolveContext, send_event
 from adag.step import StepResult
@@ -57,6 +58,10 @@ class BranchPolicy:
     SUCCEEDED, because a network filesystem can show a new file late.
     ``missing_status_polls`` is how many polls in a row may leave a job out of the backend's
     ``status()`` answer before the job counts as FAILED, so the retry policy applies.
+    ``silent_timeout_seconds`` fails a RUNNING job whose worker wrote a sign of life and then went
+    quiet for that long: a machine that died without the backend noticing. The worker writes at
+    least every 10 seconds, so set it to 30 or more. It does not count the time before the first
+    sign, so a slow start is covered by ``timeout_seconds``.
     """
 
     max_retries: int = 0
@@ -68,6 +73,8 @@ class BranchPolicy:
     # (max_retries, timeout_seconds, poll_interval_seconds).
     queue_timeout_seconds: float | None = None
     missing_status_polls: int = 3
+    # Added in 0.3.44.
+    silent_timeout_seconds: float | None = None
 
 
 LOG_TAIL_CHARS = 2000
@@ -234,6 +241,14 @@ class _LiveJob:
     running_since: float | None = None
     succeeded_at: float | None = None
     missing_polls: int = 0
+    # What workers wrote (``adag._worker_events``). A worker process has a token. ``seen_seq`` is
+    # the last event forwarded per token, ``last_pair`` the last (token, write counter) seen and
+    # ``last_sign_at`` when this process saw it change. Two workers can write one record (a
+    # leftover of an earlier attempt), so no token is pinned.
+    seen_seq: dict[str, int] = field(default_factory=dict[str, int])
+    last_pair: tuple[str, int] | None = None
+    last_sign_at: float | None = None
+    worker_error: str = ""
 
 
 @dataclass(frozen=True)
@@ -362,18 +377,22 @@ class RemoteDispatcher:
             loaded = job.sub.try_load(store, params=context.params)
             if loaded is not None:
                 results[job.ref.key] = loaded
+                self._forget_events(store, job.ref)
                 return
+            self._read_events(job, store, context, self._clock())
             retryable = exit_code != EXIT_BAD_BRANCH and job.attempt <= self.policy.max_retries
             if retryable:
                 ready_at = self._clock() + self.policy.retry_delay_seconds
                 queue.append(_Queued(job.ref, job.sub, job.attempt + 1, ready_at))
                 return
+            if job.worker_error and job.worker_error not in detail:
+                detail = f"{detail}\nworker error: {job.worker_error}"
             failed[job.ref.key] = self._with_log_tail(job_id, detail)
             context.observer.on_fan_out_branch_failed(job.ref.key, detail)
 
         try:
             while queue or live:
-                self._submit_ready(queue, live, payload, cache_dir, context)
+                self._submit_ready(queue, live, payload, cache_dir, context, store)
                 if live:
                     statuses = self.backend.status(list(live))
                     now = self._clock()
@@ -398,6 +417,51 @@ class RemoteDispatcher:
         if failed:
             raise FanOutBranchError(succeeded=sorted(results), failed=failed)
         return results
+
+    def _read_events(
+        self, job: _LiveJob, store: CacheStore, context: ResolveContext, now: float
+    ) -> None:
+        """Read the worker's record, forward its new events and note a sign of life.
+
+        An event ``e`` of the worker goes to the observer as ``branch.<e>`` with the branch ``key``
+        and the ``attempt``. A record of another worker process (a leftover) is ignored. A store
+        that fails is logged, and the branch goes on without events.
+        """
+        try:
+            text = store.get(events_key(job.ref.branch_hash))
+        except Exception as error:
+            logger.warning(
+                "worker.events_read_failed", error_type=type(error).__name__, error=str(error)
+            )
+            return
+        record = WorkerRecord.from_json(text) if text is not None else None
+        if record is None:
+            return
+        if (record.token, record.beat) != job.last_pair:
+            job.last_pair = (record.token, record.beat)
+            job.last_sign_at = now
+        seen = job.seen_seq.get(record.token, 0)
+        for event in record.events:
+            if event.seq <= seen:
+                continue
+            job.seen_seq[record.token] = event.seq
+            if event.event == "failed":
+                error_type = event.fields.get("error_type", "")
+                job.worker_error = f"{error_type}: {event.fields.get('error', '')}"
+            send_event(
+                context.observer,
+                f"branch.{event.event}",
+                {"key": job.ref.key, "attempt": job.attempt, **event.fields},
+            )
+
+    def _forget_events(self, store: CacheStore, ref: BranchRef) -> None:
+        """Delete the worker's record of a branch. A store that fails is logged and skipped."""
+        try:
+            store.delete(events_key(ref.branch_hash))
+        except Exception as error:
+            logger.warning(
+                "worker.events_delete_failed", error_type=type(error).__name__, error=str(error)
+            )
 
     def _with_log_tail(self, job_id: str, detail: str) -> str:
         """Add the end of the job's output to ``detail`` when the backend has ``logs``."""
@@ -464,6 +528,7 @@ class RemoteDispatcher:
         payload: str,
         cache_dir: str | None,
         context: ResolveContext,
+        store: CacheStore,
     ) -> None:
         """Submit queued attempts whose retry delay has passed, up to ``max_concurrent``."""
         now = self._clock()
@@ -480,6 +545,7 @@ class RemoteDispatcher:
                     live[found[0]] = _LiveJob(item.ref, item.sub, found[1], now)
                     continue
             resources = item.ref.resources if item.ref.resources is not None else self.resources
+            self._forget_events(store, item.ref)
             job = BranchJob(item.ref, payload, cache_dir, item.attempt, resources, self.store_url)
             send_event(
                 context.observer,
@@ -510,6 +576,8 @@ class RemoteDispatcher:
         if loaded is not None:
             del live[job_id]
             results[job.ref.key] = loaded
+            self._read_events(job, store, context, now)
+            self._forget_events(store, job.ref)
             if status is None or status.state in (JobState.PENDING, JobState.RUNNING):
                 self.backend.cancel([job_id])
             return
@@ -521,6 +589,7 @@ class RemoteDispatcher:
                 fail(job_id, job, detail, None)
             return
         job.missing_polls = 0
+        self._read_events(job, store, context, now)
         if status.state is JobState.SUCCEEDED:
             if job.succeeded_at is None:
                 job.succeeded_at = now
@@ -538,6 +607,16 @@ class RemoteDispatcher:
                 self.backend.cancel([job_id])
                 logger.warning("branch.timeout", key=job.ref.key, attempt=job.attempt)
                 fail(job_id, job, f"timed out after {timeout}s", None)
+                return
+            silent = policy.silent_timeout_seconds
+            if (
+                silent is not None
+                and job.last_sign_at is not None
+                and now - job.last_sign_at > silent
+            ):
+                self.backend.cancel([job_id])
+                logger.warning("branch.silent", key=job.ref.key, attempt=job.attempt)
+                fail(job_id, job, f"the worker wrote nothing for {silent}s", None)
             return
         queue_timeout = policy.queue_timeout_seconds
         if queue_timeout is not None and now - job.submitted_at > queue_timeout:
