@@ -31,13 +31,13 @@ def _fan_out() -> FanOutStep[str, Size]:
 
 
 def test_static_fan_out_step_hash_is_pinned() -> None:
-    assert _fan_out().content_hash() == "ca065f616b10"
+    assert _fan_out().content_hash() == "60d6482fbe31"
 
 
 def test_static_fan_out_node_key_is_pinned() -> None:
-    assert _fan_out()().content_hash() == "291a8f25d9f7"
+    assert _fan_out()().content_hash() == "5df6d0c9b8a0"
 
 
 def test_static_fan_out_branch_keys_are_pinned() -> None:
-    assert _factory("intro", "Hello.").content_hash() == "53f5c10a3dc2"
-    assert _factory("body", "A longer paragraph.").content_hash() == "634864313097"
+    assert _factory("intro", "Hello.").content_hash() == "a75b42c70943"
+    assert _factory("body", "A longer paragraph.").content_hash() == "130341c95bab"

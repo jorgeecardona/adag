@@ -7,7 +7,7 @@ Facts are from each tool's docs, checked on 2026-11-11; links at the end.
 
 - Runs in your Python process: `Pipeline(...).execute()`. No scheduler, server or UI.
 - Reruns a step only when its cache key changes. The key hashes the step's fields, its
-  inputs (upstream keys, `InputParam` values, file content), and the step class source.
+  inputs (upstream keys, `InputParam` values, file content), and the step class code.
 - Caches each item of a `BatchStep` on its own, so a rerun resumes after a partial failure.
 - Renders the graph to SVG with cache state, from the library.
 

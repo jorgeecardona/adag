@@ -120,17 +120,17 @@ def test_node_keys_are_pinned() -> None:
     assert _graph().content_hash(params=None) == GOLDEN["node_no_params"]
 
 
-# Computed at 0.2.35. Class bodies above feed the keys (class source is hashed): editing a
-# fixture class changes its key on purpose.
+# Computed at KEY_FORMAT 3. Class bodies above feed the keys (the syntax tree of the class is
+# hashed): editing a statement in a fixture class changes its key on purpose.
 GOLDEN: dict[str, str] = {
-    "plain": "a38a5e0bb6f3",
-    "plain_a2": "9b03d1bbe3e1",
-    "labelled": "d18f358453c1",
-    "kinded": "c095f725ab62",
-    "config": "bc9e5eb9829c",
-    "file": "7766806d8b7c",
-    "nested": "be55daf5f9fc",
-    "node_p5": "7f0a2a9a98de",
-    "node_p5_q7": "cb90d5d8f1f8",
-    "node_no_params": "c21d05822526",
+    "plain": "ea794cbb449b",
+    "plain_a2": "6203807afd67",
+    "labelled": "8d455a8da8ef",
+    "kinded": "06defbd90c20",
+    "config": "aacf255c1e41",
+    "file": "0c698c9c54be",
+    "nested": "037a05bf39d9",
+    "node_p5": "4414432e43c5",
+    "node_p5_q7": "d7468e8d8296",
+    "node_no_params": "62ca9cee0c91",
 }

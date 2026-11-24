@@ -71,7 +71,7 @@ def _code_row(step: Step[Number]) -> tuple[str, str]:
 
 def test_the_source_row_shows_the_whole_digest() -> None:
     name, value = _code_row(Plain())
-    assert name == "source"
+    assert name == "ast"
     assert value == (class_source_hash(Plain) or b"").decode()
     assert len(value) == 12
 
@@ -86,21 +86,21 @@ def test_a_changed_pin_changes_the_key(tmp_path: Path) -> None:
 
 def test_a_source_edit_under_a_pin_keeps_the_key(tmp_path: Path) -> None:
     before = _make(tmp_path, "v1")
-    after = _make(tmp_path, "v1", "return Number(value=x)  # a comment")
+    after = _make(tmp_path, "v1", "return Number(value=x + 0)")
     assert class_source_hash(before) != class_source_hash(after)
     assert _key(before()) == _key(after())
 
 
 def test_without_a_pin_the_same_edit_moves_the_key(tmp_path: Path) -> None:
     before = _make(tmp_path, None)
-    after = _make(tmp_path, None, "return Number(value=x)  # a comment")
+    after = _make(tmp_path, None, "return Number(value=x + 0)")
     assert _key(before()) != _key(after())
 
 
 def test_the_digest_as_a_pin_leaves_the_key_unchanged(tmp_path: Path) -> None:
     plain = _make(tmp_path, None)
     digest = (class_source_hash(plain) or b"").decode()
-    pinned = _make(tmp_path, digest, "return Number(value=x)  # a comment")
+    pinned = _make(tmp_path, digest, "return Number(value=x + 0)")
     assert _key(plain()) == _key(pinned())
 
 
@@ -110,7 +110,7 @@ def test_a_subclass_does_not_inherit_the_pin() -> None:
         def run(self, x: int) -> Number:
             return Number(value=x + 1)
 
-    assert _code_row(Child())[0] == "source"
+    assert _code_row(Child())[0] == "ast"
 
 
 @pytest.mark.parametrize("bad", ["", 3])

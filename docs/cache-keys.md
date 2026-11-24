@@ -10,9 +10,9 @@ after a change: the part whose digest differs is the cause.
 ```
 
 ```text
-Scale  key=9ba856cd8cc6  format=2
+Scale  key=552fe45eaf9a  format=3
   identity  -        Scale         88caac9df9ad
-  code      source   f7e791aa02b5  3c5791a5408e
+  code      ast      6f06e8c80c59  68e68602eacc
   field     factor   2             01e6dab02f90
   skipped   workers  Config(4)     -
   param     x        3             412a6e3e02d7
@@ -24,7 +24,7 @@ key. A `skipped` row is not in the key and has no digest.
 | Kind | What it is |
 |---|---|
 | `identity` | the step class name, or its `kind` |
-| `code` | a digest of the step class source (name `source`), or the text of `code_version` (name `code_version`) |
+| `code` | a digest of the step class code (name `ast`), or the text of `code_version` (name `code_version`). Name `source` means the class source did not parse, so its raw text was hashed |
 | `pinned` | the class sets `cache_key`: it replaces identity, code and fields |
 | `field` | a step field, by value |
 | `file` | a `FileSource` field, by file content |
@@ -67,10 +67,31 @@ record equals explain_key: True
 The first line that is not `upstream` is the cause. Each `upstream` line after it is a
 consequence.
 
+## What the code digest covers
+
+The `code` row is a digest of the syntax tree of the step class: its name, bases, decorators and
+body. These edits do not change it:
+
+- comments, blank lines, spacing and line wrapping
+- quote style and parentheses
+- the docstring of the class and of its methods
+
+A docstring stays in the digest when the class body names `__doc__`, for example
+`self.__doc__` as a prompt. A docstring read another way (`inspect.getdoc`, a helper function)
+is not seen: set `code_version` when you edit it. The docstring of a nested class always stays.
+
+These edits change it: a statement, a default, an annotation, a decorator, the list of bases, a
+method name. Annotations count because a dataclass field is an annotation.
+
+The digest does not cover module globals, module-level imports, the code of a base class or the
+functions the step calls. Pick one case:
+
+- A value that changes results: make it a field of the step. A field is in the key.
+- An edit that does not change results: set `code_version`. It replaces the class digest.
+
 ## Keep a key through an edit that changes no result
 
-Any edit inside the step class body changes its `code` digest: a docstring, a comment, a blank
-line. Set `code_version` on the class to pin the part of the key that comes from the source:
+Set `code_version` on the class to pin the part of the key that comes from the code:
 
 ```python
 @dataclass(frozen=True)
@@ -86,7 +107,26 @@ class Probe(Step[Findings]):
 
 Change `code_version` when the edit changes results. `code_version` applies to the class that
 sets it. A subclass does not inherit it. `FanOutStep` and `LoopStep` do not hash their own class
-source, so `code_version` does nothing on them.
+code, so `code_version` does nothing on them.
+
+## Upgrade from a release before the syntax-tree digest
+
+Key format 3 hashes the syntax tree, not the source text, so every key changes once. Results saved
+by earlier releases are not found, and the steps run again. `explain_key` shows `format=3`, and an
+older key record shows `format=2`. When the formats differ, that is the cause for every key that
+is not pinned.
+
+To keep your cached results, pin each step class before you upgrade:
+
+1. On the old release, print the digest of each step class: `class_source_hash(MyStep).decode()`.
+   A class with no readable source gives `None`. It has no `code` row and needs no pin.
+2. Set `code_version` on that class to the printed text.
+3. Upgrade. The keys do not change.
+
+Pin every step class that feeds another one. A key includes the keys of its upstream steps, so one
+unpinned step changes every step after it. A `BatchStep` also needs the pin: its item keys use the
+step key. `adag.sinks.WriteJSONL` is a step too: set `WriteJSONL.code_version` to its old digest
+in your code, before the pipeline runs.
 
 ## Key records
 

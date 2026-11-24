@@ -1,6 +1,6 @@
 ---
 title: "An edit to a module-level constant that run() reads does not change the key"
-status: open
+status: done
 area: docs
 filed: 2026-11-22
 scope: XS
@@ -25,3 +25,5 @@ Do one of:
 
 Done when: the docs say it in `cache-keys.md` and the step docs, and (if `key_extra` is added) a
 test shows that editing the listed constant changes the key.
+
+Done in 0.3.43: [cache keys](../cache-keys.md#what-the-code-digest-covers) says what the `code` digest covers and that a module constant belongs in a field. `key_extra` was not added.

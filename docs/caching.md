@@ -6,7 +6,7 @@ A step runs again only when its cache key changes.
 ## What is in the key
 
 - The step class name, or its `kind` if it has one.
-- The source code of the step class body.
+- The code of the step class body, as a syntax tree.
 - Every dataclass field, except `Config` fields.
 - The cache keys of upstream steps, `InputParam` values, and `FileSource` file content.
 
@@ -16,7 +16,7 @@ recomputes.
 ```mermaid
 flowchart LR
     cls["Class name or kind"] --> key
-    body["Class body source"] --> key
+    body["Class body code"] --> key
     fields["Fields, except Config"] --> key
     up["Upstream cache keys"] --> key
     inputs["InputParam values"] --> key
@@ -62,7 +62,10 @@ A `Path` field is hashed by its text. To hash a file's content, pass a `FileSour
 
 - Only the step's own class body is hashed. An edit to a base class or to a helper function
   the step calls does not change the key. Change a field or the `kind` version when it should.
-- Any edit inside the class body changes the key, comments included.
+- A comment, a blank line, formatting or a docstring edit does not change the key. Any other edit
+  inside the class body does. `code_version` keeps the key through an edit that changes no result
+  (see [cache keys](cache-keys.md#what-the-code-digest-covers)).
+- A module constant that `run()` reads is not in the key. Make it a field.
 - A step whose result is not a `BaseModel` is not cached, unless it overrides `save_result` and
   `load_result` (see below).
 - Step keys are 12 hex characters (48 bits) of SHA-256. `BatchStep` item keys are 16 (64 bits).

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every cache key changes once on upgrade (`KEY_FORMAT` is now 3). The `code` part of a key is a
+  digest of the syntax tree of the step class, not of its source text. A comment, a blank line,
+  formatting or a docstring edit no longer changes the key. Results saved by earlier releases
+  recompute. To keep them, set `code_version` on each step class to its old digest before you
+  upgrade. See
+  [cache keys](https://cardona-oss.gitlab.io/adag/cache-keys/#upgrade-from-a-release-before-the-syntax-tree-digest)
+  (#19).
 - In the `blueprint` style, an edge that branches off a run it shares with another edge of the
   same source now has a square corner and a dot, as in a circuit. Edges of different sources still
   cross without a dot.
@@ -99,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `explain_key` showed the `code` value as the hex of the first 6 characters of the digest. It now
-  shows the digest, and the name column says `source` or `code_version`.
+  shows the digest, and the name column says `ast`, `code_version` or `source`.
 - `dag()` no longer shows "Name(field: int = 1)" as the description of a step that has no
   docstring. The box shows no description line.
 - `dag()` draws the edge to the output box when the last step has a `node_label` or a `#2` name

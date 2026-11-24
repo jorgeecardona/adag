@@ -55,7 +55,7 @@ from adag.deprecation import AdagDeprecationWarning
 from adag.hashing import (
     KEY_FORMAT,
     UnhashableValueError,
-    class_source_hash,
+    class_code_digest,
     encode_value,
     is_dict,
     is_list,
@@ -195,8 +195,8 @@ class Step(Generic[Out]):
         label, description: text for the graph drawing.
         result_type: the ``BaseModel`` the result is cached as. Inferred from ``Step[X]``.
         cache_key: a fixed key that replaces the computed hash.
-        code_version: a text that replaces the digest of the class source in the key. Change it
-            when the behaviour changes. An edit to the source that does not change results then
+        code_version: a text that replaces the digest of the class code in the key. Change it
+            when the behaviour changes. An edit to the class that does not change results then
             keeps the key. A subclass does not inherit it. See ``class_source_hash``.
         strict_content_hash: set to ``False`` to skip fields the key cannot encode.
         pure: ``False`` records that a rerun would not give the same value (a model call, a
@@ -408,7 +408,7 @@ class Step(Generic[Out]):
     def content_hash(self) -> str | None:
         """Return the step's own hash (class, code and fields), or ``None`` when a field blocks it.
 
-        Identity is ``kind`` when set, else the class name. The class source is hashed in both cases,
+        Identity is ``kind`` when set, else the class name. The class code is hashed in both cases,
         so a code edit changes the hash. Returns ``cache_key`` unchanged when the class sets it.
 
         - ``Config`` fields: skipped.
@@ -454,9 +454,10 @@ class Step(Generic[Out]):
                 )
             yield ComponentKind.CODE, "code_version", pin, b"CODE:" + pin.encode()
         else:
-            code_bytes = class_source_hash(type(self))
-            if code_bytes:
-                yield ComponentKind.CODE, "source", code_bytes.decode(), b"CODE:" + code_bytes
+            found = class_code_digest(type(self))
+            if found:
+                method, digest = found
+                yield ComponentKind.CODE, method, digest.decode(), b"CODE:" + digest
 
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)

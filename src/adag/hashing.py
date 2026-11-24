@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import inspect
 import json
@@ -48,7 +49,7 @@ _file_hash_cache: dict[FileFingerprint, str] = {}
 # so without this cache a deep DAG re-tokenizes source thousands of times, the
 # dominant cost of the silent startup before the first step logs. Keyed by the
 # class object (redefining a class yields a new object → fresh entry).
-_class_source_hash_cache: dict[type, bytes | None] = {}
+_class_source_hash_cache: dict[type, tuple[str, bytes] | None] = {}
 
 
 def file_hash(path: Path) -> str:
@@ -95,11 +96,11 @@ def is_dict(obj: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(obj, dict)
 
 
-KEY_FORMAT = 2
+KEY_FORMAT = 3
 """Version of the cache key bytes. It changes only when a release changes every key on purpose.
 
-1 is the first release; 2 is the framed encoding from 0.2.0. ``tests/test_key_golden.py`` pins the
-current format.
+1 is the first release; 2 is the framed encoding from 0.2.0; 3 hashes the class code as a
+syntax tree instead of raw source text (#19). ``tests/test_key_golden.py`` pins the current format.
 """
 
 
@@ -249,30 +250,133 @@ def hash_list(value: list[Any]) -> bytes:
     return json.dumps(value, sort_keys=True).encode()
 
 
-def class_source_hash(cls: type) -> bytes | None:
-    """Return a short hash of the class's own source code, or None if it has none.
+@dataclass(frozen=True)
+class _Emit:
+    """Text that ``_canonical`` writes as is, between the nodes on its stack."""
 
-    Only the source of the class body is hashed: the first class in the MRO whose
-    source ``inspect`` can read. Edits to a base class or to a helper function the
-    step calls do NOT change the hash. Bump a field or ``kind`` version when such an
-    edit changes results. Any edit inside the class body, comments included, does. To keep a key
-    through such an edit, set ``code_version`` on the class (its text replaces this digest).
+    text: str
 
-    Memoized per class: inspect.getsource() re-reads + re-tokenizes the source
-    file on every call, and this is invoked once per step instance across the
-    whole graph, so caching turns a per-call file tokenization into a one-off.
+
+def _canonical(root: ast.ClassDef, *, keep_docstrings: bool) -> str:
+    """Return a text form of a class syntax tree.
+
+    Written by hand, not ``ast.dump``: ``ast.dump`` prints different text on Python 3.12, 3.13 and
+    3.15. This walk skips a field that is ``None``, an empty list, or ``is_lazy`` equal to 0 (3.15
+    adds it to imports), so a field a newer Python adds with a default value does not change the
+    text. Positions (line, column) are not fields. The walk uses a stack, not recursion, so the
+    result never depends on how deep the caller is.
+
+    A docstring is dropped from the root class and from every function. A docstring of a nested
+    class stays: a nested model class puts it in its JSON schema.
+    """
+    out: list[str] = []
+    stack: list[object] = [root]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, _Emit):
+            out.append(node.text)
+        elif isinstance(node, ast.AST):
+            out.append("(" + type(node).__name__)
+            is_scope = node is root or isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            pending: list[object] = []
+            for name in node._fields:
+                value: object = getattr(node, name, None)
+                if value is None or value == [] or (name == "is_lazy" and value == 0):
+                    continue
+                if is_scope and name == "body" and not keep_docstrings:
+                    body = cast("list[ast.stmt]", value)
+                    value = body[1:] if _is_docstring(body[0]) else body
+                pending.extend([_Emit(" " + name + "="), value])
+            pending.append(_Emit(")"))
+            stack.extend(reversed(pending))
+        elif isinstance(node, list):
+            pending = [_Emit("[")]
+            for item in cast("list[object]", node):
+                pending.extend([item, _Emit(",")])
+            pending.append(_Emit("]"))
+            stack.extend(reversed(pending))
+        elif isinstance(node, str):
+            out.append("s" + node.encode("utf-8", "surrogatepass").hex())
+        elif isinstance(node, bytes):
+            out.append("y" + node.hex())
+        else:
+            out.append(type(node).__name__ + ":" + repr(node))
+    return "".join(out)
+
+
+def _is_docstring(statement: ast.stmt) -> bool:
+    """Whether a statement is a bare string, the form of a docstring."""
+    return (
+        isinstance(statement, ast.Expr)
+        and isinstance(statement.value, ast.Constant)
+        and isinstance(statement.value.value, str)
+    )
+
+
+def _reads_docstring(tree: ast.AST) -> bool:
+    """Whether the code reads ``__doc__``, so its docstrings are data and stay in the digest."""
+    return any(
+        (isinstance(n, ast.Attribute) and n.attr == "__doc__")
+        or (isinstance(n, ast.Name) and n.id == "__doc__")
+        for n in ast.walk(tree)
+    )
+
+
+def _syntax_digest(source: str) -> bytes | None:
+    """Digest of the syntax tree of one class, or None when the source does not parse."""
+    wrapped = source[:1].isspace()
+    try:
+        tree = ast.parse("if 1:\n" + source if wrapped else source)
+        top: ast.stmt = tree.body[0]
+        if wrapped:
+            top = cast("ast.If", top).body[0]
+        if not isinstance(top, ast.ClassDef):
+            return None
+        text = _canonical(top, keep_docstrings=_reads_docstring(top))
+    except (SyntaxError, ValueError, RecursionError, IndexError):
+        return None
+    return hashlib.sha256(text.encode()).hexdigest()[:12].encode()
+
+
+def class_code_digest(cls: type) -> tuple[str, bytes] | None:
+    """Return ``(method, digest)`` for the class's own code, or None if it has no source.
+
+    ``method`` is ``"ast"`` when the digest comes from the syntax tree, and ``"source"`` when the
+    source did not parse and the raw text was hashed instead. Memoized per class.
     """
     if cls in _class_source_hash_cache:
         return _class_source_hash_cache[cls]
-    result: bytes | None = None
+    result: tuple[str, bytes] | None = None
     for klass in cls.__mro__:
         if klass is object:
             break
         try:
             source = inspect.getsource(klass)
-            result = hashlib.sha256(source.encode()).hexdigest()[:12].encode()
-            break
         except (OSError, TypeError):
             continue
+        syntax = _syntax_digest(source)
+        if syntax is not None:
+            result = ("ast", syntax)
+        else:
+            result = ("source", hashlib.sha256(source.encode()).hexdigest()[:12].encode())
+        break
     _class_source_hash_cache[cls] = result
     return result
+
+
+def class_source_hash(cls: type) -> bytes | None:
+    """Return a short digest of the class's own code, or None if it has none.
+
+    Only the class body is hashed: the first class in the MRO whose source ``inspect`` can read.
+    The digest is of the syntax tree, so comments, blank lines, formatting, quote style and
+    docstrings of the class and its methods do not change it. They stay in the digest when the
+    class body itself names ``__doc__``. A docstring read some other way (``inspect.getdoc``, a
+    helper) is not seen.
+    Every annotation, default, decorator, base and statement does change it.
+
+    Edits to a base class or to a helper function the step calls do NOT change the digest. Bump a
+    field or ``kind`` version when such an edit changes results. To keep a key through an edit
+    that does not change results, set ``code_version`` on the class (its text replaces this digest).
+    """
+    found = class_code_digest(cls)
+    return None if found is None else found[1]

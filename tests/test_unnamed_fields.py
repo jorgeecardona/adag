@@ -252,11 +252,11 @@ def test_an_unnamed_field_still_changes_the_item_keys() -> None:
 
 
 def test_item_keys_are_the_same_as_before_the_hooks_were_wrapped() -> None:
-    # Computed with the source before the wrapper existed, from tests/golden_batch_steps.py.
+    # Pinned at KEY_FORMAT 3. Shout is in tests/golden_batch_steps.py.
     keys = [i.key for i in Shout(tag="x").items(names=["a", "b"], tag="x")]
-    assert keys == ["3ee6447785e78880", "e688a175819dc5cc"]
+    assert keys == ["59518923c2a20732", "a0f9babd26834e75"]
     other = [i.key for i in Shout(tag="y").items(names=["a", "b"], tag="y")]
-    assert other == ["3f70b0d9c931388f", "7a50d5357253026c"]
+    assert other == ["319758ead2b498a1", "1571834f6014fe5f"]
 
 
 def test_validate_checks_the_batch_hooks(tmp_path: Path) -> None:
