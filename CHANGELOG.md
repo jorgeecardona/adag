@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `adag.backends.CommandBackend`: a `JobBackend` made from command templates (no shell). It runs
+  branches on any scheduler that has a CLI, such as `sbatch`, `kubectl`, `gcloud` or `ssh`. See
+  [Dispatch](https://cardona-oss.gitlab.io/adag/dispatch/#commandbackend).
 - `Step.code_version`: a text that replaces the digest of the class source in the cache key. Set
   it to keep a key through an edit that changes no result, such as a comment or a bug fix that
   your cached results do not need. See [cache keys](https://cardona-oss.gitlab.io/adag/cache-keys/) (#19).

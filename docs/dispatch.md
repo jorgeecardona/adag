@@ -243,6 +243,64 @@ dispatcher = RemoteDispatcher(
 pipeline.execute(dispatcher=dispatcher)
 ```
 
+### CommandBackend
+
+`CommandBackend` is a `JobBackend` made from command templates. Use it when the scheduler has a
+CLI (`sbatch`, `kubectl`, `gcloud`, `vastai`, `modal`, `ssh`) and you do not want to write a
+class. It runs each command with no shell, so a branch key or a parameter never reaches a shell
+parser.
+
+```python
+from adag.backends import CommandBackend
+from adag.dispatch import JobState
+
+backend = CommandBackend(
+    submit_command=["sbatch", "--parsable", "--job-name={name}", "--wrap={command_line}"],
+    status_command=["scripts/job-state", "{job_id}"],  # your script: prints RUNNING, DONE or FAIL
+    cancel_command=["scancel", "{job_id}"],
+    states={"RUNNING": JobState.RUNNING, "DONE": JobState.SUCCEEDED, "FAIL": JobState.FAILED},
+)
+```
+
+Each template is a list of arguments. The placeholders:
+
+| Template | Placeholders |
+|---|---|
+| `submit_command` | `{command}`, `{command_line}`, `{name}`, `{cpus}`, `{memory_mb}`, `{gpus}` |
+| `status_command`, `cancel_command`, `logs_command` | `{job_id}` |
+| `find_command` | `{name}` |
+| `close_command` | none |
+
+- `{command}` as a whole argument becomes the worker's arguments. Use it when the program takes
+  the command as separate arguments.
+- `{command_line}` is the worker command as one quoted text. Use it for `ssh` and `sbatch --wrap`,
+  which hand the text to a POSIX shell.
+- An unset resource becomes an empty text. Write `{{` for a literal brace.
+- An unknown placeholder raises `ValueError` when you build the backend.
+
+What each command must do:
+
+1. `submit_command` exits 0 and prints the job id as its last non-empty line.
+2. `status_command` prints the state as its first word. The word must be a key of `states`. An
+   optional second word is the exit code, and the rest is the detail. A scheduler CLI that prints
+   something else needs a small wrapper script that prints one word.
+3. `cancel_command` may fail. The job may have ended already, and adag only logs it.
+4. `find_command` (optional) prints the id of the job submitted under `{name}`. If you set it,
+   `submit_command` must contain `{name}`.
+5. `logs_command` (optional) prints the output of the job.
+6. `close_command` (optional) runs once after a submit, when the dispatcher ends. Use it to delete
+   a machine. It must be safe to run twice.
+
+A status call that fails, times out or prints an unknown word leaves the job out of the answer.
+`missing_status_polls` then decides when the job counts as FAILED, so one slow call does not fail
+a branch. Every command has `command_timeout_seconds` (60 by default).
+
+Put secrets in `env=`, not in a template. A template shows in `ps` and in scheduler consoles.
+The commands run with the environment of the main process plus `env`.
+
+`CommandBackend` runs one status process per job on each poll. That is fine for tens of jobs. For
+hundreds, write a backend that asks the scheduler once, as the AWS Batch recipe does.
+
 ### AWS Batch
 
 A recipe, not shipped and not run in CI:
@@ -378,6 +436,34 @@ class SlurmBackend:
         return path.read_text(errors="replace") if path.exists() else None
 ```
 
+## Run from your laptop on cloud machines
+
+A worker on another machine needs two things: the pipeline code, and a cache it can reach.
+The cache is the hard part. The main process and every worker must read and write the same one.
+
+| Cache | Reachable from another machine |
+|---|---|
+| `SqlCacheStore` (Postgres, MySQL) | yes |
+| `RedisCacheStore` | yes |
+| `FileSystemCacheStore` on a shared filesystem | yes, if every machine mounts it |
+| `SqliteCacheStore`, a local disk, `MemoryCacheStore` | no |
+
+adag has no S3 or Google Cloud Storage cache yet. Use a SQL or Redis URL that both your laptop and
+the cloud machines can reach, and pass it as `store_url`. The URL goes to the worker on its command
+line, so keep the password out of it (rule 8 above).
+
+Checklist for a machine that you start per job:
+
+1. Build an image that has the same pipeline code as your laptop (rules 1, 2 and 7 above).
+2. Pass the cache URL as `store_url`.
+3. Set a maximum lifetime on the machine when you create it. If your laptop sleeps or the main
+   process is killed, `close` never runs, and the machine would run and bill until you stop it.
+4. Submit each job under `job.name()` and add `find`, so a rerun reattaches to a live job instead
+   of starting a second one.
+
+A branch that fails on a machine reaches you through `JobStatus.detail` and `logs`. adag reads the
+result from the cache, not from the job's exit code.
+
 ## Known limits
 
 - A shared upstream step that is not cached yet is computed by every worker that needs it.
@@ -390,3 +476,7 @@ class SlurmBackend:
 - A worker's output reaches you through `JobStatus.detail`, and through `logs` when the backend
   has it.
 - `MemoryCacheStore`, a disk local to one machine, and SQLite on NFS cannot be the shared cache.
+- A `save_result(result, path)` step does not run in a dispatched branch when the pipeline has a
+  store (rule 9). Large files cannot cross machines yet.
+- `close` runs once per `dispatch_all`. A `LoopStep` with a dispatched fan-out calls it every round,
+  so a backend that starts a machine in `submit` starts a new one each round.
