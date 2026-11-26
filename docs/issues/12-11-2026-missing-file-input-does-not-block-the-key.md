@@ -1,8 +1,11 @@
 ---
 title: "A missing FileSource wired as an input does not block the key"
-status: open
+status: done
 area: core
 filed: 2026-11-12
+fixed_in: c2e50a5
+needs:
+  - FX-14
 scope: S
 verify: test
 ---
@@ -21,3 +24,5 @@ Fix: decide which behavior is right. If a missing file should block, make the in
 `None` and show `BLOCKED` in `dag()`. If not, correct the `io.py` docstring and
 [docs/cache-keys.md](../cache-keys.md). Test: one graph with the file as a field, one as an input,
 and the same `key` and state for both.
+
+Fixed in c2e50a5: such a step has no key now, and `dag()` draws it and the steps downstream `BLOCKED`.

@@ -49,6 +49,20 @@ Scale(factor=2, workers=Config(16))           ran: False
 Scale(factor=3, workers=Config(4))            ran: True
 ```
 
+## Equal nodes run once
+
+Two nodes of one step class with the same cache key run once in a run, and both hand on the same
+object. This holds with or without a cache, also for a result that is not saved, and across the
+fan-out branches that run in the main process.
+
+The key leaves out `Config` fields and the fields that `strict_content_hash = False` skips. Two
+nodes that differ only there share the result of the one that runs first. A random or side-effect
+step is shared too. To run two nodes separately, give them a field that differs, such as
+`sample: int`.
+
+A node with no cache key runs on its own. Branches that a dispatcher runs on workers share results
+only through the cache.
+
 ## Supported field types
 
 Fields are hashed by `adag.hashing.encode_value`: `None`, `bool`, `int`, `float`, `str`,

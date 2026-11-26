@@ -118,3 +118,24 @@ needs:
       - "test:tests/test_unnamed_fields.py::test_the_batch_hooks_may_leave_fields_unnamed"
       - "test:tests/test_unnamed_fields.py::test_item_keys_are_the_same_as_before_the_hooks_were_wrapped"
       - "test:tests/test_unnamed_fields.py::test_validate_names_a_wired_input_that_run_does_not_accept"
+
+  - id: FX-13
+    text: >
+      When two nodes of one step class have the same cache key, the developer can see the body run
+      once and both nodes hand on one object, with or without a store.
+    sources:
+      - {kind: secondary, date: 2026-11-26, locator: "https://gitlab.com/cardona-oss/adag/-/issues/21"}
+    proofs:
+      - "test:tests/test_twins.py::test_twins_run_once_and_share_one_result"
+      - "test:tests/test_twins.py::test_fan_out_branches_that_build_equal_nodes_run_them_once"
+      - "test:tests/test_twins.py::test_two_step_classes_with_one_key_keep_their_own_results"
+
+  - id: FX-14
+    text: >
+      When a step reads an input that adag cannot hash, the developer can run it with a new value
+      and get the result of that value, not one saved for another.
+    sources:
+      - {kind: secondary, date: 2026-11-26, locator: "found while reviewing https://gitlab.com/cardona-oss/adag/-/issues/21, reproduced on 0.3.49"}
+    proofs:
+      - "test:tests/test_input_keys.py::test_a_second_run_with_another_value_computes_it"
+      - "test:tests/test_input_keys.py::test_a_missing_path_wired_as_an_input_blocks_the_key"

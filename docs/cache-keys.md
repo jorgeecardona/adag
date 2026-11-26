@@ -31,16 +31,17 @@ key. A `skipped` row is not in the key and has no digest.
 | `nested_step` | a field that holds another step, by that step's hash |
 | `upstream` | an input wired to another node, by that node's key |
 | `param` | an input wired to an `InputParam`, by the run's value or the default |
-| `deferred` | an input wired to another source, such as a `FileSource` |
+| `deferred` | an input wired to another source, such as a `FileSource`, by its `content_hash()` |
 | `raw` | an input passed as a literal value |
 | `expansion` | a node that builds its sub-graph at run time (a template fan-out, a loop). The text says what is not known yet. It adds nothing to the key |
 | `skipped` | not in the key: a `Config` field, `node_label`, or a value the key cannot encode when `strict_content_hash = False` |
 
 The return value is a `KeyExplanation`. `str()` gives the table above, `to_dict()` gives JSON.
 
-- `key` is `None` when a component blocks it, and `blocked_by` names that component. A
-  `FileSource` field whose file is missing does this. A missing `FileSource` wired as an input
-  does not: it still gets a key, and the run fails with `FileNotFoundError`.
+- `key` is `None` when a component blocks it, and `blocked_by` names that component. A missing
+  file does this, as a `FileSource` field or as an input. So does a missing folder wired as an
+  input, and an input of your own with no `content_hash` (see
+  [Inputs](inputs.md#your-own-input)).
 - `key_format` is `adag.hashing.KEY_FORMAT`. A release that changes every key bumps it.
 - A step that overrides `content_hash` (`FanOutStep` does) shows one `identity` row: adag cannot
   see its parts.

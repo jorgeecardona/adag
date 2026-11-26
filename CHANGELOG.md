@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Two nodes of one step class with the same cache key run once in a run and share one result
+  object. Before, `execute`, `resolve` and gathered `aresolve` ran both unless a store held the
+  first result. Nodes that differ only in a `Config` field, or in a field that
+  `strict_content_hash = False` skips, now share one result too, and so does a random or
+  side-effect step. Add a field that differs to run them separately. A run without a cache now
+  computes cache keys, so it reads input files to hash them. See
+  [equal nodes](https://cardona-oss.gitlab.io/adag/caching/#equal-nodes-run-once) (#21).
 - `RedisCacheStore`, and `SqlCacheStore` on any database but SQLite, no longer block the event
   loop under `aexecute`, `aresolve` and `aresolve_all`: their calls run in a thread. A client you
   pass must be safe to call from several threads. Set `store.runs_on = "loop"` for the old
@@ -124,6 +131,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suffix. Before, the edge was dropped.
 - A `BatchStep` works with `aresolve`, `aresolve_all` and `Pipeline.aexecute`. It raised
   `RuntimeError`. Its items run in a worker thread.
+- A step with your own `Deferred` input could load the result that another value saved, when the
+  input had no `content_hash`: the key held only its class name. A missing file or folder wired
+  as an input had the same fault. Such a step now has no cache key: it and the steps downstream
+  run every time, `dag()` draws them `BLOCKED`, and a fan-out branch like that cannot be
+  dispatched. Define `content_hash()` to cache it
+  ([your own input](https://cardona-oss.gitlab.io/adag/inputs/#your-own-input)).
 
 ## [0.3.22] - 2026-11-22
 

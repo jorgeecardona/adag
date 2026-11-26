@@ -13,7 +13,9 @@ folder whose content is part of the cache key).
 - `DirSource(path, pattern)`: a folder; adding, removing or editing a matching file recomputes.
 - A `FileSource`, `LinesSource` or `JSONLSource` on a directory raises `IsADirectoryError`. The
   message names the source and the path. Use `DirSource` for a folder.
-- A file that does not exist: the run fails with `FileNotFoundError` when the source is read.
+- A file or folder that does not exist: the steps that read it have no cache key, and `dag()`
+  draws them and the steps downstream `BLOCKED`. A missing file also fails the run with
+  `FileNotFoundError` when the source is read.
 - `DirSource` uses `pattern` as a glob. The default `"*.jsonl"` is not recursive: pass
   `"**/*.jsonl"` for nested folders.
 
@@ -26,3 +28,25 @@ words=5
 words=3
 words=8
 ```
+
+## Your own input
+
+Subclass `Deferred` to feed a graph from somewhere else:
+
+1. Define `resolve(context)`. It returns the value.
+2. Define `content_hash()`. It returns a text that changes when the value changes.
+
+```python
+--8<-- "docs/examples/custom_input.py"
+```
+
+```text
+greeting ana
+hello ana
+hello ana
+greeting bo
+hello bo
+```
+
+Without `content_hash`, or when it returns `None`, the steps that read the input have no cache
+key. They and the steps downstream run every time.
