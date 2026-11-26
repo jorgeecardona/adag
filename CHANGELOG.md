@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   object. Before, `execute`, `resolve` and gathered `aresolve` ran both unless a store held the
   first result. Nodes that differ only in a `Config` field, or in a field that
   `strict_content_hash = False` skips, now share one result too, and so does a random or
-  side-effect step. Add a field that differs to run them separately. A run without a cache now
-  computes cache keys, so it reads input files to hash them. See
+  side-effect step. Add a field that differs to run them separately. A `LoopStep` round that
+  starts from a state already seen in the run is not run again. A run without a cache now
+  computes cache keys: it reads input files to hash them, calls a fan-out factory one more time
+  per item, and calls each `content_hash` you defined. A key that cannot be computed does not
+  fail such a run. See
   [equal nodes](https://cardona-oss.gitlab.io/adag/caching/#equal-nodes-run-once) (#21).
 - `RedisCacheStore`, and `SqlCacheStore` on any database but SQLite, no longer block the event
   loop under `aexecute`, `aresolve` and `aresolve_all`: their calls run in a thread. A client you
@@ -134,8 +137,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A step with your own `Deferred` input could load the result that another value saved, when the
   input had no `content_hash`: the key held only its class name. A missing file or folder wired
   as an input had the same fault. Such a step now has no cache key: it and the steps downstream
-  run every time, `dag()` draws them `BLOCKED`, and a fan-out branch like that cannot be
-  dispatched. Define `content_hash()` to cache it
+  run every time, `dag()` draws them `BLOCKED` when the pipeline has a `cache_dir`, and a
+  fan-out branch like that cannot be dispatched. Define `content_hash()` to cache it
   ([your own input](https://cardona-oss.gitlab.io/adag/inputs/#your-own-input)).
 
 ## [0.3.22] - 2026-11-22

@@ -13,9 +13,9 @@ folder whose content is part of the cache key).
 - `DirSource(path, pattern)`: a folder; adding, removing or editing a matching file recomputes.
 - A `FileSource`, `LinesSource` or `JSONLSource` on a directory raises `IsADirectoryError`. The
   message names the source and the path. Use `DirSource` for a folder.
-- A file or folder that does not exist: the steps that read it have no cache key, and `dag()`
-  draws them and the steps downstream `BLOCKED`. A missing file also fails the run with
-  `FileNotFoundError` when the source is read.
+- A file or folder that does not exist: the steps that read it have no cache key, and with a
+  `cache_dir` `dag()` draws them and the steps downstream `BLOCKED`. A missing file also fails
+  the run with `FileNotFoundError` when the source is read.
 - `DirSource` uses `pattern` as a glob. The default `"*.jsonl"` is not recursive: pass
   `"**/*.jsonl"` for nested folders.
 

@@ -443,8 +443,8 @@ def compute_state(node: Node, cache_dir: Path | None) -> str:
     """Return the state a node is drawn with: ``CACHED``, ``PENDING``, ``BLOCKED`` or ``SOURCE``.
 
     ``SOURCE`` is an ``InputParam`` or a file. ``BLOCKED`` is a step with no cache key, for
-    example one that reads a missing file or a step that does. Without ``cache_dir`` every step
-    is ``PENDING``.
+    example a step that reads a missing file, and every step downstream of it. Without
+    ``cache_dir`` every step is ``PENDING``.
     The key is computed with ``InputParam`` defaults, not with the values of a run.
     """
     if node.step is None:

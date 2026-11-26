@@ -666,9 +666,11 @@ class StepResult(Deferred[Out]):
         # per node (resolve, is_cached, load), so a deep chain would recompute hashes
         # ~quadratically without this. Single slot, keyed on the params object's IDENTITY
         # (graph + params are immutable within one execute(); a new params object recomputes).
-        # (params, key) of the last call, or None before the first; a blocked step's key is None.
-        # One tuple, so that a thread never reads the params of one call with the key of another.
-        self._hash_memo: tuple[dict[str, Any] | None, str | None] | None = None
+        # (params, key or the error) of the last call, or None before the first; a blocked step's
+        # key is None. An error is kept too: without it, every node of a chain would walk its
+        # whole upstream again to fail. One tuple, so that a thread never reads the params of one
+        # call with the key of another.
+        self._hash_memo: tuple[dict[str, Any] | None, str | Exception | None] | None = None
         self._validate()
 
     def _validate(self) -> None:
@@ -702,11 +704,17 @@ class StepResult(Deferred[Out]):
         """This node's content key under the run's params; None when it has none.
 
         A run without a cache may pass params the key cannot encode (a database session), so a
-        hashing error here only means "no key", never a failure.
+        hashing error here only means "no key". Without a cache the key only finds twins, so no
+        error of it fails the run, also one raised by a ``content_hash`` you defined. With a
+        cache such an error is raised.
         """
         try:
             return self.content_hash(params=context.params)
         except UnhashableValueError:
+            return None
+        except Exception:
+            if context.result_store() is not None:
+                raise
             return None
 
     def _flight_key(self, context: ResolveContext) -> int | str:
@@ -1108,11 +1116,23 @@ class StepResult(Deferred[Out]):
         return resolved
 
     def content_hash(self, params: dict[str, Any] | None = None) -> str | None:
-        """Content hash: step identity + source hashes (memoized per params identity)."""
+        """Content hash: step identity + source hashes (memoized per params identity).
+
+        Raises:
+            UnhashableValueError: a field or a param has no stable encoding. Any error of a
+                ``content_hash`` you defined is raised as it is. Both are raised again, without
+                a second computation, for the same ``params`` object.
+        """
         memo = self._hash_memo
         if memo is not None and memo[0] is params:
+            if isinstance(memo[1], Exception):
+                raise memo[1]  # with the traceback of the first time
             return memo[1]
-        result = self._compute_content_hash(params)
+        try:
+            result = self._compute_content_hash(params)
+        except Exception as error:
+            self._hash_memo = (params, error)
+            raise
         self._hash_memo = (params, result)
         return result
 

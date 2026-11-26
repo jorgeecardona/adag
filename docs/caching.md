@@ -53,7 +53,8 @@ Scale(factor=3, workers=Config(4))            ran: True
 
 Two nodes of one step class with the same cache key run once in a run, and both hand on the same
 object. This holds with or without a cache, also for a result that is not saved, and across the
-fan-out branches that run in the main process.
+fan-out branches that run in the main process. A `LoopStep` round that starts from a state
+already seen in the run is not run again.
 
 The key leaves out `Config` fields and the fields that `strict_content_hash = False` skips. Two
 nodes that differ only there share the result of the one that runs first. A random or side-effect
