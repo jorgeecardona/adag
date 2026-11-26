@@ -27,9 +27,10 @@ import shutil
 import time
 import warnings
 from abc import abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import Enum
+from functools import partial
 from pathlib import Path
 from threading import Event
 from typing import (
@@ -48,6 +49,7 @@ from uuid import UUID, uuid4
 import structlog
 from pydantic import BaseModel
 
+from adag import _store_io
 from adag.cache_store import CacheStore, FileSystemCacheStore
 from adag.config import Config
 from adag.deferred import Deferred, InputParam, Progress, ResolveContext, emit, observing
@@ -603,6 +605,14 @@ class _KeyRecord:
     text: str
 
 
+@dataclasses.dataclass(frozen=True)
+class _Written:
+    """What one node's writes returned: the text the key held before, and a key record failure."""
+
+    old_text: str | None
+    record_error: Exception | None
+
+
 def _read_entry(store: CacheStore, key: str) -> str | None:
     """The stored text of a finished entry, or None. Makes store calls only."""
     if not store.exists(key + ".done"):
@@ -619,6 +629,30 @@ def _write_entry(store: CacheStore, entry: _Entry) -> str | None:
     store.set(entry.key, entry.text)
     store.set(entry.key + ".done", datetime.now(UTC).isoformat())
     return old_text
+
+
+def _write_node(store: CacheStore, entry: _Entry | None, record: _KeyRecord | None) -> _Written:
+    """Write everything one node saves: the result entry, then the key record.
+
+    Makes store calls only. A failed key record is returned, not raised.
+    """
+    old_text = _write_entry(store, entry) if entry is not None else None
+    if record is not None:
+        try:
+            store.set(record.store_key, record.text)
+        except Exception as exc:
+            return _Written(old_text, exc)
+    return _Written(old_text, None)
+
+
+def _after_abandoned_write(release: Callable[[], None], write: asyncio.Future[_Written]) -> None:
+    """Free a node's claim once the write of a cancelled task has ended, and log its failure."""
+    release()
+    if write.cancelled():
+        return
+    error = write.exception() or write.result().record_error
+    if error is not None:
+        logger.warning("step.write_after_cancel_failed", error=str(error))
 
 
 class StepResult(Deferred[Out]):
@@ -694,13 +728,12 @@ class StepResult(Deferred[Out]):
         return _CACHE_MISS
 
     def _check_cache(self, context: ResolveContext) -> Out | _Miss:
-        """The shared, synchronous *front* of ``resolve``/``aresolve``: per-execute memo
-        lookup, ``on_step_start``, and the disk-cache hit path. Returns the resolved value
-        on a memo/cache hit, or ``_CACHE_MISS`` if the step still has to run.
+        """The synchronous *front* of ``resolve``/``aresolve``: per-execute memo lookup,
+        ``on_step_start``, and the cache hit path. Returns the resolved value on a memo or cache
+        hit, or ``_CACHE_MISS`` if the step still has to run.
 
-        Disk IO is synchronous on both paths. It is not the bottleneck and keeps the cache
-        format byte-identical. ``context._lock`` guards the memo dict so the parallel
-        executor's concurrent nodes are safe regardless of the GIL.
+        The store and the files are read on the calling thread. ``_acheck_cache`` is the form for
+        a store whose ``runs_on`` is ``"thread"``.
         """
         # Per-execute memoization, by id(). The memo holds the node too (see _memo_get), so a
         # context that outlives its graph cannot hand one node's result to another.
@@ -709,18 +742,43 @@ class StepResult(Deferred[Out]):
         if not isinstance(memo, _Miss):
             return memo
 
-        step_name = type(self.step).__name__
         # Announce entry BEFORE the recursive hash/cache check, so progress shows the instant
         # a step is reached. Firing on_step_start before source resolution also brackets every
         # child's start/finish inside this step's. That nesting is what the RunTreeObserver
         # turns back into the execution tree.
-        context.observer.on_step_start(step_name)
+        context.observer.on_step_start(type(self.step).__name__)
 
         if self.step.caches_to_path():
             loaded = self._try_load_path(self._result_dir(context), context.params)
         else:
             store = context.result_store()
             loaded = self._try_load(store, params=context.params) if store is not None else None
+        return self._after_lookup(context, loaded)
+
+    async def _acheck_cache(self, context: ResolveContext, store: CacheStore) -> Out | _Miss:
+        """``_check_cache`` with the reads of ``store`` made in a store thread.
+
+        ``on_step_start`` fires after the read, so that the start and the hit of one node are not
+        split by another node's. Everything but the store calls stays on the loop.
+        """
+        if self.step.caches_to_path():  # the result is a local file; only its record is stored
+            return self._check_cache(context)
+        with context._lock:
+            memo = self._memo_get(context)
+        if not isinstance(memo, _Miss):
+            return memo
+
+        key = self.content_hash(params=context.params)
+        text: str | None = None
+        if key is not None and self.step.result_model() is not None:
+            text = await _store_io.submit(partial(_read_entry, store, key))
+        context.observer.on_step_start(type(self.step).__name__)
+        loaded = self._parse_entry(key, text) if key is not None else None
+        return self._after_lookup(context, loaded)
+
+    def _after_lookup(self, context: ResolveContext, loaded: Out | None) -> Out | _Miss:
+        """Report what the cache lookup found, and memoize a hit."""
+        step_name = type(self.step).__name__
         if loaded is not None:
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
@@ -734,8 +792,8 @@ class StepResult(Deferred[Out]):
         return _CACHE_MISS
 
     def _finalize(self, result: Out, context: ResolveContext, started_at: float) -> Out:
-        """The shared, synchronous *back* of ``resolve``/``aresolve``: observer-finish,
-        disk-cache write, and the memo write. Same on both paths.
+        """The synchronous *back* of ``resolve``/``aresolve``: observer-finish, cache write,
+        and the memo write. ``_afinalize`` is the form for a ``"thread"`` store.
         """
         step_name = type(self.step).__name__
         context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
@@ -757,6 +815,49 @@ class StepResult(Deferred[Out]):
         if not written and context.children_of(self.step) is not None:
             # A fan-out or a loop saves no result of its own, but its record says what ran.
             self._write_key_record(context)
+        with context._lock:
+            context._resolved[id(self)] = (self, result)
+        return result
+
+    async def _afinalize(
+        self,
+        result: Out,
+        context: ResolveContext,
+        store: CacheStore,
+        started_at: float,
+        writes: list[asyncio.Future[_Written]],
+    ) -> Out:
+        """``_finalize`` with the writes of ``store`` made in a store thread.
+
+        A thread cannot be stopped, so a cancel leaves the write running to its end. It is added
+        to ``writes``, and ``aresolve`` keeps the node's claim until it is done.
+        """
+        step_name = type(self.step).__name__
+        context.observer.on_step_finished(step_name, time.perf_counter() - started_at)
+        entry: _Entry | None = None
+        saved = False
+        if self.step.caches_to_path():
+            cache_dir = self._result_dir(context)
+            if cache_dir is not None:
+                result = self._save_path(result, cache_dir, context.params)
+                saved = True
+        elif self.step.result_model() is not None:
+            entry = self._entry(result, context.params)
+            saved = True
+        record: _KeyRecord | None = None
+        if saved or context.children_of(self.step) is not None:
+            record = self._key_record(context)
+        written = _Written(None, None)
+        if entry is not None or record is not None:
+            write = _store_io.submit(partial(_write_node, store, entry, record))
+            writes.append(write)
+            written = await asyncio.shield(write)
+        if entry is not None:
+            self._report_overwrite(entry, written.old_text)
+        if saved:
+            emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
+        if record is not None and written.record_error is not None:
+            self._report_key_record_failure(record.key, written.record_error)
         with context._lock:
             context._resolved[id(self)] = (self, result)
         return result
@@ -881,7 +982,11 @@ class StepResult(Deferred[Out]):
         topological level inside an async request handler. Pass the same ``ResolveContext`` to
         every call: it memoizes each node, so a shared upstream runs once and a later call reuses
         earlier results. Upstream nodes are awaited, async step bodies run on the loop, and sync
-        bodies run unchanged. A cancelled task starts no further step.
+        bodies run unchanged. A cancelled task starts no further step on the loop; work already in
+        a thread (a ``BatchStep``, a ``LoopStep``) runs on.
+
+        A cache store whose ``runs_on`` is ``"thread"`` is called off the loop. A cancel during
+        its write lets the write end, and the node stays claimed until it has.
 
         Gathered calls that reach the same node at the same time run its body once: the first
         task claims the node and the others wait for it. If that body raises, a waiting task
@@ -894,24 +999,41 @@ class StepResult(Deferred[Out]):
                 if not isinstance(memo, _Miss):
                     return memo
                 in_flight = context._ainflight.get(flight_key)
-                if in_flight is None:
+                # A claim of a closed loop was left by a write that outlived it.
+                if in_flight is None or in_flight.get_loop().is_closed():
                     own = asyncio.get_running_loop().create_future()
                     context._ainflight[flight_key] = own
                     break
             # Another task owns this node. Wait without taking its exception, then loop: a
             # success left the value in the memo, a failure removed the marker.
             await asyncio.wait([in_flight])
-        try:
-            return await self._aresolve_owned(context)
-        finally:
+        writes: list[asyncio.Future[_Written]] = []
+
+        def release() -> None:
             with context._lock:
-                context._ainflight.pop(flight_key, None)
+                if context._ainflight.get(flight_key) is own:
+                    del context._ainflight[flight_key]
             if not own.done():
                 own.set_result(None)
 
-    async def _aresolve_owned(self, context: ResolveContext) -> Out:
+        try:
+            return await self._aresolve_owned(context, writes)
+        finally:
+            if writes and not writes[0].done():  # cancelled while a store thread writes
+                writes[0].add_done_callback(partial(_after_abandoned_write, release))
+            else:
+                release()
+
+    async def _aresolve_owned(
+        self, context: ResolveContext, writes: list[asyncio.Future[_Written]]
+    ) -> Out:
         """Resolve this node on the loop, once this task owns it (see ``aresolve``)."""
-        cached = self._check_cache(context)
+        store = context.result_store()
+        threaded = store if store is not None and _store_io.in_thread(store) else None
+        if threaded is None:
+            cached = self._check_cache(context)
+        else:
+            cached = await self._acheck_cache(context, threaded)
         if not isinstance(cached, _Miss):
             return cached
         resolved = self._merge_step_defaults(await self._aresolve_sources(context))
@@ -932,7 +1054,9 @@ class StepResult(Deferred[Out]):
                         f"step {type(self.step).__name__} (kind={self.step.kind or '-'}, label={self.step.label or '-'}) "
                         f"exceeded timeout_s={timeout}"
                     ) from e
-        return self._finalize(result, context, started_at)
+        if threaded is None:
+            return self._finalize(result, context, started_at)
+        return await self._afinalize(result, context, threaded, started_at, writes)
 
     async def _aresolve_sources(self, context: ResolveContext) -> dict[str, Any]:
         """Resolve all upstream sources on the async path, one at a time.

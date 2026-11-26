@@ -26,6 +26,7 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
+from functools import partial
 from pathlib import Path
 from typing import Any, Generic
 
@@ -33,6 +34,7 @@ import structlog
 from pydantic import BaseModel
 from typing_extensions import TypeVar  # default= (PEP 696) needs this on Python 3.12
 
+from adag import _store_io
 from adag.cache_store import CacheStore
 from adag.deferred import (
     AsyncExecutor,
@@ -875,6 +877,24 @@ def _has_cache_entry(node: StepResult[Any], context: ResolveContext) -> bool:
     return store.exists(key + ".done")
 
 
+async def _pending_levels(
+    targets: Sequence[StepResult[Any]], context: ResolveContext
+) -> list[list[StepResult[Any]]]:
+    """``_node_levels`` without the inputs of saved results.
+
+    A store with ``runs_on = "thread"`` is asked in one store thread. The keys are computed on the
+    loop first: a node's key memo is not safe to fill from two threads.
+    """
+    walk = partial(_node_levels, targets, lambda n: _has_cache_entry(n, context))
+    store = context.result_store()
+    if store is None or not _store_io.in_thread(store):
+        return walk()
+    for level in _node_levels(targets):
+        for node in level:
+            _key_or_none(node, context)
+    return await _store_io.submit(walk)
+
+
 async def aresolve_all(
     targets: Sequence[StepResult[Any]],
     context: ResolveContext,
@@ -894,7 +914,8 @@ async def aresolve_all(
       fan-out branches. ``None`` runs a whole level.
     - The first failure cancels the rest of its level and is raised as it is (no
       ``ExceptionGroup``).
-    - Sync step bodies and cache reads run on the loop and block it while they run.
+    - Sync step bodies run on the loop and block it while they run. So does cache IO, unless the
+      store sets ``runs_on = "thread"``.
     - A ``FanOutStep`` resolves its branches as tasks of this run, so they share the limit.
     - A step with ``runs_on = "thread"`` or ``"process"`` does not block the loop.
 
@@ -915,7 +936,7 @@ async def aresolve_all(
 async def _resolve_levels(targets: Sequence[StepResult[Any]], context: ResolveContext) -> list[Any]:
     """The level-by-level loop of ``aresolve_all``."""
     with observing(context.observer):
-        for level in _node_levels(targets, lambda n: _has_cache_entry(n, context)):
+        for level in await _pending_levels(targets, context):
             leaders: list[StepResult[Any]] = []
             followers: dict[int, list[StepResult[Any]]] = defaultdict(list)
             leader_by_key: dict[str, StepResult[Any]] = {}
