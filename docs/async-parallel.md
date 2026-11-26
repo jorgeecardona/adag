@@ -121,6 +121,9 @@ that already runs a loop. It returns the results in the order of `targets`.
 
 The two `a.org` nodes have the same cache key, so `Fetch` runs once for both.
 
+- Cache IO: a store with `runs_on = "thread"` (Redis, a SQL server) is called off the loop.
+  Files under `cache_dir` are read and written on the loop. See
+  [Cache stores](cache-stores.md#keep-a-network-store-off-the-event-loop).
 - Same key in one level: the step body runs once.
 - Saved result: the node is loaded, and its upstream nodes do not run.
 - `max_concurrency`: the most step bodies running at once, in any branch. `None` runs a whole

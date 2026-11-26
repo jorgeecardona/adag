@@ -5,13 +5,13 @@ instead of files under `cache_dir`.
 
 All stores import from `adag.cache_store`.
 
-| Store | Extra |
-|---|---|
-| `FileSystemCacheStore` (default) | none |
-| `MemoryCacheStore` | none |
-| `SqliteCacheStore` | none |
-| `SqlCacheStore` | `adag[sql]` |
-| `RedisCacheStore` | `adag[redis]` |
+| Store | Extra | `runs_on` |
+|---|---|---|
+| `FileSystemCacheStore` (default) | none | `"loop"` |
+| `MemoryCacheStore` | none | `"loop"` |
+| `SqliteCacheStore` | none | `"loop"` |
+| `SqlCacheStore` | `adag[sql]` | `"loop"` for SQLite, else `"thread"` |
+| `RedisCacheStore` | `adag[redis]` | `"thread"` |
 
 ```python
 --8<-- "docs/examples/pipeline_store.py"
@@ -28,6 +28,31 @@ The second run greets only `cy`: `ana` and `bo` are read from the store.
 
 The 9 keys: 3 items (`greet/<key>.json`), and for each of the 2 runs a result `<key>`, its
 `<key>.done` marker, and its key record `.keys/<key>.json` (see [Caching](caching.md)).
+
+## Keep a network store off the event loop
+
+`runs_on` says where a store is called under `aexecute`, `aresolve` and `aresolve_all`.
+
+- `"thread"`: in a thread of adag's own pool. Other tasks keep running while the store answers.
+- `"loop"`: on the event loop. The loop waits for each call.
+
+Set it on your own store to move its calls to a thread:
+
+```python
+class S3CacheStore:
+    runs_on = "thread"
+
+    def get(self, key: str) -> str | None: ...
+```
+
+Rules for a `"thread"` store:
+
+1. Its five methods must be safe to call from several threads at once.
+2. Set a timeout on its client. A call that never returns holds a thread, and its node waits.
+3. A cancel during a write lets the write end. Until then the node stays claimed.
+
+Turn it off with `store.runs_on = "loop"`. A store without the attribute runs on the loop.
+`execute()` and `resolve()` ignore it.
 
 ## Open a store from a URL
 

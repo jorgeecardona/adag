@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `RedisCacheStore`, and `SqlCacheStore` on any database but SQLite, no longer block the event
+  loop under `aexecute`, `aresolve` and `aresolve_all`: their calls run in a thread. A client you
+  pass must be safe to call from several threads. Set `store.runs_on = "loop"` for the old
+  behaviour (#20).
+- Your own cache store can set `runs_on = "thread"` to get the same (#20).
 - Every cache key changes once on upgrade (`KEY_FORMAT` is now 3). The `code` part of a key is a
   digest of the syntax tree of the step class, not of its source text. A comment, a blank line,
   formatting or a docstring edit no longer changes the key. Results saved by earlier releases
