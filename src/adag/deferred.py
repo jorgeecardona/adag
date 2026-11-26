@@ -525,6 +525,10 @@ class ResolveContext:
 class Deferred(Generic[T]):
     """A value of type T that doesn't exist yet. Resolved at execution time.
 
+    Your own subclass defines ``resolve``. Give it ``content_hash(self) -> str | None`` too: a
+    text that changes when the value changes. Without it, or when it returns ``None``, the steps
+    that read this input have no cache key: they and the steps downstream run every time.
+
     Class attribute:
         deferred_type: the concrete type T, auto-set when inheriting Deferred[ConcreteType].
     """

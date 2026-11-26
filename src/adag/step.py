@@ -1189,10 +1189,14 @@ class StepResult(Deferred[Out]):
                 yield ComponentKind.PARAM, name, param_value, chunk
             elif isinstance(source, Deferred):
                 # A Deferred's own content_hash (FileSource hashes file bytes) must reach the
-                # key, or editing a tracked file would not invalidate anything downstream.
+                # key, or editing a tracked file would not invalidate anything downstream. With
+                # no hash the key is blocked: the class name alone would give two different
+                # values one key.
                 deferred_hash = source.content_hash() if hasattr(source, "content_hash") else None
                 chunk = (
-                    prefix
+                    None
+                    if deferred_hash is None
+                    else prefix
                     + b"DEFERRED:"
                     + encode_value(type(source).__name__)
                     + encode_value(deferred_hash)

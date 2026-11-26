@@ -442,8 +442,9 @@ def walk(output: Deferred[Any], *, expand: bool = False) -> tuple[list[Node], li
 def compute_state(node: Node, cache_dir: Path | None) -> str:
     """Return the state a node is drawn with: ``CACHED``, ``PENDING``, ``BLOCKED`` or ``SOURCE``.
 
-    ``SOURCE`` is an ``InputParam`` or a file. ``BLOCKED`` is a step with no hash, for example a
-    ``FileSource`` field whose file is missing. Without ``cache_dir`` every step is ``PENDING``.
+    ``SOURCE`` is an ``InputParam`` or a file. ``BLOCKED`` is a step with no cache key, for
+    example one that reads a missing file or a step that does. Without ``cache_dir`` every step
+    is ``PENDING``.
     The key is computed with ``InputParam`` defaults, not with the values of a run.
     """
     if node.step is None:
@@ -451,7 +452,7 @@ def compute_state(node: Node, cache_dir: Path | None) -> str:
     if cache_dir is None:
         return "PENDING"
     h = node.step.content_hash() if hasattr(node.step, "content_hash") else None
-    if h is None:
+    if h is None or (node.result is not None and node.result.content_hash() is None):
         return "BLOCKED"
     if node.result is not None:
         # The pipeline caches under the node key (step and inputs), not the step hash.

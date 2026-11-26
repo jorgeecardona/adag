@@ -2,7 +2,7 @@
 
 Read leaves (content-addressable Deferreds: each hashes by the file's bytes so caches
 invalidate when the file changes; a missing file hashes to ``None``, which blocks the key of a
-step that holds the source in a field):
+step that reads the source, as a field or as an input):
 
   - ``FileSource(path)`` → ``Deferred[str]``: the file's complete text.
   - ``LinesSource(path)`` → ``Deferred[list[str]]``: raw line-by-line (blank
