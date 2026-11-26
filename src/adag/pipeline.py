@@ -52,7 +52,6 @@ from adag.deferred import (
     observing,
 )
 from adag.deprecation import warn_deprecated
-from adag.hashing import UnhashableValueError
 from adag.hooks import HOOK_NAMES, takes_any_keyword
 from adag.io import atomic_writer
 from adag.item_cache import ItemCache
@@ -852,18 +851,6 @@ def _node_levels(
     return levels
 
 
-def _key_or_none(node: StepResult[Any], context: ResolveContext) -> str | None:
-    """``node``'s cache key, or None when it has none or cannot be hashed.
-
-    A run without a cache may pass params the key cannot encode (a database session), so a
-    hashing error here only means "no key", never a failure.
-    """
-    try:
-        return node.content_hash(params=context.params)
-    except UnhashableValueError:
-        return None
-
-
 def _has_cache_entry(node: StepResult[Any], key: str | None, context: ResolveContext) -> bool:
     """Whether a saved result marker exists for ``node``, whose cache key is ``key``.
 
@@ -889,12 +876,8 @@ async def _pending_levels(
     """
     store = context.result_store()
     if store is None or not _store_io.in_thread(store):
-        return _node_levels(
-            targets, lambda n: _has_cache_entry(n, _key_or_none(n, context), context)
-        )
-    keys = {
-        id(node): _key_or_none(node, context) for level in _node_levels(targets) for node in level
-    }
+        return _node_levels(targets, lambda n: _has_cache_entry(n, n._run_key(context), context))
+    keys = {id(node): node._run_key(context) for level in _node_levels(targets) for node in level}
     walk = partial(_node_levels, targets, lambda n: _has_cache_entry(n, keys[id(n)], context))
     return await _store_io.submit(walk)
 
@@ -913,7 +896,7 @@ async def aresolve_all(
 
     - Each level's nodes run together with ``asyncio.gather``; the next level starts when this
       one is done. A node with a saved result is not expanded: its upstream nodes do not run.
-    - Nodes in one level with the same cache key run once.
+    - Nodes of one step class with the same cache key run once.
     - ``max_concurrency`` bounds how many step bodies run at once, including the steps inside
       fan-out branches. ``None`` runs a whole level.
     - The first failure cancels the rest of its level and is raised as it is (no
@@ -943,14 +926,15 @@ async def _resolve_levels(targets: Sequence[StepResult[Any]], context: ResolveCo
         for level in await _pending_levels(targets, context):
             leaders: list[StepResult[Any]] = []
             followers: dict[int, list[StepResult[Any]]] = defaultdict(list)
-            leader_by_key: dict[str, StepResult[Any]] = {}
+            leader_by_key: dict[tuple[type, str], StepResult[Any]] = {}
             for node in level:
-                key = _key_or_none(node, context)
-                leader = leader_by_key.get(key) if key is not None else None
+                key = node._run_key(context)
+                twin_key = None if key is None else (type(node.step), key)
+                leader = None if twin_key is None else leader_by_key.get(twin_key)
                 if leader is None:
                     leaders.append(node)
-                    if key is not None:
-                        leader_by_key[key] = node
+                    if twin_key is not None:
+                        leader_by_key[twin_key] = node
                 else:
                     followers[id(leader)].append(node)
             tasks = [asyncio.create_task(node.aresolve(context)) for node in leaders]

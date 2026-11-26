@@ -44,6 +44,10 @@ def _empty_resolved() -> dict[int, Any]:
     return {}
 
 
+def _empty_resolved_by_key() -> dict[tuple[type, str], Any]:
+    return {}
+
+
 def _empty_inflight() -> dict[int | str, Event]:
     return {}
 
@@ -427,7 +431,8 @@ class ResolveContext:
     - ``observer``: ``NullObserver`` by default here. ``Pipeline.execute`` passes
       ``LoggingObserver`` unless you give another.
     - The memo: each node resolves once per context, so every downstream step gets the same
-      object. Threads or tasks that reach one node at the same time run its body once.
+      object. Nodes of one step class with one cache key count as one node. Threads or tasks that
+      reach one node at the same time run its body once.
     """
 
     cache_dir: Path | None = None
@@ -443,6 +448,12 @@ class ResolveContext:
     # object (a model handle) would run once per consumer, and each consumer would get a
     # different instance.
     _resolved: dict[int, Any] = field(default_factory=_empty_resolved, repr=False, compare=False)
+    # The same results by ``(step class, content key)``, for a second node object with that key.
+    # The class is part of it because two classes can share a key (a pinned ``cache_key``, two
+    # classes with one name and one body).
+    _resolved_by_key: dict[tuple[type, str], Any] = field(
+        default_factory=_empty_resolved_by_key, repr=False, compare=False
+    )
     # While one thread runs a node's body, its content key maps to an Event that other threads
     # wait on (the id of a node with no key). Two node objects with one key share the entry. The
     # owner removes the entry and sets the Event in a ``finally``, so a body that raises releases
@@ -450,7 +461,7 @@ class ResolveContext:
     _inflight: dict[int | str, Event] = field(
         default_factory=_empty_inflight, repr=False, compare=False
     )
-    # Guards every read and write of the two dicts above. A level of nodes resolves in a thread
+    # Guards every read and write of the three dicts above. A level of nodes resolves in a thread
     # pool, and the free-threaded build gives no atomicity for free.
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
     # The in-flight registry for ``aresolve``: a future per node, so gathered tasks wait on the

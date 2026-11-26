@@ -666,11 +666,9 @@ class StepResult(Deferred[Out]):
         # per node (resolve, is_cached, load), so a deep chain would recompute hashes
         # ~quadratically without this. Single slot, keyed on the params object's IDENTITY
         # (graph + params are immutable within one execute(); a new params object recomputes).
-        # _hash_computed separates "not computed yet" from "computed as None" (a blocked
-        # step hashes to None), so params=None still computes exactly once.
-        self._hash_computed: bool = False
-        self._hash_params: dict[str, Any] | None = None
-        self._hash_value: str | None = None
+        # (params, key) of the last call, or None before the first; a blocked step's key is None.
+        # One tuple, so that a thread never reads the params of one call with the key of another.
+        self._hash_memo: tuple[dict[str, Any] | None, str | None] | None = None
         self._validate()
 
     def _validate(self) -> None:
@@ -700,20 +698,24 @@ class StepResult(Deferred[Out]):
                         f"but {type(self.step).__name__} expects {expected_name} for '{name}'"
                     )
 
+    def _run_key(self, context: ResolveContext) -> str | None:
+        """This node's content key under the run's params; None when it has none.
+
+        A run without a cache may pass params the key cannot encode (a database session), so a
+        hashing error here only means "no key", never a failure.
+        """
+        try:
+            return self.content_hash(params=context.params)
+        except UnhashableValueError:
+            return None
+
     def _flight_key(self, context: ResolveContext) -> int | str:
         """The key of this node in the in-flight registries: its content key, else its id.
 
         Two node objects with one content key are one computation, so concurrent resolutions
-        of both run the body once: the second finds the first one's result in the cache. Without
-        a result store there is no cache to find it in, so the node keeps its id. So does a node
-        with no key.
+        of both run the body once: the second waits, then takes the first one's result.
         """
-        if context.result_store() is None:
-            return id(self)
-        try:
-            key = self.content_hash(params=context.params)
-        except UnhashableValueError:
-            return id(self)
+        key = self._run_key(context)
         return id(self) if key is None else key
 
     def _memo_get(self, context: ResolveContext) -> Out | _Miss:
@@ -727,10 +729,32 @@ class StepResult(Deferred[Out]):
             return entry[1]
         return _CACHE_MISS
 
+    def _twin_get(self, context: ResolveContext) -> Out | _Miss:
+        """The result in ``context`` of a node of the same step class and content key, or
+        ``_CACHE_MISS``.
+        """
+        key = self._run_key(context)
+        if key is None:
+            return _CACHE_MISS
+        with context._lock:
+            return context._resolved_by_key.get((type(self.step), key), _CACHE_MISS)
+
+    def _remember(self, value: Out, context: ResolveContext) -> Out:
+        """Memoize ``value`` for this node and its twins, and return the value to hand on.
+
+        The first result of a key wins, so that twins always share one object.
+        """
+        key = self._run_key(context)
+        with context._lock:
+            if key is not None:
+                value = context._resolved_by_key.setdefault((type(self.step), key), value)
+            context._resolved[id(self)] = (self, value)
+        return value
+
     def _check_cache(self, context: ResolveContext) -> Out | _Miss:
         """The synchronous *front* of ``resolve``/``aresolve``: per-execute memo lookup,
-        ``on_step_start``, and the cache hit path. Returns the resolved value on a memo or cache
-        hit, or ``_CACHE_MISS`` if the step still has to run.
+        ``on_step_start``, and the cache hit path (a twin's result, else the store). Returns the
+        resolved value on a hit, or ``_CACHE_MISS`` if the step still has to run.
 
         The store and the files are read on the calling thread. ``_acheck_cache`` is the form for
         a store whose ``runs_on`` is ``"thread"``.
@@ -748,12 +772,16 @@ class StepResult(Deferred[Out]):
         # turns back into the execution tree.
         context.observer.on_step_start(type(self.step).__name__)
 
-        if self.step.caches_to_path():
-            loaded = self._try_load_path(self._result_dir(context), context.params)
-        else:
-            store = context.result_store()
-            loaded = self._try_load(store, params=context.params) if store is not None else None
-        return self._after_lookup(context, loaded)
+        found = self._twin_get(context)
+        if isinstance(found, _Miss):
+            if self.step.caches_to_path():
+                loaded = self._try_load_path(self._result_dir(context), context.params)
+            else:
+                store = context.result_store()
+                loaded = self._try_load(store, params=context.params) if store is not None else None
+            if loaded is not None:
+                found = loaded
+        return self._after_lookup(context, found)
 
     async def _acheck_cache(self, context: ResolveContext, store: CacheStore) -> Out | _Miss:
         """``_check_cache`` with the reads of ``store`` made in a store thread.
@@ -768,24 +796,29 @@ class StepResult(Deferred[Out]):
         if not isinstance(memo, _Miss):
             return memo
 
-        key = self.content_hash(params=context.params)
+        found = self._twin_get(context)
+        key: str | None = None
         text: str | None = None
-        if key is not None and self.step.result_model() is not None:
-            text = await _store_io.submit(partial(_read_entry, store, key))
+        if isinstance(found, _Miss):
+            key = self.content_hash(params=context.params)
+            if key is not None and self.step.result_model() is not None:
+                text = await _store_io.submit(partial(_read_entry, store, key))
         context.observer.on_step_start(type(self.step).__name__)
-        loaded = self._parse_entry(key, text) if key is not None else None
-        return self._after_lookup(context, loaded)
+        if key is not None:
+            loaded = self._parse_entry(key, text)
+            if loaded is not None:
+                found = loaded
+        return self._after_lookup(context, found)
 
-    def _after_lookup(self, context: ResolveContext, loaded: Out | None) -> Out | _Miss:
+    def _after_lookup(self, context: ResolveContext, found: Out | _Miss) -> Out | _Miss:
         """Report what the cache lookup found, and memoize a hit."""
         step_name = type(self.step).__name__
-        if loaded is not None:
+        if not isinstance(found, _Miss):
             if context.on_progress:
                 context.on_progress(Progress(step=step_name, message="cache hit"))
-            with context._lock:
-                context._resolved[id(self)] = (self, loaded)
+            value = self._remember(found, context)
             context.observer.on_step_cached(step_name)
-            return loaded
+            return value
 
         if context.on_progress:
             context.on_progress(Progress(step=step_name, message="resolving"))
@@ -815,9 +848,7 @@ class StepResult(Deferred[Out]):
         if not written and context.children_of(self.step) is not None:
             # A fan-out or a loop saves no result of its own, but its record says what ran.
             self._write_key_record(context)
-        with context._lock:
-            context._resolved[id(self)] = (self, result)
-        return result
+        return self._remember(result, context)
 
     async def _afinalize(
         self,
@@ -858,9 +889,7 @@ class StepResult(Deferred[Out]):
             emit("step.saved", step=step_name, key=self.content_hash(params=context.params))
         if record is not None and written.record_error is not None:
             self._report_key_record_failure(record.key, written.record_error)
-        with context._lock:
-            context._resolved[id(self)] = (self, result)
-        return result
+        return self._remember(result, context)
 
     def _write_key_record(self, context: ResolveContext) -> None:
         """Write this node's key explanation to ``.keys/<key>.json`` in the result store.
@@ -905,10 +934,11 @@ class StepResult(Deferred[Out]):
     def resolve(self, context: ResolveContext) -> Out:
         """Resolve upstream sources, run the step, cache if applicable.
 
-        Memoizes by ``id(self)`` so multiple downstream consumers of the SAME ``StepResult``
-        share one computed result within a ``Pipeline.execute``. This is critical for non-cached
-        steps returning non-serializable objects (e.g. model handles), where consumers must
-        see the same instance, not two re-executions. The cache/memo/observer skeleton lives
+        Memoizes each node, so multiple downstream consumers of the SAME ``StepResult`` share
+        one computed result within a ``Pipeline.execute``. Another node of the same step class
+        and content key (a twin) takes that result too, saved or not (#21). This is critical for
+        non-cached steps returning non-serializable objects (e.g. model handles), where consumers
+        must see the same instance, not two re-executions. The cache/memo/observer skeleton lives
         in ``_check_cache``/``_finalize`` (shared with ``aresolve``); only the two lines that
         genuinely differ (upstream resolution and the step body) stay here, run inline.
 
@@ -916,7 +946,7 @@ class StepResult(Deferred[Out]):
         collapses resolutions that do not overlap in time, so N branch workers reaching one
         shared upstream at once would each miss the memo and run the body N times. Here the
         first thread to miss the memo claims ownership (an ``Event`` in ``context._inflight``, keyed by
-        the node's content key, so two node objects with one key count as one);
+        the node's content key, so twins wait for each other);
         concurrent threads find that Event, wait on it, then loop: a success left the value in
         the memo (returned), a failure removed the marker so they re-claim and resolve it
         themselves. Uncontended (single-threaded) there is never a waiter, so behaviour and
@@ -1079,12 +1109,11 @@ class StepResult(Deferred[Out]):
 
     def content_hash(self, params: dict[str, Any] | None = None) -> str | None:
         """Content hash: step identity + source hashes (memoized per params identity)."""
-        if self._hash_computed and params is self._hash_params:
-            return self._hash_value
+        memo = self._hash_memo
+        if memo is not None and memo[0] is params:
+            return memo[1]
         result = self._compute_content_hash(params)
-        self._hash_computed = True
-        self._hash_params = params
-        self._hash_value = result
+        self._hash_memo = (params, result)
         return result
 
     def _compute_content_hash(self, params: dict[str, Any] | None = None) -> str | None:
