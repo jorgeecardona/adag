@@ -864,9 +864,11 @@ def _key_or_none(node: StepResult[Any], context: ResolveContext) -> str | None:
         return None
 
 
-def _has_cache_entry(node: StepResult[Any], context: ResolveContext) -> bool:
-    """Whether a saved result marker exists for ``node``. Checks files only, loads nothing."""
-    key = _key_or_none(node, context)
+def _has_cache_entry(node: StepResult[Any], key: str | None, context: ResolveContext) -> bool:
+    """Whether a saved result marker exists for ``node``, whose cache key is ``key``.
+
+    Checks the marker only and loads nothing. It computes no key, so a store thread can call it.
+    """
     if key is None:
         return False
     if node.step.caches_to_path():
@@ -883,15 +885,17 @@ async def _pending_levels(
     """``_node_levels`` without the inputs of saved results.
 
     A store with ``runs_on = "thread"`` is asked in one store thread. The keys are computed on the
-    loop first: a node's key memo is not safe to fill from two threads.
+    loop first and handed to the thread: a node's key memo is not safe to fill from two threads.
     """
-    walk = partial(_node_levels, targets, lambda n: _has_cache_entry(n, context))
     store = context.result_store()
     if store is None or not _store_io.in_thread(store):
-        return walk()
-    for level in _node_levels(targets):
-        for node in level:
-            _key_or_none(node, context)
+        return _node_levels(
+            targets, lambda n: _has_cache_entry(n, _key_or_none(n, context), context)
+        )
+    keys = {
+        id(node): _key_or_none(node, context) for level in _node_levels(targets) for node in level
+    }
+    walk = partial(_node_levels, targets, lambda n: _has_cache_entry(n, keys[id(n)], context))
     return await _store_io.submit(walk)
 
 

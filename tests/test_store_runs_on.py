@@ -13,6 +13,7 @@ from typing import Any, cast
 import pytest
 from pydantic import BaseModel
 from sqlalchemy import Engine, create_mock_engine
+from structlog.testing import capture_logs
 
 from adag import InputParam, Pipeline, Step, aresolve_all
 from adag._store_io import in_thread
@@ -26,6 +27,7 @@ from adag.cache_store import (
 )
 from adag.deferred import ResolveContext
 from adag.observers import LoggingObserver, RunTreeObserver
+from adag.step import StepResult
 
 n = InputParam[int]("n")
 RUNS: list[int] = []
@@ -399,3 +401,122 @@ def test_sqlite_through_sqlalchemy_works_on_the_async_path() -> None:
     pipe = Pipeline(output=Double()(n=n), store=SqlCacheStore(url="sqlite://"))
 
     assert asyncio.run(pipe.aexecute(n=4)) == Num(n=8)
+
+
+class _FirstSetWaits(Recording):
+    """The first ``set`` waits for ``release``, and then fails when ``fail`` is set."""
+
+    def __init__(self, *, fail: bool = False) -> None:
+        super().__init__()
+        self.writing, self.release = threading.Event(), threading.Event()
+        self.fail = fail
+
+    def set(self, key: str, value: str) -> None:
+        if not self.writing.is_set():
+            self.writing.set()
+            assert self.release.wait(5)
+            if self.fail:
+                raise OSError("store down")
+        super().set(key, value)
+
+
+async def _cancel_in_the_write(store: _FirstSetWaits, context: ResolveContext) -> None:
+    task = asyncio.create_task(Double()(n=n).aresolve(context))
+    assert await asyncio.to_thread(store.writing.wait, 5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+@pytest.mark.parametrize("closed", [True, False], ids=["closed", "stopped"])
+def test_a_claim_left_on_another_loop_does_not_block_a_later_run(closed: bool) -> None:
+    store = _FirstSetWaits()
+    context = ResolveContext(store=store, params={"n": 6})
+    first = asyncio.new_event_loop()
+    try:
+        first.run_until_complete(_cancel_in_the_write(store, context))
+        assert context._ainflight  # pyright: ignore[reportPrivateUsage]
+        if closed:
+            first.close()
+
+        async def again() -> Num:
+            return await asyncio.wait_for(Double()(n=n).aresolve(context), 5)
+
+        assert asyncio.run(again()) == Num(n=12)
+    finally:
+        store.release.set()
+        first.close()
+    assert context._ainflight == {}  # pyright: ignore[reportPrivateUsage]
+
+
+def test_a_write_that_fails_after_a_cancel_is_logged_and_frees_the_node() -> None:
+    store = _FirstSetWaits(fail=True)
+    context = ResolveContext(store=store, params={"n": 7})
+
+    async def main() -> None:
+        await _cancel_in_the_write(store, context)
+        (claim,) = context._ainflight.values()  # pyright: ignore[reportPrivateUsage]
+        store.release.set()
+        await asyncio.wait_for(claim, 5)
+        assert context._ainflight == {}  # pyright: ignore[reportPrivateUsage]
+
+    with capture_logs() as logs:
+        asyncio.run(main())
+
+    failed = [log for log in logs if log["event"] == "step.write_after_cancel_failed"]
+    assert [log["error"] for log in failed] == ["store down"]
+
+
+def test_keys_are_computed_on_the_loop_when_two_runs_share_a_graph(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    threads: set[int] = set()
+    compute = cast(
+        "Callable[[StepResult[Any], dict[str, Any] | None], str | None]",
+        vars(StepResult)["_compute_content_hash"],
+    )
+
+    def spy(node: StepResult[Any], params: dict[str, Any] | None = None) -> str | None:
+        threads.add(threading.get_ident())
+        return compute(node, params)
+
+    monkeypatch.setattr(StepResult, "_compute_content_hash", spy)
+    pipe = Pipeline(output=_graph(), store=Recording())
+
+    async def main() -> int:
+        results = await asyncio.gather(pipe.aexecute(n=1), pipe.aexecute(n=2))
+        assert results == [Num(n=3), Num(n=5)]
+        return threading.get_ident()
+
+    loop_thread = asyncio.run(main())
+
+    assert threads == {loop_thread}
+
+
+@dataclass(frozen=True)
+class Page(Step[Num]):
+    """Caches to a path, so only its key record goes to the store."""
+
+    def run(self, n: int) -> Num:
+        return Num(n=n)
+
+    def save_result(self, result: Num, path: Path) -> None:
+        path.write_text(str(result.n))
+
+    def load_result(self, path: Path) -> Num:
+        return Num(n=int(path.read_text()))
+
+
+def test_a_path_cached_step_sends_its_key_record_through_the_thread(tmp_path: Path) -> None:
+    store = Recording()
+
+    async def main() -> int:
+        pipe = Pipeline(output=Page()(n=n), store=store, cache_dir=tmp_path)
+        assert await pipe.aexecute(n=8) == Num(n=8)
+        assert await pipe.aexecute(n=8) == Num(n=8)
+        return threading.get_ident()
+
+    loop_thread = asyncio.run(main())
+
+    assert [method for method, key in store.calls if key.startswith(".keys/")] == ["set"]
+    assert loop_thread not in store.threads

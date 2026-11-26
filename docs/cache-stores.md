@@ -49,7 +49,11 @@ Rules for a `"thread"` store:
 
 1. Its five methods must be safe to call from several threads at once.
 2. Set a timeout on its client. A call that never returns holds a thread, and its node waits.
-3. A cancel during a write lets the write end. Until then the node stays claimed.
+3. A cancel during a write lets the write end. Until then the node stays claimed. If the event
+   loop stops first, the claim is dropped and a failed write may not be logged.
+
+With your own `asyncio.gather` over `aresolve` and a `"thread"` store, `RunTreeObserver` can show
+a node under another task's node. `aresolve_all` and `aexecute` do not.
 
 Turn it off with `store.runs_on = "loop"`. A store without the attribute runs on the loop.
 `execute()` and `resolve()` ignore it.

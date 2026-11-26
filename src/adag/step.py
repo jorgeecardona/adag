@@ -999,8 +999,9 @@ class StepResult(Deferred[Out]):
                 if not isinstance(memo, _Miss):
                     return memo
                 in_flight = context._ainflight.get(flight_key)
-                # A claim of a closed loop was left by a write that outlived it.
-                if in_flight is None or in_flight.get_loop().is_closed():
+                # A claim of another loop cannot be awaited here. A cancelled write leaves one
+                # behind when its loop stops before the write ends.
+                if in_flight is None or in_flight.get_loop() is not asyncio.get_running_loop():
                     own = asyncio.get_running_loop().create_future()
                     context._ainflight[flight_key] = own
                     break
