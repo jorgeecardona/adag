@@ -28,7 +28,7 @@ from __future__ import annotations
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
 
 import structlog
 
@@ -80,6 +80,8 @@ class FileSystemCacheStore:
     Keys may contain ``/`` to nest into sub-directories. Writes are atomic (temp file, then
     rename).
     """
+
+    runs_on: Literal["loop", "thread"] = "loop"
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
@@ -148,7 +150,13 @@ class RedisCacheStore:
     (``RedisCacheStore(url="redis://…")``). ``ttl_seconds`` optionally expires entries
     (None = persist; the DAG cache is content-addressed, so stale entries can't be
     wrong; TTL only controls eviction and cost).
+
+    ``runs_on`` is ``"thread"``: on the async path the calls run off the event loop, so a client
+    you pass must be safe to call from several threads. Set ``runs_on = "loop"`` to call it on
+    the loop.
     """
+
+    runs_on: Literal["loop", "thread"] = "thread"
 
     def __init__(
         self,
@@ -210,6 +218,8 @@ class MemoryCacheStore:
     Use it for tests and single-process runs that should not touch disk.
     """
 
+    runs_on: Literal["loop", "thread"] = "loop"
+
     def __init__(self) -> None:
         self._d: dict[str, str] = {}
 
@@ -240,6 +250,8 @@ class SqliteCacheStore:
     Right for a single-host service or a CLI run that wants the cache to survive a restart;
     NOT for heavy multi-instance write contention across hosts (use Redis/SQL there).
     """
+
+    runs_on: Literal["loop", "thread"] = "loop"
 
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -294,7 +306,13 @@ class SqlCacheStore:
     one transaction, which works on every dialect without a dialect-specific UPSERT. Pass a URL
     (``SqlCacheStore(url="postgresql://…")``) or an existing engine (``SqlCacheStore(engine=…)``)
     to share a connection pool with the host app.
+
+    ``runs_on`` is ``"loop"`` for SQLite and ``"thread"`` for every other database. With
+    ``"thread"``, the calls on the async path run off the event loop, each on its own connection
+    from the pool. Set ``runs_on = "loop"`` to call the database on the loop.
     """
+
+    runs_on: Literal["loop", "thread"]
 
     def __init__(
         self, *, url: str | None = None, engine: Engine | None = None, table_name: str = "dag_cache"
@@ -310,6 +328,9 @@ class SqlCacheStore:
                 raise ValueError("SqlCacheStore requires either 'url' or 'engine'")
             engine = create_engine(url)
         self._engine: Engine = engine
+        if not hasattr(type(self), "runs_on"):  # a subclass that sets it keeps its value
+            # An in-memory SQLite database gives each thread an empty database of its own.
+            self.runs_on = "loop" if engine.dialect.name == "sqlite" else "thread"
         self._table = Table(
             table_name,
             MetaData(),
