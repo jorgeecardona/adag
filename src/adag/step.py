@@ -586,6 +586,41 @@ class _Miss:
 _CACHE_MISS = _Miss()
 
 
+@dataclasses.dataclass(frozen=True)
+class _Entry:
+    """A result as the text to store under a node's key."""
+
+    key: str
+    text: str
+
+
+@dataclasses.dataclass(frozen=True)
+class _KeyRecord:
+    """A key record as the text to store under ``store_key``."""
+
+    key: str
+    store_key: str
+    text: str
+
+
+def _read_entry(store: CacheStore, key: str) -> str | None:
+    """The stored text of a finished entry, or None. Makes store calls only."""
+    if not store.exists(key + ".done"):
+        return None
+    return store.get(key)
+
+
+def _write_entry(store: CacheStore, entry: _Entry) -> str | None:
+    """Write the value, then its ``.done`` marker. Return the text the key held before.
+
+    Makes store calls only.
+    """
+    old_text = store.get(entry.key)
+    store.set(entry.key, entry.text)
+    store.set(entry.key + ".done", datetime.now(UTC).isoformat())
+    return old_text
+
+
 class StepResult(Deferred[Out]):
     """Deferred result of a Step. Handles caching, upstream resolution, and type validation."""
 
@@ -733,9 +768,19 @@ class StepResult(Deferred[Out]):
         under. A failed write never fails the run: it emits ``step.key_record.failed``.
         """
         store = context.result_store()
-        key = self.content_hash(params=context.params)
-        if store is None or key is None:
+        record = self._key_record(context) if store is not None else None
+        if store is None or record is None:
             return
+        try:
+            store.set(record.store_key, record.text)
+        except Exception as exc:
+            self._report_key_record_failure(record.key, exc)
+
+    def _key_record(self, context: ResolveContext) -> _KeyRecord | None:
+        """This node's key record, ready to write; None without a key or when it cannot be built."""
+        key = self.content_hash(params=context.params)
+        if key is None:
+            return None
         try:
             from adag import __version__  # late: adag/__init__ imports this module
 
@@ -748,9 +793,13 @@ class StepResult(Deferred[Out]):
             children = context.children_of(self.step)
             if children is not None and self.step.expansion() is not None:
                 record["expansion"] = {"children": children}
-            store.set(f"{KEY_RECORD_PREFIX}{key}.json", json.dumps(record, indent=1))
+            return _KeyRecord(key, f"{KEY_RECORD_PREFIX}{key}.json", json.dumps(record, indent=1))
         except Exception as exc:
-            emit("step.key_record.failed", step=type(self.step).__name__, key=key, error=str(exc))
+            self._report_key_record_failure(key, exc)
+            return None
+
+    def _report_key_record_failure(self, key: str, error: Exception) -> None:
+        emit("step.key_record.failed", step=type(self.step).__name__, key=key, error=str(error))
 
     def resolve(self, context: ResolveContext) -> Out:
         """Resolve upstream sources, run the step, cache if applicable.
@@ -1109,15 +1158,15 @@ class StepResult(Deferred[Out]):
         A missing ``.done`` marker, an empty value, or a value the result model rejects is a
         miss, never a crash. Invalid entries are reported so a broken cache surfaces.
         """
-        result_type = self.step.result_model()
         key = self.content_hash(params=params)
-        if result_type is None or key is None:
+        if self.step.result_model() is None or key is None:
             return None
-        store = _as_store(where)
-        if not store.exists(key + ".done"):
-            return None
-        text = store.get(key)
-        if text is None:
+        return self._parse_entry(key, _read_entry(_as_store(where), key))
+
+    def _parse_entry(self, key: str, text: str | None) -> Out | None:
+        """Validate the stored text of ``key``; None when there is none or it is invalid."""
+        result_type = self.step.result_model()
+        if result_type is None or text is None:
             return None
         try:
             return result_type.model_validate_json(text)  # pyright: ignore[reportReturnType]
@@ -1128,24 +1177,37 @@ class StepResult(Deferred[Out]):
     def _save(
         self, result: Out, where: Path | CacheStore, params: dict[str, Any] | None = None
     ) -> None:
+        entry = self._entry(result, params)
+        if entry is not None:
+            self._report_overwrite(entry, _write_entry(_as_store(where), entry))
+
+    def _entry(self, result: Out, params: dict[str, Any] | None) -> _Entry | None:
+        """``result`` as the text to store under this node's key; None when the node has no key.
+
+        Raises:
+            TypeError: the result is not a ``BaseModel``.
+        """
         key = self.content_hash(params=params)
         if key is None:
-            return
+            return None
         if not isinstance(result, BaseModel):
             raise TypeError(
                 f"Cannot cache {type(result).__name__}: result_type is set but result is not a BaseModel"
             )
-        store = _as_store(where)
-        new_text = result.model_dump_json(indent=2)
-        # Invariant: same content_hash -> same bytes. Overwriting an existing hash with
-        # different bytes means the cache key is missing an input; log loudly (the message
-        # below has the likely causes) rather than silently ship stale results.
-        old_text = store.get(key)
-        if old_text is not None and old_text != new_text:
+        return _Entry(key, result.model_dump_json(indent=2))
+
+    def _report_overwrite(self, entry: _Entry, old_text: str | None) -> None:
+        """Log when a key already held different text.
+
+        Invariant: same content_hash -> same bytes. Different bytes mean the cache key is
+        missing an input; log loudly (the message has the likely causes) rather than silently
+        ship stale results.
+        """
+        if old_text is not None and old_text != entry.text:
             logger.error(
                 "cached_step.invariant_violation",
                 step=type(self.step).__name__,
-                hash=key,
+                hash=entry.key,
                 message=(
                     "Same content_hash produced different bytes. The "
                     "step's cache key is missing an input. Likely a "
@@ -1154,8 +1216,6 @@ class StepResult(Deferred[Out]):
                     "inputs. Overwriting cache with new bytes."
                 ),
             )
-        store.set(key, new_text)
-        store.set(key + ".done", datetime.now(UTC).isoformat())
 
     def try_load(
         self, where: Path | CacheStore, params: dict[str, Any] | None = None
