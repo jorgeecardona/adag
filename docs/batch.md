@@ -24,6 +24,8 @@ adding one item recomputes all of them. The example in [Cache stores](cache-stor
 
 Override `process_batch()` to process items concurrently.
 
+On the async path (`aexecute`, `aresolve`), the whole step runs in a worker thread.
+
 `BatchStep` runs in the process that calls `execute()`. It does not leave the machine. To run
 items elsewhere, fan out over chunks of items with a `BatchStep` in each branch, and use a
 [dispatcher](dispatch.md).

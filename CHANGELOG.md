@@ -117,6 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   docstring. The box shows no description line.
 - `dag()` draws the edge to the output box when the last step has a `node_label` or a `#2` name
   suffix. Before, the edge was dropped.
+- A `BatchStep` works with `aresolve`, `aresolve_all` and `Pipeline.aexecute`. It raised
+  `RuntimeError`. Its items run in a worker thread.
 
 ## [0.3.22] - 2026-11-22
 

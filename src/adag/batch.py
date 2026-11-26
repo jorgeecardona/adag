@@ -38,6 +38,7 @@ derived keys.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from abc import abstractmethod
@@ -48,7 +49,7 @@ from typing import Any, ClassVar, Generic, TypeVar, get_args, get_origin
 import structlog
 from pydantic import BaseModel
 
-from adag.deferred import ResolveContext, emit
+from adag.deferred import ResolveContext, emit, overrides_method
 from adag.item_cache import ItemCache
 from adag.step import Step
 
@@ -295,6 +296,15 @@ class BatchStep(Step[T], Generic[T, R]):
     def run(self, **inputs: Any) -> T:  # pyright: ignore[reportUnusedParameter]
         """Raise: a BatchStep is driven through ``execute()``, never ``run()``."""
         raise RuntimeError("BatchStep uses execute(context, ...); do not call run() directly.")
+
+    async def aexecute(self, context: ResolveContext, /, **kwargs: Any) -> T:
+        """Async entry: run ``execute`` in a worker thread so the event loop is not blocked.
+
+        A subclass that overrides ``arun`` keeps it: ``arun`` runs instead.
+        """
+        if overrides_method(self, "arun"):
+            return await super().aexecute(context, **kwargs)
+        return await asyncio.to_thread(self.execute, context, **kwargs)
 
     def execute(self, context: ResolveContext, /, **inputs: Any) -> T:
         """Orchestrate: items → partition → process uncached → assemble.
